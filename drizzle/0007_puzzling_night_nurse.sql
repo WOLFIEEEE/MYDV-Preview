@@ -1,0 +1,1 @@
+ALTER TABLE "custom_terms" ADD COLUMN "trade_terms" text DEFAULT '';

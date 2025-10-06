@@ -1,0 +1,1 @@
+ALTER TABLE "fund_transactions" ALTER COLUMN "vehicle_stock_id" SET DATA TYPE varchar(255);

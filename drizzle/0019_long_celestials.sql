@@ -1,0 +1,1 @@
+ALTER TABLE "sale_details" ADD COLUMN "deposit_date" timestamp;

@@ -1,0 +1,1 @@
+ALTER TABLE "sale_details" ADD COLUMN "required_amount" numeric(10, 2);

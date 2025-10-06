@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { currentUser } from '@clerk/nextjs/server';
+import { db } from '@/db';
+import { savedInvoices } from '@/db/schema';
+import { eq, desc } from 'drizzle-orm';
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get all saved invoices for the current user
+    const allInvoices = await db.select({
+      id: savedInvoices.id,
+      invoiceNumber: savedInvoices.invoiceNumber,
+      stockId: savedInvoices.stockId,
+      customerName: savedInvoices.customerName,
+      vehicleRegistration: savedInvoices.vehicleRegistration,
+      saleType: savedInvoices.saleType,
+      invoiceType: savedInvoices.invoiceType,
+      invoiceTo: savedInvoices.invoiceTo,
+      totalAmount: savedInvoices.totalAmount,
+      remainingBalance: savedInvoices.remainingBalance,
+      isPaid: savedInvoices.isPaid,
+      status: savedInvoices.status,
+      createdAt: savedInvoices.createdAt,
+      updatedAt: savedInvoices.updatedAt,
+      lastAccessedAt: savedInvoices.lastAccessedAt
+    })
+    .from(savedInvoices)
+    .where(eq(savedInvoices.userId, user.id))
+    .orderBy(desc(savedInvoices.updatedAt));
+
+    // Filter to only get the latest invoice per stockId + registration combination
+    const invoiceMap = new Map<string, typeof allInvoices[0]>();
+    
+    for (const invoice of allInvoices) {
+      const key = `${invoice.stockId}-${invoice.vehicleRegistration}`;
+      if (!invoiceMap.has(key)) {
+        invoiceMap.set(key, invoice);
+      }
+    }
+    
+    const latestInvoices = Array.from(invoiceMap.values())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+    console.log(`✅ Retrieved ${latestInvoices.length} latest invoices (filtered from ${allInvoices.length} total) for user ${user.id}`);
+
+    return NextResponse.json({ 
+      success: true, 
+      invoices: latestInvoices
+    });
+  } catch (error) {
+    console.error('❌ Error retrieving invoices:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}

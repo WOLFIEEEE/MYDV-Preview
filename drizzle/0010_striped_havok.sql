@@ -1,0 +1,1 @@
+ALTER TABLE "vehicle_job_cards" ADD COLUMN "jobs" jsonb;

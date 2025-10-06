@@ -1,0 +1,1 @@
+ALTER TABLE "sale_details" ADD COLUMN "card_amount" numeric(10, 2);
