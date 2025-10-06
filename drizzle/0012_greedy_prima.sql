@@ -1,1 +1,0 @@
-ALTER TABLE "customers" ADD COLUMN "enquiry_type" varchar(100);

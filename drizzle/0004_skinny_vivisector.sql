@@ -1,1 +1,0 @@
-ALTER TABLE "fund_transactions" DROP CONSTRAINT "fund_transactions_vehicle_stock_id_stock_cache_stock_id_fk";
