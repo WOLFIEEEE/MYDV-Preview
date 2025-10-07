@@ -143,7 +143,8 @@ export default function ListingsManagement() {
       return { disabled: true };
     }
     return { 
-      pageSize: 100 // Large page size to get all data
+      pageSize: 100, // Large page size to get all data
+      lifecycleState: 'FORECOURT' // Only show vehicles on forecourt (exclude sold, etc.)
     };
   }, [isSignedIn, isLoaded]);
   
@@ -173,6 +174,12 @@ export default function ListingsManagement() {
 
     // Apply filters
     const filtered = stockData.filter((vehicle: StockItem) => {
+      // Lifecycle status filter - only show FORECOURT vehicles (exclude sold, etc.)
+      const lifecycleState = vehicle.lifecycleState || vehicle.metadata?.lifecycleState;
+      if (lifecycleState?.toLowerCase() !== 'forecourt') {
+        return false;
+      }
+
       // Search filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
