@@ -46,7 +46,8 @@ import {
   Globe,
   Share2,
   Store,
-  Plus
+  Plus,
+  MapPin
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Header from "@/components/shared/Header";
@@ -80,8 +81,6 @@ function MyStockContent() {
   const [filterChannelStatus, setFilterChannelStatus] = useState<string[]>([]);
   const [hideSoldVehicles, setHideSoldVehicles] = useState(true);
   const [showSmartFilters, setShowSmartFilters] = useState<boolean>(false);
-  const [showVehicleStatusOverview, setShowVehicleStatusOverview] = useState<boolean>(false);
-  const [showPublishingChannels, setShowPublishingChannels] = useState<boolean>(false);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [yearRange, setYearRange] = useState({ min: "", max: "" });
   const [mileageRange, setMileageRange] = useState({ min: "", max: "" });
@@ -346,10 +345,15 @@ function MyStockContent() {
         switch (channelKey) {
           case 'autotraderAdvert':
             return adverts?.autotraderAdvert?.status?.toLowerCase() === 'published';
-          case 'autotraderCapped':
-            return adverts?.autotraderAdvert?.status?.toLowerCase() === 'capped';
-          case 'autotraderNotOn':
-            return adverts?.autotraderAdvert?.status?.toLowerCase() !== 'published';
+          case 'notAdvertisedAnywhere':
+            // Check if vehicle is not advertised on any channel
+            return (
+              adverts?.autotraderAdvert?.status?.toLowerCase() !== 'published' &&
+              adverts?.advertiserAdvert?.status?.toLowerCase() !== 'published' &&
+              adverts?.locatorAdvert?.status?.toLowerCase() !== 'published' &&
+              adverts?.profileAdvert?.status?.toLowerCase() !== 'published' &&
+              (adverts as Record<string, { status?: string }>)?.exportAdvert?.status?.toLowerCase() !== 'published'
+            );
           case 'advertiserAdvert':
             return adverts?.advertiserAdvert?.status?.toLowerCase() === 'published';
           case 'locatorAdvert':
@@ -538,36 +542,36 @@ function MyStockContent() {
   const calculateChannelStats = useMemo(() => {
     if (!allStockData || allStockData.length === 0) {
       return {
-        autotrader: { published: 0, capped: 0, notOn: 0, total: 0 },
+        autotrader: { published: 0, total: 0 },
         advertiser: { published: 0, total: 0 },
         locator: { published: 0, total: 0 },
         profile: { published: 0, total: 0 },
-        export: { published: 0, total: 0 }
+        export: { published: 0, total: 0 },
+        notAdvertisedAnywhere: 0
       };
     }
 
+    // Filter data based on hideSoldVehicles setting
+    const dataToCount = hideSoldVehicles 
+      ? allStockData.filter(item => item.metadata?.lifecycleState?.toLowerCase() !== 'sold')
+      : allStockData;
+
     const stats = {
-      autotrader: { published: 0, capped: 0, notOn: 0, total: allStockData.length },
-      advertiser: { published: 0, total: allStockData.length },
-      locator: { published: 0, total: allStockData.length },
-      profile: { published: 0, total: allStockData.length },
-      export: { published: 0, total: allStockData.length }
+      autotrader: { published: 0, total: dataToCount.length },
+      advertiser: { published: 0, total: dataToCount.length },
+      locator: { published: 0, total: dataToCount.length },
+      profile: { published: 0, total: dataToCount.length },
+      export: { published: 0, total: dataToCount.length },
+      notAdvertisedAnywhere: 0
     };
 
-    allStockData.forEach((item: StockItem) => {
+    dataToCount.forEach((item: StockItem) => {
       const adverts = item.adverts?.retailAdverts;
       
       // AutoTrader stats
       const autotraderStatus = adverts?.autotraderAdvert?.status?.toLowerCase();
       if (autotraderStatus === 'published') {
         stats.autotrader.published++;
-      } else if (autotraderStatus === 'capped') {
-        stats.autotrader.capped++;
-      }
-      
-      // Calculate "Not on AutoTrader" (includes capped)
-      if (autotraderStatus !== 'published') {
-        stats.autotrader.notOn++;
       }
 
       // Other channels
@@ -580,16 +584,27 @@ function MyStockContent() {
       if (adverts?.profileAdvert?.status?.toLowerCase() === 'published') {
         stats.profile.published++;
       }
-      // Note: exportAdvert might not exist in the current type definition
-      // We'll handle this gracefully
       const exportStatus = (adverts as Record<string, { status?: string }>)?.exportAdvert?.status?.toLowerCase();
       if (exportStatus === 'published') {
         stats.export.published++;
       }
+
+      // Calculate "Not Advertised Anywhere" - vehicles not published on any channel
+      const isNotAdvertisedAnywhere = (
+        autotraderStatus !== 'published' &&
+        adverts?.advertiserAdvert?.status?.toLowerCase() !== 'published' &&
+        adverts?.locatorAdvert?.status?.toLowerCase() !== 'published' &&
+        adverts?.profileAdvert?.status?.toLowerCase() !== 'published' &&
+        exportStatus !== 'published'
+      );
+      
+      if (isNotAdvertisedAnywhere) {
+        stats.notAdvertisedAnywhere++;
+      }
     });
 
     return stats;
-  }, [allStockData]);
+  }, [allStockData, hideSoldVehicles]);
 
 
 
@@ -1275,7 +1290,7 @@ function MyStockContent() {
                         <h2 className={`text-2xl font-bold tracking-tight flex items-center gap-3 ${
                           isDarkMode ? 'text-white' : 'text-slate-900'
                         }`}>
-                          Smart Inventory Filters
+                          Vehicle Status and Publishing Overview
                           <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
                             showSmartFilters 
                               ? isDarkMode 
@@ -1330,74 +1345,15 @@ function MyStockContent() {
                 {/* Collapsible Filter Content */}
                 {showSmartFilters && (
                   <div className="p-6 space-y-6 animate-in slide-in-from-top-2 duration-300">
-                    {/* Vehicle Status Filters Section */}
-                <div className={`rounded-2xl overflow-hidden ${isDarkMode ? 'bg-white/5 border border-slate-700/30' : 'bg-black/5 border border-slate-200/30'}`}>
-                  {/* Clickable Section Header */}
-                  <button
-                    onClick={() => setShowVehicleStatusOverview(!showVehicleStatusOverview)}
-                    className={`w-full px-6 py-4 border-b transition-all duration-300 hover:scale-[1.005] ${
-                      isDarkMode 
-                        ? 'border-slate-700/30 bg-slate-800/20 hover:bg-slate-800/40 text-white' 
-                        : 'border-slate-200/30 bg-slate-50/20 hover:bg-slate-50/40 text-slate-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className={`relative p-3 rounded-2xl ${
-                        isDarkMode 
-                          ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 shadow-lg shadow-emerald-500/10' 
-                          : 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 shadow-lg shadow-emerald-500/5'
-                      }`}>
-                        <Activity className={`w-6 h-6 ${
-                          isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                        }`} />
-                      </div>
-                      <div className="text-left flex-1">
-                        <h3 className={`text-xl font-bold tracking-tight flex items-center gap-2 ${
-                          isDarkMode ? 'text-white' : 'text-slate-900'
-                        }`}>
-                          Vehicle Status Overview
-                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                            showVehicleStatusOverview 
-                              ? isDarkMode 
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                                : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                              : isDarkMode 
-                                ? 'bg-slate-700/50 text-slate-400 border border-slate-600/30' 
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                          }`}>
-                            {showVehicleStatusOverview ? 'Expanded' : 'Collapsed'}
-                          </span>
-                        </h3>
-                        <p className={`text-sm font-medium mt-1 ${
-                          isDarkMode ? 'text-white' : 'text-slate-600'
-                        }`}>
-                          Filter vehicles by their current lifecycle status and availability
-                        </p>
-                      </div>
-                      <div className={`p-2 rounded-xl transition-all duration-300 ${
-                        isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-slate-100/50'
-                      }`}>
-                        <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${
-                          showVehicleStatusOverview ? 'rotate-180' : ''
-                        } ${isDarkMode ? 'text-white' : 'text-slate-500'}`} />
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Collapsible Content */}
-                  {showVehicleStatusOverview && (
-                    <div className={`p-6 ${
-                      isDarkMode ? 'text-white' : 'text-slate-900'
-                    } animate-in slide-in-from-top-2 duration-300`}>
-                  
-                    {/* Content Container with Visual Hierarchy */}
+                    {/* Consolidated Filters Section */}
                     <div className={`p-6 rounded-2xl ${
                       isDarkMode 
                         ? 'bg-slate-900/30 border border-slate-700/50' 
                         : 'bg-slate-50/50 border border-slate-200/60'
                     } shadow-inner`}>
+                      
                       {/* Hide Sold Vehicles Toggle */}
-                      <div className="mb-4 flex items-center justify-between">
+                      <div className="mb-6 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => setHideSoldVehicles(!hideSoldVehicles)}
@@ -1429,6 +1385,12 @@ function MyStockContent() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Vehicle Status Filters */}
+                      <div className="mb-6">
+                        <h4 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                          Vehicle Status
+                        </h4>
                       
                       <div className="flex flex-wrap gap-2.5">
                         {getStatusOptions().map(({ value, label }) => {
@@ -1534,216 +1496,124 @@ function MyStockContent() {
                           );
                         })}
                       </div>
-                    </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Publishing Channels Section */}
-                <div className={`rounded-2xl overflow-hidden ${isDarkMode ? 'bg-white/5 border border-slate-700/30' : 'bg-black/5 border border-slate-200/30'}`}>
-                  {/* Clickable Section Header */}
-                  <button
-                    onClick={() => setShowPublishingChannels(!showPublishingChannels)}
-                    className={`w-full px-6 py-4 border-b transition-all duration-300 hover:scale-[1.005] ${
-                      isDarkMode 
-                        ? 'border-slate-700/30 bg-slate-800/20 hover:bg-slate-800/40 text-white' 
-                        : 'border-slate-200/30 bg-slate-50/20 hover:bg-slate-50/40 text-slate-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className={`relative p-3 rounded-2xl ${
-                        isDarkMode 
-                          ? 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20 shadow-lg shadow-blue-500/10' 
-                          : 'bg-gradient-to-br from-blue-500/10 to-indigo-500/10 shadow-lg shadow-blue-500/5'
-                      }`}>
-                        <Globe className={`w-6 h-6 ${
-                          isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                        }`} />
                       </div>
-                      <div className="text-left flex-1">
-                        <h3 className={`text-xl font-bold tracking-tight flex items-center gap-2 ${
-                          isDarkMode ? 'text-white' : 'text-slate-900'
-                        }`}>
+
+                      {/* Publishing Channel Filters */}
+                      <div className="mb-6">
+                        <h4 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                           Publishing Channels
-                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                            showPublishingChannels 
-                              ? isDarkMode 
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
-                                : 'bg-blue-100 text-blue-700 border border-blue-200'
-                              : isDarkMode 
-                                ? 'bg-slate-700/50 text-slate-400 border border-slate-600/30' 
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                          }`}>
-                            {showPublishingChannels ? 'Expanded' : 'Collapsed'}
-                          </span>
-                        </h3>
-                        <p className={`text-sm font-medium mt-1 ${
-                          isDarkMode ? 'text-white' : 'text-slate-600'
-                        }`}>
-                          Filter by AutoTrader, website, and third-party listing platforms
-                        </p>
-                      </div>
-                      <div className={`p-2 rounded-xl transition-all duration-300 ${
-                        isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-slate-100/50'
-                      }`}>
-                        <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${
-                          showPublishingChannels ? 'rotate-180' : ''
-                        } ${isDarkMode ? 'text-white' : 'text-slate-500'}`} />
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Collapsible Content */}
-                  {showPublishingChannels && (
-                    <div className={`p-6 ${
-                      isDarkMode ? 'text-white' : 'text-slate-900'
-                    } animate-in slide-in-from-top-2 duration-300`}>
-                  
-                    <div className={`p-6 rounded-2xl ${
-                      isDarkMode 
-                        ? 'bg-slate-900/30 border border-slate-700/50' 
-                        : 'bg-slate-50/50 border border-slate-200/60'
-                    } shadow-inner`}>
-                      {/* Enhanced Info Banner */}
-                      <div className={`mb-6 p-4 rounded-2xl border transition-all duration-300 ${
-                        isDarkMode 
-                          ? 'bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-amber-500/20 text-amber-300' 
-                          : 'bg-gradient-to-r from-amber-50/80 via-orange-50/60 to-amber-50/80 border-amber-200/60 text-amber-800'
-                      } shadow-lg hover:shadow-xl`}>
-                        <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-xl ${
-                            isDarkMode ? 'bg-amber-500/20' : 'bg-amber-100'
-                          }`}>
-                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-sm mb-1">Channel Status Guide</h4>
-                            <div className="space-y-1 text-xs font-medium">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-red-400' : 'bg-red-500'}`}></div>
-                                <span><span className="font-bold">Capped:</span> Over AutoTrader listing limit</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${isDarkMode ? 'bg-gray-400' : 'bg-gray-500'}`}></div>
-                                <span><span className="font-bold">Not Published:</span> Inactive on AutoTrader</span>
-                              </div>
-                            </div>
-                          </div>
+                        </h4>
+                        <div className="flex flex-wrap gap-2.5">
+                          {[
+                            { 
+                              key: 'autotraderAdvert', 
+                              label: 'AT Search & Find', 
+                              count: `${calculateChannelStats.autotrader.published}/${calculateChannelStats.autotrader.total}`,
+                              icon: Car,
+                              gradient: 'from-blue-500 to-blue-600',
+                              shadow: 'shadow-blue-500/20',
+                              bg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50',
+                              border: isDarkMode ? 'border-blue-500/20' : 'border-blue-200',
+                              text: isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                            },
+                            { 
+                              key: 'notAdvertisedAnywhere', 
+                              label: 'Not Advertised Anywhere', 
+                              count: calculateChannelStats.notAdvertisedAnywhere || 0,
+                              icon: X,
+                              gradient: 'from-gray-500 to-slate-600',
+                              shadow: 'shadow-gray-500/20',
+                              bg: isDarkMode ? 'bg-gray-500/10' : 'bg-gray-50',
+                              border: isDarkMode ? 'border-gray-500/20' : 'border-gray-200',
+                              text: isDarkMode ? 'text-white' : 'text-gray-700'
+                            },
+                            { 
+                              key: 'profileAdvert', 
+                              label: 'AT Dealer Page', 
+                              count: calculateChannelStats.profile.published,
+                              icon: Store,
+                              gradient: 'from-indigo-500 to-indigo-600',
+                              shadow: 'shadow-indigo-500/20',
+                              bg: isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50',
+                              border: isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200',
+                              text: isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                            },
+                            { 
+                              key: 'advertiserAdvert', 
+                              label: 'Dealer Website', 
+                              count: calculateChannelStats.advertiser.published,
+                              icon: Globe,
+                              gradient: 'from-emerald-500 to-green-600',
+                              shadow: 'shadow-emerald-500/20',
+                              bg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50',
+                              border: isDarkMode ? 'border-emerald-500/20' : 'border-emerald-200',
+                              text: isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                            },
+                            { 
+                              key: 'exportAdvert', 
+                              label: 'AT Linked Advertisers', 
+                              count: calculateChannelStats.export.published,
+                              icon: Share2,
+                              gradient: 'from-purple-500 to-violet-600',
+                              shadow: 'shadow-purple-500/20',
+                              bg: isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50',
+                              border: isDarkMode ? 'border-purple-500/20' : 'border-purple-200',
+                              text: isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                            },
+                            { 
+                              key: 'locatorAdvert', 
+                              label: 'Manufacturer Website / Used Vehicle Locators', 
+                              count: calculateChannelStats.locator.published,
+                              icon: MapPin,
+                              gradient: 'from-yellow-500 to-orange-600',
+                              shadow: 'shadow-yellow-500/20',
+                              bg: isDarkMode ? 'bg-yellow-500/10' : 'bg-yellow-50',
+                              border: isDarkMode ? 'border-yellow-500/20' : 'border-yellow-200',
+                              text: isDarkMode ? 'text-yellow-300' : 'text-yellow-700'
+                            },
+                          ].map(({ key, label, count, icon: IconComponent, gradient, shadow, bg, border, text }) => {
+                            const isActive = filterChannelStatus.includes(key);
+                            
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => {
+                                  if (isActive) {
+                                    setFilterChannelStatus(filterChannelStatus.filter(channel => channel !== key));
+                                  } else {
+                                    setFilterChannelStatus([...filterChannelStatus, key]);
+                                  }
+                                }}
+                                className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:scale-105 border ${
+                                  isActive 
+                                    ? `bg-gradient-to-r ${gradient} text-white shadow-lg ${shadow} scale-105 border-transparent` 
+                                    : `${bg} ${border} ${text} hover:shadow-md hover:border-opacity-60 shadow-sm`
+                                }`}
+                              >
+                                <div className={`p-1.5 rounded-xl transition-all duration-300 ${
+                                  isActive 
+                                    ? 'bg-white/20' 
+                                    : `bg-gradient-to-r ${gradient} shadow-sm`
+                                }`}>
+                                  <IconComponent className={`w-3.5 h-3.5 ${
+                                    isActive ? 'text-white' : 'text-white'
+                                  }`} />
+                                </div>
+                                <span className="text-sm font-semibold tracking-wide">{label}</span>
+                                <div className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-300 ${
+                                  isActive 
+                                    ? 'bg-white/20 text-white' 
+                                    : `bg-gradient-to-r ${gradient} text-white shadow-sm`
+                                }`}>
+                                  {count}
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                      
-                      <div className="flex flex-wrap gap-2.5">
-                        {[
-                          { 
-                            key: 'autotraderAdvert', 
-                            label: 'Auto Trader', 
-                            count: `${calculateChannelStats.autotrader.published}/${calculateChannelStats.autotrader.total}`,
-                            icon: Car,
-                            gradient: 'from-blue-500 to-blue-600',
-                            shadow: 'shadow-blue-500/20',
-                            bg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50',
-                            border: isDarkMode ? 'border-blue-500/20' : 'border-blue-200',
-                            text: isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                          },
-                          { 
-                            key: 'autotraderCapped', 
-                            label: 'AT Capped', 
-                            count: calculateChannelStats.autotrader.capped,
-                            icon: AlertCircle,
-                            gradient: 'from-red-500 to-rose-600',
-                            shadow: 'shadow-red-500/20',
-                            bg: isDarkMode ? 'bg-red-500/10' : 'bg-red-50',
-                            border: isDarkMode ? 'border-red-500/20' : 'border-red-200',
-                            text: isDarkMode ? 'text-red-300' : 'text-red-700'
-                          },
-                          { 
-                            key: 'autotraderNotOn', 
-                            label: 'Not Published', 
-                            count: calculateChannelStats.autotrader.notOn,
-                            icon: X,
-                            gradient: 'from-gray-500 to-slate-600',
-                            shadow: 'shadow-gray-500/20',
-                            bg: isDarkMode ? 'bg-gray-500/10' : 'bg-gray-50',
-                            border: isDarkMode ? 'border-gray-500/20' : 'border-gray-200',
-                            text: isDarkMode ? 'text-white' : 'text-gray-700'
-                          },
-                          { 
-                            key: 'advertiserAdvert', 
-                            label: 'Website', 
-                            count: calculateChannelStats.advertiser.published,
-                            icon: Globe,
-                            gradient: 'from-emerald-500 to-green-600',
-                            shadow: 'shadow-emerald-500/20',
-                            bg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50',
-                            border: isDarkMode ? 'border-emerald-500/20' : 'border-emerald-200',
-                            text: isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
-                          },
-                          { 
-                            key: 'exportAdvert', 
-                            label: 'Third Parties', 
-                            count: calculateChannelStats.export.published,
-                            icon: Share2,
-                            gradient: 'from-purple-500 to-violet-600',
-                            shadow: 'shadow-purple-500/20',
-                            bg: isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50',
-                            border: isDarkMode ? 'border-purple-500/20' : 'border-purple-200',
-                            text: isDarkMode ? 'text-purple-300' : 'text-purple-700'
-                          },
-                          { 
-                            key: 'profileAdvert', 
-                            label: 'Retail Store', 
-                            count: calculateChannelStats.profile.published,
-                            icon: Store,
-                            gradient: 'from-indigo-500 to-indigo-600',
-                            shadow: 'shadow-indigo-500/20',
-                            bg: isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50',
-                            border: isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200',
-                            text: isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
-                          },
-                        ].map(({ key, label, count, icon: IconComponent, gradient, shadow, bg, border, text }) => {
-                          const isActive = filterChannelStatus.includes(key);
-                          
-                          return (
-                            <button
-                              key={key}
-                              onClick={() => {
-                                if (isActive) {
-                                  setFilterChannelStatus(filterChannelStatus.filter(channel => channel !== key));
-                                } else {
-                                  setFilterChannelStatus([...filterChannelStatus, key]);
-                                }
-                              }}
-                              className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:scale-105 border ${
-                                isActive 
-                                  ? `bg-gradient-to-r ${gradient} text-white shadow-lg ${shadow} scale-105 border-transparent` 
-                                  : `${bg} ${border} ${text} hover:shadow-md hover:border-opacity-60 shadow-sm`
-                              }`}
-                            >
-                              <div className={`p-1.5 rounded-xl transition-all duration-300 ${
-                                isActive 
-                                  ? 'bg-white/20' 
-                                  : `bg-gradient-to-r ${gradient} shadow-sm`
-                              }`}>
-                                <IconComponent className={`w-3.5 h-3.5 ${
-                                  isActive ? 'text-white' : 'text-white'
-                                }`} />
-                              </div>
-                              <span className="text-sm font-semibold tracking-wide">{label}</span>
-                              <div className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-300 ${
-                                isActive 
-                                  ? 'bg-white/20 text-white' 
-                                  : `bg-gradient-to-r ${gradient} text-white shadow-sm`
-                              }`}>
-                                {count}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
                     </div>
-                    </div>
-                  )}
-                </div>
+
                   </div>
                 )}
               </div>
