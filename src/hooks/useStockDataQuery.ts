@@ -357,6 +357,10 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
         console.log('🔄 Calling fetchStockList (will use backend cache-first)...');
         const result = await fetchStockList(options, user?.id);
         
+        if (!result) {
+          throw new Error('No data returned from fetchStockList');
+        }
+        
         console.log('\n✅ ===== useStockDataQuery: FETCH SUCCESS =====');
         console.log('📊 Stock items:', result.stock?.length || 0);
         console.log('📊 Total results:', result.pagination?.totalResults || 0);
@@ -366,7 +370,7 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
         setLastRetryTime(0); // Reset on success
         
         // Record success
-        if (userCacheId && result) {
+        if (userCacheId) {
           stockDataMonitor.recordEvent(userCacheId, 'fetch_success', { 
             resultCount: result.stock?.length || 0,
             totalResults: result.pagination?.totalResults || 0

@@ -147,18 +147,17 @@ function ListingsManagementContent() {
       return { disabled: true };
     }
     
-    // IMPORTANT: Remove lifecycleState filter to get ALL stock first
-    // Frontend will handle filtering by channel status
+    // IMPORTANT: Only show FORECOURT vehicles on listings page
     const options = { 
       pageSize: 100, // Large page size to get all data
-      // lifecycleState: 'FORECOURT', // ← REMOVED: This was filtering out all data!
+      lifecycleState: 'FORECOURT', // Only show vehicles on forecourt
       disabled: false // Explicitly enable when conditions are met
     };
     
     console.log('✅ LISTINGS: Query ENABLED');
     console.log('📝 Query options:', options);
-    console.log('⚠️ NOTE: Fetching ALL lifecycle states (not just FORECOURT)');
-    console.log('⚠️ Listings should show advertised vehicles regardless of lifecycle state');
+    console.log('⚠️ NOTE: Filtering for FORECOURT vehicles only');
+    console.log('⚠️ If no results, check console logs to see available lifecycle states');
     
     return options;
   }, [isSignedIn, isLoaded]);
@@ -213,14 +212,20 @@ function ListingsManagementContent() {
       console.log('📢 Has Adverts:', !!firstVehicle.adverts);
       console.log('🏗️ Top-level keys:', Object.keys(firstVehicle));
     } else if (stockData?.length === 0) {
-      console.warn('\n⚠️ ===== NO STOCK DATA - DEBUGGING =====');
-      console.warn('📭 Stock data array is empty');
+      console.warn('\n⚠️ ===== NO FORECOURT VEHICLES FOUND =====');
+      console.warn('📭 Stock data array is empty (filtering for FORECOURT only)');
       console.warn('🔍 Possible causes:');
-      console.warn('   1. No dealer record for this user');
-      console.warn('   2. No data in stock_cache table');
-      console.warn('   3. Wrong advertiser ID');
-      console.warn('   4. Lifecycle state filter too restrictive');
+      console.warn('   1. No vehicles with lifecycleState = "FORECOURT" in database');
+      console.warn('   2. All vehicles have different lifecycle states (ACTIVE, RESERVED, SOLD, etc.)');
+      console.warn('   3. No dealer record for this user');
+      console.warn('   4. Wrong advertiser ID');
       console.warn('   5. Team member not linked to store owner');
+      console.warn('');
+      console.warn('💡 SOLUTION:');
+      console.warn('   - Check backend logs for "NO CACHE DATA FOUND" message');
+      console.warn('   - Look for "Total records for dealer (any advertiser)" count');
+      console.warn('   - If count > 0, vehicles exist but might not be FORECOURT state');
+      console.warn('   - Check what lifecycle states exist in your data');
       console.warn('⏰ Time:', new Date().toISOString());
     }
   }, [stockData, loading, error]);

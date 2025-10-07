@@ -837,26 +837,66 @@ export class StockCacheService {
         console.warn('🆔 Queried dealer ID:', dealerId);
         console.warn('🏢 Queried advertiser ID:', advertiserId);
         
-        // Try to find ANY data for this dealer (ignore advertiser ID)
-        console.log('\n🔍 Checking if ANY data exists for this dealer...');
+        // Show applied filters
+        if (options.lifecycleState) {
+          console.warn('🔍 Lifecycle state filter:', options.lifecycleState);
+        }
+        if (options.make) console.warn('🔍 Make filter:', options.make);
+        if (options.model) console.warn('🔍 Model filter:', options.model);
+        
+        // Try to find ANY data for this dealer (ignore all filters except dealer)
+        console.log('\n🔍 Checking if ANY data exists for this dealer (ignoring filters)...');
         const anyDataResult = await db
           .select({ count: sql<number>`count(*)` })
           .from(stockCache)
-          .where(eq(stockCache.dealerId, dealerId));
+          .where(and(
+            eq(stockCache.dealerId, dealerId),
+            eq(stockCache.isStale, false)
+          ));
         
         const anyDataCount = anyDataResult[0].count;
-        console.log('📊 Total records for dealer (any advertiser):', anyDataCount);
+        console.log('📊 Total records for dealer (ignoring advertiser & filters):', anyDataCount);
         
         if (anyDataCount > 0) {
-          console.warn('⚠️ Data exists but wrong advertiser ID or other filters!');
+          console.warn('⚠️ Data exists but filters are too restrictive!');
           
           // Show what advertiser IDs exist
           const advertiserIds = await db
             .selectDistinct({ advertiserId: stockCache.advertiserId })
             .from(stockCache)
-            .where(eq(stockCache.dealerId, dealerId));
+            .where(and(
+              eq(stockCache.dealerId, dealerId),
+              eq(stockCache.isStale, false)
+            ));
           
           console.warn('📋 Advertiser IDs in cache:', advertiserIds.map(a => a.advertiserId));
+          
+          // If filtering by lifecycle state, show what states exist
+          if (options.lifecycleState) {
+            console.warn('\n🔍 Checking available lifecycle states...');
+            const lifecycleStates = await db
+              .select({ 
+                lifecycleState: stockCache.lifecycleState,
+                count: sql<number>`count(*)`.as('count')
+              })
+              .from(stockCache)
+              .where(and(
+                eq(stockCache.dealerId, dealerId),
+                eq(stockCache.advertiserId, advertiserId),
+                eq(stockCache.isStale, false)
+              ))
+              .groupBy(stockCache.lifecycleState);
+            
+            if (lifecycleStates.length > 0) {
+              console.warn('📊 Available lifecycle states for this dealer+advertiser:');
+              lifecycleStates.forEach(ls => {
+                console.warn(`   - ${ls.lifecycleState}: ${ls.count} vehicles`);
+              });
+              console.warn(`⚠️ You filtered for "${options.lifecycleState}" but only the above states exist!`);
+            } else {
+              console.warn('⚠️ No data for this advertiser ID, but data exists for other advertisers');
+            }
+          }
         } else {
           console.warn('❌ No data in cache for this dealer at all!');
           console.warn('⚠️ Need to fetch from AutoTrader or check dealer setup');
