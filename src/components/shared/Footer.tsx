@@ -118,13 +118,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/success-stories" className={`text-sm transition-colors duration-300 hover:text-blue-500 ${
-                  isDarkMode ? 'text-white' : 'text-slate-600'
-                }`}>
-                  Success Stories
-                </Link>
-              </li>
-              <li>
                 <Link href="/guides" className={`text-sm transition-colors duration-300 hover:text-blue-500 ${
                   isDarkMode ? 'text-white' : 'text-slate-600'
                 }`}>
@@ -147,26 +140,10 @@ export default function Footer() {
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}>Get in Touch</h3>
             <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <MapPin className={`w-5 h-5 mt-0.5 text-blue-400 flex-shrink-0`} />
-                <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
-                  <p>123 Business Park Drive</p>
-                  <p>Manchester, M1 2AB</p>
-                  <p>United Kingdom</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <Phone className={`w-5 h-5 text-blue-400 flex-shrink-0`} />
-                <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
-                  +44 (0) 161 123 4567
-                </span>
-              </div>
-              
               <div className="flex items-center space-x-3">
                 <Mail className={`w-5 h-5 text-blue-400 flex-shrink-0`} />
                 <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
-                  hello@dealershipview.com
+                  support@mydealershipview.com
                 </span>
               </div>
             </div>
@@ -181,7 +158,7 @@ export default function Footer() {
             <div className={`text-sm transition-colors duration-300 ${
               isDarkMode ? 'text-white' : 'text-slate-600'
             }`}>
-              © 2024 DealershipView. All rights reserved.
+              © {new Date().getFullYear()} DealershipView. All rights reserved.
             </div>
             
             <div className="flex items-center space-x-6">

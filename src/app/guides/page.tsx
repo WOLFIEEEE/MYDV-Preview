@@ -26,7 +26,10 @@ import {
   Calculator,
   HelpCircle,
   Mail,
-  Sparkles
+  Sparkles,
+  Receipt,
+  Kanban as KanbanIcon,
+  CheckCircle
 } from "lucide-react";
 
 export default function Guides() {
@@ -86,16 +89,20 @@ export default function Guides() {
                 isDarkMode ? "text-white" : "text-gray-900"
               }`}>Navigation Overview</h2>
             </div>
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
-                { icon: Search, title: "Vehicle Finder", desc: "Search for vehicles by registration, make, model, year, and more." },
-                { icon: Database, title: "Inventory", desc: "Manage your dealership's inventory, add/edit vehicles, and view stats." },
-                { icon: BarChart3, title: "My Stock", desc: "Track your own stock portfolio, performance, and personal notes." },
-                { icon: BookOpen, title: "Guides", desc: "(this page) Find help, documentation, and best practices." },
-                { icon: Phone, title: "Contact", desc: "Get in touch with support or request a demo." },
-                { icon: Settings, title: "Services", desc: "Access subscriptions, analytics, and more from the dropdown." },
-                { icon: Sun, title: "Theme Toggle", desc: "Switch between light and dark mode at any time." },
-                { icon: User, title: "User Menu", desc: "Access your profile, settings, and logout options." }
+                { icon: Search, title: "Vehicle Finder", desc: "Comprehensive vehicle search with registration lookup, taxonomy wizard, valuation, and feature analysis." },
+                { icon: Database, title: "Inventory Management", desc: "Complete inventory system with filtering, search, export, and detailed vehicle management." },
+                { icon: BarChart3, title: "My Stock Portfolio", desc: "Personal stock tracking with P&L analysis, performance metrics, and cost management." },
+                { icon: FileText, title: "Document Hub", desc: "Centralized document management with KANBAN workflow, categorization, and verification." },
+                { icon: Receipt, title: "Invoice System", desc: "Multi-page invoice generation with dynamic forms, PDF export, and comprehensive billing." },
+                { icon: KanbanIcon, title: "Kanban Boards", desc: "Visual workflow management with customizable boards for vehicle job cards and tasks." },
+                { icon: Shield, title: "Vehicle Check", desc: "Comprehensive vehicle inspection checklist with progress tracking and documentation." },
+                { icon: BarChart3, title: "Dashboard Analytics", desc: "Real-time analytics with margin analysis, performance insights, and business metrics." },
+                { icon: BookOpen, title: "Guides & Help", desc: "(this page) Comprehensive platform documentation and best practices." },
+                { icon: Phone, title: "Contact Support", desc: "Get in touch with our expert support team for assistance." },
+                { icon: Sun, title: "Theme Toggle", desc: "Switch between light and dark mode for optimal viewing experience." },
+                { icon: User, title: "User Profile", desc: "Manage your account settings, preferences, and logout options." }
               ].map((item, index) => (
                 <div key={index} className={`p-4 rounded-xl border transition-all duration-300 hover:scale-105 ${
                   isDarkMode 
@@ -141,16 +148,20 @@ export default function Guides() {
                 isDarkMode ? "text-white" : "text-gray-900"
               }`}>Key Features</h2>
             </div>
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
-                { icon: Sparkles, title: "Theme-aware design", desc: "All pages and components adapt to light/dark mode for optimal visibility." },
-                { icon: Smartphone, title: "Responsive layout", desc: "Works seamlessly on desktop, tablet, and mobile devices." },
-                { icon: Database, title: "Inventory management", desc: "Add, edit, filter, and export your vehicle inventory." },
-                { icon: TrendingUp, title: "Stock portfolio", desc: "Track purchase price, current value, target price, and performance for your vehicles." },
-                { icon: Eye, title: "Status & condition tracking", desc: "Easily see which vehicles are available, reserved, or sold, and their condition." },
-                { icon: Calculator, title: "Margin analysis", desc: "Instantly view profit margins and cost breakdowns." },
-                { icon: Shield, title: "Legal & compliance", desc: "Built-in guides and features to help you stay compliant." },
-                { icon: Bell, title: "Notifications", desc: "Stay up to date with important alerts and updates." }
+                { icon: Sparkles, title: "Advanced Vehicle Finder", desc: "Comprehensive vehicle search with registration lookup, taxonomy wizard, valuation analysis, and feature identification." },
+                { icon: Database, title: "Smart Inventory Management", desc: "Complete inventory system with real-time tracking, filtering, search, export, and detailed vehicle information management." },
+                { icon: TrendingUp, title: "Portfolio Analytics", desc: "Advanced P&L analysis, performance metrics, margin calculations, and cost tracking for your vehicle portfolio." },
+                { icon: FileText, title: "Document Management", desc: "Centralized document hub with KANBAN workflow, categorization, verification, and automated form processing." },
+                { icon: Receipt, title: "Dynamic Invoice System", desc: "Multi-page invoice generation with dynamic forms, PDF export, warranty management, and comprehensive billing." },
+                { icon: KanbanIcon, title: "Visual Workflow Management", desc: "Customizable Kanban boards for vehicle job cards, task management, and workflow visualization." },
+                { icon: Shield, title: "Vehicle Inspection System", desc: "Comprehensive vehicle check system with progress tracking, inspection checklists, and documentation." },
+                { icon: BarChart3, title: "Real-time Analytics", desc: "Advanced dashboard with margin analysis, performance insights, business metrics, and reporting." },
+                { icon: Calculator, title: "Financial Management", desc: "Complete financial tracking with sales analysis, commission management, cash flow monitoring, and P&L reporting." },
+                { icon: Eye, title: "Status & Condition Tracking", desc: "Real-time vehicle status tracking with condition monitoring, availability management, and progress indicators." },
+                { icon: Smartphone, title: "Mobile Responsive Design", desc: "Fully responsive platform that works seamlessly across desktop, tablet, and mobile devices." },
+                { icon: Bell, title: "Smart Notifications", desc: "Intelligent alert system for inventory changes, customer inquiries, and important business events." }
               ].map((item, index) => (
                 <div key={index} className={`p-4 rounded-xl border transition-all duration-300 hover:scale-105 ${
                   isDarkMode 
@@ -199,12 +210,16 @@ export default function Guides() {
             </div>
             <div className="grid gap-4">
               {[
-                { step: "1", title: "Adding a Vehicle", desc: "Go to Inventory > Add Vehicle, fill in the details, and save." },
-                { step: "2", title: "Switching Views", desc: "Use the view toggle in Inventory/My Stock to switch between grid and table views." },
-                { step: "3", title: "Exporting Data", desc: "Use the Export button in Inventory to download your data." },
-                { step: "4", title: "Tracking Performance", desc: "In My Stock, view the P&L and performance bars for each vehicle." },
-                { step: "5", title: "Changing Theme", desc: "Click the sun/moon icon in the header to toggle light/dark mode." },
-                { step: "6", title: "Contacting Support", desc: "Use the Contact page or the Get Support button on the landing page." }
+                { step: "1", title: "Vehicle Search & Analysis", desc: "Use Vehicle Finder to search by registration, access taxonomy wizard, view valuations, and analyze vehicle features." },
+                { step: "2", title: "Adding Vehicles to Inventory", desc: "Go to Inventory > Add Vehicle, fill in comprehensive details, upload images, and save to your inventory." },
+                { step: "3", title: "Managing Your Stock Portfolio", desc: "In My Stock, track P&L, performance metrics, costs, and manage your personal vehicle portfolio." },
+                { step: "4", title: "Creating Invoices", desc: "Use the Invoice System to generate multi-page invoices with dynamic forms, warranty options, and PDF export." },
+                { step: "5", title: "Document Management", desc: "Upload and organize documents in the Document Hub using KANBAN workflow and categorization system." },
+                { step: "6", title: "Vehicle Inspection", desc: "Use Vehicle Check to perform comprehensive inspections with progress tracking and documentation." },
+                { step: "7", title: "Kanban Workflow Management", desc: "Create and manage Kanban boards for vehicle job cards and task workflows." },
+                { step: "8", title: "Analytics & Reporting", desc: "Access Dashboard Analytics for real-time insights, margin analysis, and business performance metrics." },
+                { step: "9", title: "Data Export & Import", desc: "Export inventory data, generate reports, and import vehicle information using built-in tools." },
+                { step: "10", title: "Theme Customization", desc: "Toggle between light and dark mode using the sun/moon icon for optimal viewing experience." }
               ].map((item, index) => (
                 <div key={index} className={`p-4 rounded-xl border transition-all duration-300 hover:scale-105 ${
                   isDarkMode 
@@ -251,10 +266,16 @@ export default function Guides() {
             </div>
             <div className="grid gap-4">
               {[
-                { q: "How do I reset my password?", a: "Use the profile menu to access settings and reset your password." },
-                { q: "Can I import/export inventory?", a: "Yes, use the Export button in Inventory. Import functionality is coming soon." },
-                { q: "How do I get help?", a: "Use this Guides page or the Contact page for support." },
-                { q: "Is my data secure?", a: "Yes, all data is securely stored and privacy is a top priority." }
+                { q: "How do I search for vehicles?", a: "Use the Vehicle Finder to search by registration number, or use the taxonomy wizard for detailed vehicle searches with valuation and feature analysis." },
+                { q: "Can I generate professional invoices?", a: "Yes! The Invoice System supports multi-page invoices with dynamic forms, warranty options, PDF export, and comprehensive billing features." },
+                { q: "How do I manage my vehicle portfolio?", a: "Use My Stock for personal portfolio tracking with P&L analysis, performance metrics, cost management, and detailed financial insights." },
+                { q: "What is the Document Hub?", a: "The Document Hub is a centralized system for managing vehicle documents with KANBAN workflow, categorization, verification, and automated processing." },
+                { q: "How do I perform vehicle inspections?", a: "Use the Vehicle Check system for comprehensive inspections with progress tracking, checklists, and documentation features." },
+                { q: "Can I create custom workflows?", a: "Yes! Use Kanban Boards to create visual workflows for vehicle job cards, task management, and custom business processes." },
+                { q: "How do I access analytics?", a: "The Dashboard provides real-time analytics with margin analysis, performance insights, business metrics, and comprehensive reporting." },
+                { q: "Is my data secure and backed up?", a: "Yes, all data is securely stored with enterprise-level security, regular backups, and compliance with industry standards." },
+                { q: "Can I export my data?", a: "Yes, you can export inventory data, generate reports, and download information using the built-in export tools." },
+                { q: "How do I get support?", a: "Use this comprehensive Guides page, contact our support team, or access the help documentation throughout the platform." }
               ].map((item, index) => (
                 <div key={index} className={`p-4 rounded-xl border transition-all duration-300 hover:scale-105 ${
                   isDarkMode 
@@ -267,6 +288,118 @@ export default function Guides() {
                   <p className={`text-sm ${
                     isDarkMode ? "text-slate-300" : "text-gray-600"
                   }`}>{item.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Advanced Features */}
+          <div className={`mb-16 p-8 rounded-2xl border transition-all duration-300 ${
+            isDarkMode
+              ? "bg-slate-800/50 border-slate-700/50 shadow-xl"
+              : "bg-white border-gray-200 shadow-lg"
+          }`}>
+            <div className="flex items-center mb-6">
+              <div className={`p-3 rounded-xl ${
+                isDarkMode ? 'bg-indigo-500/20' : 'bg-indigo-100'
+              }`}>
+                <Sparkles className={`w-6 h-6 ${
+                  isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                }`} />
+              </div>
+              <h2 className={`text-3xl font-bold ml-4 ${
+                isDarkMode ? "text-white" : "text-gray-900"
+              }`}>Advanced Features</h2>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              {[
+                { 
+                  title: "Vehicle Finder & Analysis", 
+                  features: [
+                    "Registration number lookup",
+                    "Taxonomy wizard for detailed searches", 
+                    "Vehicle valuation analysis",
+                    "Feature identification and pricing",
+                    "Advertiser and advert data management",
+                    "Image upload and management"
+                  ]
+                },
+                { 
+                  title: "Invoice & Billing System", 
+                  features: [
+                    "Multi-page invoice generation",
+                    "Dynamic form creation",
+                    "Warranty and add-on management",
+                    "PDF export functionality",
+                    "Customer and finance company details",
+                    "Payment tracking and balance management"
+                  ]
+                },
+                { 
+                  title: "Document Management", 
+                  features: [
+                    "Centralized document hub",
+                    "KANBAN workflow system",
+                    "Document categorization",
+                    "Verification and compliance tracking",
+                    "File upload and organization",
+                    "Search and filter capabilities"
+                  ]
+                },
+                { 
+                  title: "Kanban Workflow Boards", 
+                  features: [
+                    "Customizable board creation",
+                    "Vehicle job card management",
+                    "Task workflow visualization",
+                    "Progress tracking",
+                    "Team collaboration tools",
+                    "Board settings and customization"
+                  ]
+                },
+                { 
+                  title: "Analytics & Reporting", 
+                  features: [
+                    "Real-time dashboard analytics",
+                    "Margin analysis and insights",
+                    "Performance metrics tracking",
+                    "Business intelligence reporting",
+                    "Financial P&L analysis",
+                    "Custom report generation"
+                  ]
+                },
+                { 
+                  title: "Vehicle Inspection System", 
+                  features: [
+                    "Comprehensive inspection checklists",
+                    "Progress tracking and monitoring",
+                    "Condition assessment tools",
+                    "Documentation and reporting",
+                    "Status management",
+                    "Quality assurance features"
+                  ]
+                }
+              ].map((section, index) => (
+                <div key={index} className={`p-6 rounded-xl border transition-all duration-300 hover:scale-105 ${
+                  isDarkMode 
+                    ? 'bg-slate-700/30 border-slate-600/30 hover:bg-slate-700/50' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}>
+                  <h3 className={`text-xl font-bold mb-4 ${
+                    isDarkMode ? "text-white" : "text-gray-900"
+                  }`}>{section.title}</h3>
+                  <ul className={`space-y-2 ${
+                    isDarkMode ? "text-slate-300" : "text-gray-600"
+                  }`}>
+                    {section.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-start">
+                        <CheckCircle className={`w-4 h-4 mr-2 mt-0.5 flex-shrink-0 ${
+                          isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                        }`} />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
@@ -294,15 +427,27 @@ export default function Guides() {
               }`}>
                 Need help? We're here to assist you every step of the way.
               </p>
-              <div className={`inline-flex items-center px-6 py-3 rounded-xl ${
-                isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
-              } shadow-lg`}>
-                <Mail className={`w-5 h-5 mr-3 ${
-                  isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                }`} />
-                <span className={`font-semibold ${
-                  isDarkMode ? "text-white" : "text-gray-900"
-                }`}>info@mydealershipview.com</span>
+              <div className="space-y-3">
+                <div className={`inline-flex items-center px-6 py-3 rounded-xl ${
+                  isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
+                } shadow-lg`}>
+                  <Mail className={`w-5 h-5 mr-3 ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  }`} />
+                  <span className={`font-semibold ${
+                    isDarkMode ? "text-white" : "text-gray-900"
+                  }`}>info@mydealershipview.com</span>
+                </div>
+                <div className={`inline-flex items-center px-6 py-3 rounded-xl ${
+                  isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
+                } shadow-lg`}>
+                  <Mail className={`w-5 h-5 mr-3 ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  }`} />
+                  <span className={`font-semibold ${
+                    isDarkMode ? "text-white" : "text-gray-900"
+                  }`}>support@mydealershipview.com</span>
+                </div>
               </div>
             </div>
           </div>

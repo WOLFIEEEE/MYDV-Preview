@@ -27,7 +27,6 @@ export default function PublicFooter() {
     platform: [
       { href: "/features", label: "Features" },
       { href: "/about", label: "About Us" },
-      { href: "/success-stories", label: "Success Stories" },
       { href: "/contact", label: "Contact Us" },
     ],
     legal: [

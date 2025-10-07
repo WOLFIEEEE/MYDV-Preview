@@ -7,7 +7,6 @@ import {
   BarChart3, 
   Users, 
   CheckCircle,
-  Star,
   Bell,
   Smartphone,
   Cloud,
@@ -100,35 +99,6 @@ export default function FeaturesPage() {
       icon: Headphones,
       title: "24/7 Expert Support",
       description: "Round-the-clock support from automotive industry experts who understand your business needs."
-    }
-  ];
-
-
-  const platformStats = [
-    { number: "500+", label: "Dealerships", description: "Trusted by dealerships worldwide" },
-    { number: "24/7", label: "Support", description: "Always here when you need us" },
-    { number: "99.9%", label: "Uptime", description: "Reliable platform you can trust" },
-    { number: "< 2sec", label: "Load Time", description: "Lightning-fast performance" }
-  ];
-
-  const testimonials = [
-    {
-      content: "The analytics dashboard has completely transformed how we make business decisions. We can see exactly what's working and what isn't.",
-      author: "John Smith",
-      role: "General Manager",
-      company: "Metro Auto Group"
-    },
-    {
-      content: "Customer management has never been easier. Our follow-up rates have improved by 60% since implementing MydealershipView.",
-      author: "Sarah Johnson",
-      role: "Sales Director",
-      company: "Premium Motors"
-    },
-    {
-      content: "The inventory management features have helped us reduce carrying costs by 25% while maintaining optimal stock levels.",
-      author: "Mike Chen",
-      role: "Owner",
-      company: "City Car Center"
     }
   ];
 
@@ -291,106 +261,6 @@ export default function FeaturesPage() {
                   }`}>
                     {feature.description}
                   </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Platform Stats - NEW */}
-      <section className={`py-16 px-4 ${
-        isDarkMode ? 'bg-slate-800/20' : 'bg-blue-50/30'
-      }`}>
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12">
-            <h2 className={`text-3xl sm:text-4xl font-bold mb-4 ${
-              isDarkMode ? 'text-white' : 'text-slate-900'
-            }`}>
-              Platform Performance
-            </h2>
-            <p className={`text-lg leading-relaxed ${
-              isDarkMode ? 'text-white' : 'text-slate-600'
-            }`}>
-              Numbers that matter for your business success
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {platformStats.map((stat, index) => (
-              <Card key={index} className={`text-center border-0 transition-all duration-300 hover:scale-105 group ${
-                isDarkMode ? 'bg-slate-800/50 hover:bg-slate-800' : 'bg-white shadow-lg hover:shadow-xl'
-              }`}>
-                <CardContent className="p-6">
-                  <div className={`text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent`}>
-                    {stat.number}
-                  </div>
-                  <h3 className={`text-lg font-semibold mb-2 ${
-                    isDarkMode ? 'text-white' : 'text-slate-900'
-                  }`}>
-                    {stat.label}
-                  </h3>
-                  <p className={`text-sm ${
-                    isDarkMode ? 'text-white' : 'text-slate-600'
-                  }`}>
-                    {stat.description}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-
-      {/* Testimonials */}
-      <section className={`py-16 sm:py-20 lg:py-24 px-4 ${
-        isDarkMode ? 'bg-slate-800/30' : 'bg-slate-50'
-      }`}>
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className={`text-3xl sm:text-4xl font-bold mb-4 ${
-              isDarkMode ? 'text-white' : 'text-slate-900'
-            }`}>
-              What Our Users Say
-            </h2>
-            <p className={`text-lg leading-relaxed ${
-              isDarkMode ? 'text-white' : 'text-slate-600'
-            }`}>
-              Real feedback from dealerships using our platform
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className={`transition-all duration-300 hover:scale-105 border-0 ${
-                isDarkMode 
-                  ? 'bg-slate-800/50' 
-                  : 'bg-white shadow-lg'
-              }`}>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
-                    ))}
-                  </div>
-                  <p className={`text-base leading-relaxed mb-4 ${
-                    isDarkMode ? 'text-white' : 'text-slate-600'
-                  }`}>
-                    &ldquo;{testimonial.content}&rdquo;
-                  </p>
-                  <div>
-                    <h4 className={`font-semibold ${
-                      isDarkMode ? 'text-white' : 'text-slate-900'
-                    }`}>
-                      {testimonial.author}
-                    </h4>
-                    <p className={`text-sm ${
-                      isDarkMode ? 'text-white' : 'text-slate-500'
-                    }`}>
-                      {testimonial.role}, {testimonial.company}
-                    </p>
-                  </div>
                 </CardContent>
               </Card>
             ))}

@@ -10,7 +10,6 @@ import {
   Shield, 
   Users,
   Mail,
-  Phone,
   Calendar,
   AlertTriangle,
   CheckCircle
@@ -490,46 +489,15 @@ export default function CookiePolicyPage() {
                 please don&apos;t hesitate to contact us.
               </p>
               
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    isDarkMode ? 'bg-slate-700' : 'bg-blue-50'
-                  }`}>
-                    <Mail className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div className="text-left">
-                    <div className={`text-sm font-medium ${
-                      isDarkMode ? 'text-white' : 'text-slate-600'
-                    }`}>
-                      Privacy Team
-                    </div>
-                    <div className={`text-sm ${
-                      isDarkMode ? 'text-white' : 'text-slate-500'
-                    }`}>
-                      privacy@mydealershipview.com
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    isDarkMode ? 'bg-slate-700' : 'bg-blue-50'
-                  }`}>
-                    <Phone className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div className="text-left">
-                    <div className={`text-sm font-medium ${
-                      isDarkMode ? 'text-white' : 'text-slate-600'
-                    }`}>
-                      Support Team
-                    </div>
-                    <div className={`text-sm ${
-                      isDarkMode ? 'text-white' : 'text-slate-500'
-                    }`}>
-                      +1 (555) 123-4567
-                    </div>
-                  </div>
-                </div>
+              <div className={`inline-flex items-center px-6 py-4 rounded-xl ${
+                isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
+              } shadow-lg`}>
+                <Mail className={`w-6 h-6 mr-4 ${
+                  isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                }`} />
+                <span className={`text-lg font-semibold ${
+                  isDarkMode ? "text-white" : "text-gray-900"
+                }`}>support@mydealershipview.com</span>
               </div>
             </CardContent>
           </Card>

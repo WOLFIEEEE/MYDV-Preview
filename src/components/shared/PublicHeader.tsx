@@ -217,7 +217,6 @@ export default function PublicHeader() {
       label: "Company", 
       dropdown: [
         { href: "/guides", label: "Guides", icon: BookOpen },
-        { href: "/success-stories", label: "Success Stories", icon: Star },
         { href: "/contact", label: "Contact Us", icon: Phone },
       ]
     },
