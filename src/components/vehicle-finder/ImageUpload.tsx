@@ -15,8 +15,8 @@ interface ImageUploadProps {
 
 export default function ImageUpload({ 
   onImagesChange, 
-  maxImages = 20, 
-  maxSizePerImage = 20 
+  maxImages = 100, 
+  maxSizePerImage = 50 
 }: ImageUploadProps) {
   const { isDarkMode } = useTheme();
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -85,7 +85,7 @@ export default function ImageUpload({
 
       // Check if we're not exceeding max images
       if (selectedImages.length + validFiles.length >= maxImages) {
-        alert(`Maximum ${maxImages} images allowed`);
+        alert(`Maximum ${maxImages} images allowed. You currently have ${selectedImages.length} images selected.`);
         return;
       }
 
@@ -343,6 +343,11 @@ export default function ImageUpload({
         <div className="space-y-4">
           <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
             Upload images of the vehicle (max {maxSizePerImage}MB each, JPEG format, up to {maxImages} images)
+            {maxImages >= 50 && (
+              <span className="text-green-600 dark:text-green-400 font-medium">
+                {' '}• No storage limits - images are passed directly to AutoTrader
+              </span>
+            )}
             <br />
             <span className="text-blue-600 dark:text-blue-400 font-medium">
               ✨ Click edit to add overlays • Drag images to reorder them as you prefer!

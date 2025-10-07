@@ -637,8 +637,8 @@ export default function VehicleFinder() {
                 <div className="transform transition-all duration-500 hover:scale-[1.02]">
                   <ImageUpload 
                     onImagesChange={setVehicleImages}
-                    maxImages={20}
-                    maxSizePerImage={10}
+                    maxImages={100}
+                    maxSizePerImage={50}
                   />
                       </div>
 

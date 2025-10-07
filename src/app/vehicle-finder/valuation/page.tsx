@@ -709,7 +709,8 @@ function ValuationContent() {
           </h3>
           <ImageUpload
             onImagesChange={setVehicleImages}
-            maxImages={10}
+            maxImages={100}
+            maxSizePerImage={50}
           />
         </div>
 
