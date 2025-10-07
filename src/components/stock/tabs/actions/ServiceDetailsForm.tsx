@@ -18,6 +18,7 @@ import {
   StickyNote,
   RotateCcw
 } from "lucide-react";
+import VehicleKanbanTasks from "../../VehicleKanbanTasks";
 
 interface ServiceDetailsFormProps {
   stockData?: {
@@ -196,87 +197,89 @@ export default function ServiceDetailsForm({ stockData, onSuccess }: ServiceDeta
   };
 
   return (
-    <div className={`p-6 lg:p-8 max-w-5xl mx-auto space-y-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-      {/* Header */}
-      <div className="flex items-center space-x-4 mb-8">
-        <div className={`p-3 rounded-xl ${
-          isDarkMode 
-            ? 'bg-orange-500/20 text-orange-400' 
-            : 'bg-orange-50 text-orange-600'
-        }`}>
-          <Wrench className="h-6 w-6" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold">Service Details</h2>
-          <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Record service history and maintenance information
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-8">
-        
-        {/* Stock Information Card */}
-        <Card className={`p-6 ${
-          isDarkMode 
-            ? 'bg-gray-800/50 border-gray-700' 
-            : 'bg-gray-50 border-gray-200'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Stock Reference
-              </p>
-              <p className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {formData.stockReference}
-              </p>
-            </div>
-            {formData.registration && (
-              <LicensePlate 
-                registration={formData.registration}
-                size="sm"
-              />
-            )}
+    <div className={`flex gap-6 p-6 lg:p-8 max-w-7xl mx-auto min-h-[calc(100vh-8rem)] ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+      {/* Left side - Service Details (60%) */}
+      <div className="flex-1 w-3/5 space-y-8 overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center space-x-4 mb-8">
+          <div className={`p-3 rounded-xl ${
+            isDarkMode 
+              ? 'bg-orange-500/20 text-orange-400' 
+              : 'bg-orange-50 text-orange-600'
+          }`}>
+            <Wrench className="h-6 w-6" />
           </div>
-        </Card>
+          <div>
+            <h2 className="text-2xl font-bold">Service Details</h2>
+            <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Record service history and maintenance information
+            </p>
+          </div>
+        </div>
 
-        {/* Service History Section */}
-        <Card className={`p-8 ${
-          isDarkMode 
-            ? 'bg-gray-800/50 border-gray-700' 
-            : 'bg-gray-50 border-gray-200'
-        }`}>
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold flex items-center mb-6">
-              <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
-              Service History
-            </h3>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          
+          {/* Stock Information Card */}
+          <Card className={`p-6 ${
+            isDarkMode 
+              ? 'bg-gray-800/50 border-gray-700' 
+              : 'bg-gray-50 border-gray-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Stock Reference
+                </p>
+                <p className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {formData.stockReference}
+                </p>
+              </div>
+              {formData.registration && (
+                <LicensePlate 
+                  registration={formData.registration}
+                  size="sm"
+                />
+              )}
+            </div>
+          </Card>
 
-            {/* Service History Type */}
-            <div className="space-y-3">
-              <label className={`block text-sm font-medium ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}>
-                Service History Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.serviceHistory}
-                onChange={(e) => handleInputChange('serviceHistory', e.target.value)}
-                onFocus={() => setFocusedField('serviceHistory')}
-                onBlur={() => setFocusedField(null)}
-                className={`w-full px-4 py-3 rounded-lg border transition-all duration-200 ${
-                  focusedField === 'serviceHistory'
-                    ? isDarkMode
-                      ? 'border-blue-500 bg-gray-700 text-white ring-2 ring-blue-500/20'
-                      : 'border-blue-500 bg-white text-gray-900 ring-2 ring-blue-500/20'
-                    : isDarkMode
-                      ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
-                      : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400'
-                }`}
-              >
-                <option value="full">Full</option>
-                <option value="part">Part</option>
-                <option value="limited">Limited</option>
+          {/* Service History Section */}
+          <Card className={`p-8 ${
+            isDarkMode 
+              ? 'bg-gray-800/50 border-gray-700' 
+              : 'bg-gray-50 border-gray-200'
+          }`}>
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold flex items-center mb-6">
+                <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
+                Service History
+              </h3>
+
+              {/* Service History Type */}
+              <div className="space-y-3">
+                <label className={`block text-sm font-medium ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  Service History Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.serviceHistory}
+                  onChange={(e) => handleInputChange('serviceHistory', e.target.value)}
+                  onFocus={() => setFocusedField('serviceHistory')}
+                  onBlur={() => setFocusedField(null)}
+                  className={`w-full px-4 py-3 rounded-lg border transition-all duration-200 ${
+                    focusedField === 'serviceHistory'
+                      ? isDarkMode
+                        ? 'border-blue-500 bg-gray-700 text-white ring-2 ring-blue-500/20'
+                        : 'border-blue-500 bg-white text-gray-900 ring-2 ring-blue-500/20'
+                      : isDarkMode
+                        ? 'border-gray-600 bg-gray-700 text-white hover:border-gray-500'
+                        : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400'
+                  }`}
+                >
+                  <option value="full">Full</option>
+                  <option value="part">Part</option>
+                  <option value="limited">Limited</option>
               </select>
             </div>
 
@@ -462,6 +465,15 @@ export default function ServiceDetailsForm({ stockData, onSuccess }: ServiceDeta
           </Button>
         </div>
       </form>
+      </div>
+
+      {/* Right side - Vehicle Kanban Tasks (40%) */}
+      <div className="w-2/5 min-w-0 flex flex-col min-h-[calc(100vh-10rem)]">
+        <VehicleKanbanTasks 
+          stockId={stockData?.metadata?.stockId || ''} 
+          registration={formData.registration}
+        />
+      </div>
     </div>
   );
 }
