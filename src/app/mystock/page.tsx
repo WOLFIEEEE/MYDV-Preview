@@ -1472,57 +1472,64 @@ function MyStockContent() {
                               icon: ShoppingCart, 
                               gradient: 'from-sky-500 to-blue-600', 
                               shadow: 'shadow-sky-500/20',
-                              bg: isDarkMode ? 'bg-sky-500/10' : 'bg-sky-50',
-                              border: isDarkMode ? 'border-sky-500/20' : 'border-sky-200',
-                              text: isDarkMode ? 'text-sky-300' : 'text-sky-700'
+                              bg: isDarkMode ? 'bg-sky-500/10' : 'bg-white',
+                              border: isDarkMode ? 'border-sky-500/20' : 'border-gray-300',
+                              text: isDarkMode ? 'text-sky-300' : 'text-gray-700',
+                              iconBg: isDarkMode ? 'bg-gradient-to-r from-sky-500 to-blue-600' : 'bg-gray-400'
                             },
                             'FORECOURT': { 
                               icon: CheckCircle, 
                               gradient: 'from-emerald-500 to-green-600', 
                               shadow: 'shadow-emerald-500/20',
-                              bg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50',
-                              border: isDarkMode ? 'border-emerald-500/20' : 'border-emerald-200',
-                              text: isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                              bg: isDarkMode ? 'bg-emerald-500/10' : 'bg-white',
+                              border: isDarkMode ? 'border-emerald-500/20' : 'border-gray-300',
+                              text: isDarkMode ? 'text-emerald-300' : 'text-gray-700',
+                              iconBg: isDarkMode ? 'bg-gradient-to-r from-emerald-500 to-green-600' : 'bg-gray-400'
                             },
                             'SALE_IN_PROGRESS': { 
                               icon: PoundSterling, 
                               gradient: 'from-orange-500 to-amber-600', 
                               shadow: 'shadow-orange-500/20',
-                              bg: isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50',
-                              border: isDarkMode ? 'border-orange-500/20' : 'border-orange-200',
-                              text: isDarkMode ? 'text-orange-300' : 'text-orange-700'
+                              bg: isDarkMode ? 'bg-orange-500/10' : 'bg-white',
+                              border: isDarkMode ? 'border-orange-500/20' : 'border-gray-300',
+                              text: isDarkMode ? 'text-orange-300' : 'text-gray-700',
+                              iconBg: isDarkMode ? 'bg-gradient-to-r from-orange-500 to-amber-600' : 'bg-gray-400'
                             },
                             'SOLD': { 
                               icon: CheckCircle, 
                               gradient: 'from-purple-500 to-violet-600', 
                               shadow: 'shadow-purple-500/20',
-                              bg: isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50',
-                              border: isDarkMode ? 'border-purple-500/20' : 'border-purple-200',
-                              text: isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                              bg: isDarkMode ? 'bg-purple-500/10' : 'bg-white',
+                              border: isDarkMode ? 'border-purple-500/20' : 'border-gray-300',
+                              text: isDarkMode ? 'text-purple-300' : 'text-gray-700',
+                              iconBg: isDarkMode ? 'bg-gradient-to-r from-purple-500 to-violet-600' : 'bg-gray-400'
                             },
                             'WASTEBIN': { 
                               icon: Trash2, 
                               gradient: 'from-red-500 to-rose-600', 
                               shadow: 'shadow-red-500/20',
-                              bg: isDarkMode ? 'bg-red-500/10' : 'bg-red-50',
-                              border: isDarkMode ? 'border-red-500/20' : 'border-red-200',
-                              text: isDarkMode ? 'text-red-300' : 'text-red-700'
+                              bg: isDarkMode ? 'bg-red-500/10' : 'bg-white',
+                              border: isDarkMode ? 'border-red-500/20' : 'border-gray-300',
+                              text: isDarkMode ? 'text-red-300' : 'text-gray-700',
+                              iconBg: isDarkMode ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gray-400'
                             },
                             'ARCHIVED': { 
                               icon: Archive, 
                               gradient: 'from-gray-500 to-slate-600', 
                               shadow: 'shadow-gray-500/20',
-                              bg: isDarkMode ? 'bg-gray-500/10' : 'bg-gray-50',
-                              border: isDarkMode ? 'border-gray-500/20' : 'border-gray-200',
-                              text: isDarkMode ? 'text-white' : 'text-gray-700'
+                              bg: isDarkMode ? 'bg-gray-500/10' : 'bg-white',
+                              border: isDarkMode ? 'border-gray-500/20' : 'border-gray-300',
+                              text: isDarkMode ? 'text-white' : 'text-gray-700',
+                              iconBg: isDarkMode ? 'bg-gradient-to-r from-gray-500 to-slate-600' : 'bg-gray-400'
                             }
                           }[key] || { 
                             icon: Car, 
                             gradient: 'from-slate-500 to-slate-600', 
                             shadow: 'shadow-slate-500/20',
-                            bg: isDarkMode ? 'bg-slate-500/10' : 'bg-slate-50',
-                            border: isDarkMode ? 'border-slate-500/20' : 'border-slate-200',
-                            text: isDarkMode ? 'text-white' : 'text-slate-700'
+                            bg: isDarkMode ? 'bg-slate-500/10' : 'bg-white',
+                            border: isDarkMode ? 'border-slate-500/20' : 'border-gray-300',
+                            text: isDarkMode ? 'text-white' : 'text-gray-700',
+                            iconBg: isDarkMode ? 'bg-gradient-to-r from-slate-500 to-slate-600' : 'bg-gray-400'
                           };
 
                           const IconComponent = statusConfig.icon;
@@ -1539,14 +1546,20 @@ function MyStockContent() {
                               }}
                               className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:scale-105 border ${
                                 isActive 
-                                  ? `bg-gradient-to-r ${statusConfig.gradient} text-white shadow-lg ${statusConfig.shadow} scale-105 border-transparent` 
+                                  ? isDarkMode 
+                                    ? `bg-gradient-to-r ${statusConfig.gradient} text-white shadow-lg ${statusConfig.shadow} scale-105 border-transparent`
+                                    : 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 scale-105 border-transparent'
                                   : `${statusConfig.bg} ${statusConfig.border} ${statusConfig.text} hover:shadow-md hover:border-opacity-60 shadow-sm`
                               }`}
                             >
                               <div className={`p-1.5 rounded-xl transition-all duration-300 ${
                                 isActive 
-                                  ? 'bg-white/20' 
-                                  : `bg-gradient-to-r ${statusConfig.gradient} shadow-sm`
+                                  ? isDarkMode 
+                                    ? 'bg-white/20'
+                                    : 'bg-white/20'
+                                  : isDarkMode 
+                                    ? `bg-gradient-to-r ${statusConfig.gradient} shadow-sm`
+                                    : `${statusConfig.iconBg} shadow-sm`
                               }`}>
                                 <IconComponent className={`w-3.5 h-3.5 ${
                                   isActive ? 'text-white' : 'text-white'
@@ -1556,7 +1569,9 @@ function MyStockContent() {
                               <div className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-300 ${
                                 isActive 
                                   ? 'bg-white/20 text-white' 
-                                  : `bg-gradient-to-r ${statusConfig.gradient} text-white shadow-sm`
+                                  : isDarkMode 
+                                    ? `bg-gradient-to-r ${statusConfig.gradient} text-white shadow-sm`
+                                    : 'bg-gray-400 text-white shadow-sm'
                               }`}>
                                 {count}
                               </div>

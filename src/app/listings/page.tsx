@@ -208,11 +208,22 @@ export default function ListingsManagement() {
 
       // Channel filter
       if (selectedChannelFilters.length > 0) {
-        const hasMatchingChannel = selectedChannelFilters.some(channelId => {
-          return channelStatus[vehicle.stockId]?.[channelId] === true;
-        });
-        if (!hasMatchingChannel) {
-          return false;
+        if (selectedChannelFilters.includes('not-advertised')) {
+          // Check if vehicle is not advertised anywhere
+          const isNotAdvertised = !ADVERTISING_CHANNELS.some(channel => 
+            channelStatus[vehicle.stockId]?.[channel.id] === true
+          );
+          if (!isNotAdvertised) {
+            return false;
+          }
+        } else {
+          // Check for specific channel matches
+          const hasMatchingChannel = selectedChannelFilters.some(channelId => {
+            return channelStatus[vehicle.stockId]?.[channelId] === true;
+          });
+          if (!hasMatchingChannel) {
+            return false;
+          }
         }
       }
 
@@ -947,61 +958,55 @@ export default function ListingsManagement() {
           </div>
         </div>
 
-        {/* Channel Filter Checkboxes */}
+        {/* Not Advertised Anywhere Filter */}
         <div className={`mb-6 p-4 rounded-xl border ${
           isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white/50 border-gray-200/50'
         } shadow-lg backdrop-blur-sm`}>
-          <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
-            Filter by Publishing Channels
-          </h4>
-          <div className="flex flex-wrap gap-3">
-            {ADVERTISING_CHANNELS.map(channel => {
-              const isSelected = selectedChannelFilters.includes(channel.id);
-              const tally = channelTallies[channel.id] || { active: 0, total: 0 };
-              
-              return (
-                <label
-                  key={channel.id}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-200 hover:scale-105 ${
-                    isSelected
-                      ? `${channel.color} text-white border-transparent shadow-md`
-                      : isDarkMode
-                        ? 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700'
-                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => handleChannelFilterToggle(channel.id)}
-                    className="sr-only"
-                  />
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
-                    isSelected
-                      ? 'bg-white border-white'
-                      : isDarkMode
-                        ? 'border-gray-400'
-                        : 'border-gray-300'
-                  }`}>
-                    {isSelected && (
-                      <Check className="w-3 h-3 text-gray-800" />
-                    )}
-                  </div>
-                  <span className="text-sm font-medium">
-                    {channel.name}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    isSelected
-                      ? 'bg-white/20 text-white'
-                      : isDarkMode
-                        ? 'bg-gray-600 text-gray-300'
-                        : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {tally.active}
-                  </span>
-                </label>
-              );
-            })}
+          <div className="flex items-center gap-3">
+            <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-200 hover:scale-105 ${
+              selectedChannelFilters.includes('not-advertised')
+                ? 'bg-red-500 text-white border-transparent shadow-md'
+                : isDarkMode
+                  ? 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+            }`}>
+              <input
+                type="checkbox"
+                checked={selectedChannelFilters.includes('not-advertised')}
+                onChange={() => handleChannelFilterToggle('not-advertised')}
+                className="sr-only"
+              />
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                selectedChannelFilters.includes('not-advertised')
+                  ? 'bg-white border-white'
+                  : isDarkMode
+                    ? 'border-gray-400'
+                    : 'border-gray-300'
+              }`}>
+                {selectedChannelFilters.includes('not-advertised') && (
+                  <Check className="w-3 h-3 text-gray-800" />
+                )}
+              </div>
+              <span className="text-sm font-medium">
+                Not Advertised Anywhere
+              </span>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                selectedChannelFilters.includes('not-advertised')
+                  ? 'bg-white/20 text-white'
+                  : isDarkMode
+                    ? 'bg-gray-600 text-gray-300'
+                    : 'bg-gray-200 text-gray-600'
+              }`}>
+                {stockData ? stockData.filter((vehicle: StockItem) => {
+                  const lifecycleState = vehicle.lifecycleState || vehicle.metadata?.lifecycleState;
+                  if (lifecycleState?.toLowerCase() !== 'forecourt') return false;
+                  
+                  return !ADVERTISING_CHANNELS.some(channel => 
+                    channelStatus[vehicle.stockId]?.[channel.id] === true
+                  );
+                }).length : 0}
+              </span>
+            </label>
           </div>
         </div>
 
@@ -1037,6 +1042,15 @@ export default function ListingsManagement() {
                   </span>
                 )}
                 {selectedChannelFilters.map(channelId => {
+                  if (channelId === 'not-advertised') {
+                    return (
+                      <span key={channelId} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        isDarkMode ? 'bg-red-600/20 text-red-400' : 'bg-red-100 text-red-700'
+                      }`}>
+                        Not Advertised Anywhere
+                      </span>
+                    );
+                  }
                   const channel = ADVERTISING_CHANNELS.find(ch => ch.id === channelId);
                   return channel ? (
                     <span key={channelId} className={`px-2 py-1 rounded-full text-xs font-medium ${
