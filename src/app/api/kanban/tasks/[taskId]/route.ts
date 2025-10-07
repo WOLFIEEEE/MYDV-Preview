@@ -18,7 +18,7 @@ export async function PUT(
 
     const { taskId } = await params;
     const body = await request.json();
-    const { title, description, priority, assignedTo, dueDate, estimatedHours } = body;
+    const { title, description, priority, assignedTo, dueDate, estimatedHours, stockId } = body;
 
     if (!taskId) {
       return NextResponse.json({ 
@@ -98,6 +98,7 @@ export async function PUT(
         assignedTo: assignedTo || null,
         dueDate: dueDate ? new Date(dueDate) : null,
         estimatedHours: estimatedHours || null,
+        stockId: stockId || null,
         updatedAt: new Date(),
       })
       .where(eq(kanbanTasks.id, taskId))
@@ -111,6 +112,7 @@ export async function PUT(
     if (task.assignedTo !== (assignedTo || null)) changes.push('assignee');
     if (task.dueDate?.getTime() !== (dueDate ? new Date(dueDate).getTime() : null)) changes.push('due date');
     if (task.estimatedHours !== (estimatedHours || null)) changes.push('estimated hours');
+    if (task.stockId !== (stockId || null)) changes.push('vehicle link');
 
     if (changes.length > 0) {
       await KanbanNotificationService.notifyTaskUpdated({

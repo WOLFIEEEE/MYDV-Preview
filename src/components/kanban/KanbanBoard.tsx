@@ -279,6 +279,8 @@ export default function KanbanBoard({ boardId }: KanbanBoardProps) {
     assignedTo?: string;
     dueDate?: string;
     estimatedHours?: number;
+    stockId?: string;
+    vehicleRegistration?: string;
   }) => {
     if (!board || !selectedColumnId) return;
 
@@ -292,6 +294,7 @@ export default function KanbanBoard({ boardId }: KanbanBoardProps) {
         assignedTo: taskData.assignedTo,
         dueDate: taskData.dueDate,
         estimatedHours: taskData.estimatedHours,
+        stockId: taskData.stockId,
       });
       
       // Close the dialog
@@ -406,6 +409,8 @@ export default function KanbanBoard({ boardId }: KanbanBoardProps) {
     assignedTo?: string;
     dueDate?: string;
     estimatedHours?: number;
+    stockId?: string;
+    vehicleRegistration?: string;
   }) => {
     if (!board) return;
 
@@ -824,18 +829,6 @@ export default function KanbanBoard({ boardId }: KanbanBoardProps) {
                                       {tag}
                                     </Badge>
                                   ))}
-                                </div>
-                              )}
-
-                              {/* Stock Link */}
-                              {task.stockId && (
-                                <div className="flex items-center gap-1 mb-3">
-                                  <Car className="w-3 h-3 text-blue-500" />
-                                  <span className={`text-xs transition-colors duration-300 ${
-                                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                                  }`}>
-                                    Stock: {task.stockId}
-                                  </span>
                                 </div>
                               )}
 

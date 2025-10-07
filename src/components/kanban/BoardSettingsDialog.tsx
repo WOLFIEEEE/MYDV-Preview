@@ -84,9 +84,9 @@ export default function BoardSettingsDialog({
       return;
     }
 
-    // Prevent editing Vehicle Job Cards board name
+    // Prevent editing Vehicle Job Cards or Dealership Tasks board names
     const updatedData = {
-      name: board.name === 'Vehicle Job Cards' ? board.name : formData.name.trim(),
+      name: (board.name === 'Vehicle Job Cards' || board.name === 'Dealership Tasks') ? board.name : formData.name.trim(),
       description: formData.description.trim() || undefined,
       color: formData.color,
     };
@@ -151,7 +151,7 @@ export default function BoardSettingsDialog({
             <Users className="w-4 h-4 inline mr-1" />
             Access
           </button>
-          {!board?.isDefault && (
+          {!board?.isDefault && board?.name !== 'Vehicle Job Cards' && board?.name !== 'Dealership Tasks' && (
             <button
               type="button"
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -179,10 +179,10 @@ export default function BoardSettingsDialog({
                   placeholder="Enter board name..."
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  disabled={board?.name === 'Vehicle Job Cards'}
+                  disabled={board?.name === 'Vehicle Job Cards' || board?.name === 'Dealership Tasks'}
                   required
                 />
-                {board?.name === 'Vehicle Job Cards' && (
+                {(board?.name === 'Vehicle Job Cards' || board?.name === 'Dealership Tasks') && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     This is a fixed board and cannot be renamed.
                   </p>

@@ -13,11 +13,15 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const registration = searchParams.get('registration');
+    const stockId = searchParams.get('stockId');
+    const query = searchParams.get('query');
+    const limit = searchParams.get('limit');
 
-    if (!registration) {
+    // At least one search parameter is required
+    if (!registration && !stockId && !query) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Registration parameter is required' 
+        error: 'At least one search parameter (registration, stockId, or query) is required' 
       }, { status: 400 });
     }
 
@@ -47,18 +51,40 @@ export async function GET(request: NextRequest) {
       dealerId = dealerResult[0].id;
     }
 
-    // Clean the registration (remove spaces, convert to uppercase)
-    const cleanRegistration = registration.replace(/\s+/g, '').toUpperCase();
+    // Build search conditions based on provided parameters
+    let searchConditions = [eq(stockCache.dealerId, dealerId)];
 
-    // Search for vehicles in inventory by registration
-    // Support both exact matches and partial matches for autocomplete
+    if (stockId) {
+      // Exact match for stockId
+      searchConditions.push(eq(stockCache.stockId, stockId));
+    } else if (registration) {
+      // Clean the registration (remove spaces, convert to uppercase)
+      const cleanRegistration = registration.replace(/\s+/g, '').toUpperCase();
+      searchConditions.push(ilike(stockCache.registration, `%${cleanRegistration}%`));
+    } else if (query) {
+      // General search across multiple fields
+      const cleanQuery = query.replace(/\s+/g, '').toUpperCase();
+      // Search in registration field with the query
+      searchConditions.push(ilike(stockCache.registration, `%${cleanQuery}%`));
+    }
+
+    // Determine limit value
+    let limitValue = 10; // Default limit
+    if (limit) {
+      const limitNum = parseInt(limit, 10);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        limitValue = limitNum;
+      }
+    }
+
+    // Search for vehicles in inventory
     const vehicles = await db
       .select({
         stockId: stockCache.stockId,
         registration: stockCache.registration,
         make: stockCache.make,
         model: stockCache.model,
-        yearOfManufacture: stockCache.yearOfManufacture,
+        year: stockCache.yearOfManufacture,
         fuelType: stockCache.fuelType,
         bodyType: stockCache.bodyType,
         lifecycleState: stockCache.lifecycleState,
@@ -66,14 +92,9 @@ export async function GET(request: NextRequest) {
         odometerReadingMiles: stockCache.odometerReadingMiles,
       })
       .from(stockCache)
-      .where(
-        and(
-          eq(stockCache.dealerId, dealerId),
-          ilike(stockCache.registration, `%${cleanRegistration}%`)
-        )
-      )
-      .orderBy(stockCache.registration) // Order by registration for consistent results
-      .limit(10);
+      .where(and(...searchConditions))
+      .orderBy(stockCache.registration)
+      .limit(limitValue);
 
     return NextResponse.json({
       success: true,

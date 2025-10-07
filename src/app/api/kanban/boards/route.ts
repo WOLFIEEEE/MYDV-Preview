@@ -33,7 +33,7 @@ async function ensureVehicleJobCardsBoard(dealerId: string, userId: string) {
         dealerId,
         createdBy: userId,
         color: '#1e40af', // Blue color
-        isDefault: true, // Mark as default/fixed board
+        isDefault: false, // Not the default board anymore
       })
       .returning();
 
@@ -59,6 +59,64 @@ async function ensureVehicleJobCardsBoard(dealerId: string, userId: string) {
     console.log('✅ Created Vehicle Job Cards board for dealer:', dealerId);
   } catch (error) {
     console.error('❌ Error creating Vehicle Job Cards board:', error);
+    // Don't throw error, just log it - the main request should still work
+  }
+}
+
+// Ensure Dealership Tasks board exists for the dealer
+async function ensureDealershipTasksBoard(dealerId: string, userId: string) {
+  try {
+    // Check if Dealership Tasks board already exists
+    const existingBoard = await db
+      .select({ id: kanbanBoards.id })
+      .from(kanbanBoards)
+      .where(
+        and(
+          eq(kanbanBoards.dealerId, dealerId),
+          eq(kanbanBoards.name, 'Dealership Tasks')
+        )
+      )
+      .limit(1);
+
+    if (existingBoard.length > 0) {
+      return; // Board already exists
+    }
+
+    // Create the Dealership Tasks board
+    const [newBoard] = await db
+      .insert(kanbanBoards)
+      .values({
+        name: 'Dealership Tasks',
+        description: 'Manage general dealership tasks and activities',
+        dealerId,
+        createdBy: userId,
+        color: '#059669', // Green color
+        isDefault: true, // Mark as default board
+      })
+      .returning();
+
+    // Create default columns for Dealership Tasks
+    const dealershipTaskColumns = [
+      { name: 'To Do', position: 0, color: '#ef4444' },
+      { name: 'In Progress', position: 1, color: '#f59e0b' },
+      { name: 'Review', position: 2, color: '#8b5cf6' },
+      { name: 'Done', position: 3, color: '#10b981' },
+    ];
+
+    await db
+      .insert(kanbanColumns)
+      .values(
+        dealershipTaskColumns.map(col => ({
+          boardId: newBoard.id,
+          name: col.name,
+          position: col.position,
+          color: col.color,
+        }))
+      );
+
+    console.log('✅ Created Dealership Tasks board for dealer:', dealerId);
+  } catch (error) {
+    console.error('❌ Error creating Dealership Tasks board:', error);
     // Don't throw error, just log it - the main request should still work
   }
 }
@@ -97,7 +155,8 @@ export async function GET() {
       dealerId = dealerResult[0].id;
     }
 
-    // Check if Vehicle Job Cards board exists, create if not
+    // Check if default boards exist, create if not
+    await ensureDealershipTasksBoard(dealerId, user.id);
     await ensureVehicleJobCardsBoard(dealerId, user.id);
 
     // Get boards with their columns and tasks
