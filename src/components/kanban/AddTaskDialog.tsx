@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Tag, User, Clock } from "lucide-react";
+import { Calendar, Tag, User, Clock, Car, Search, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 interface TeamMember {
   id: string;
@@ -33,6 +33,8 @@ interface AddTaskDialogProps {
     assignedTo?: string;
     dueDate?: string;
     estimatedHours?: number;
+    stockId?: string;
+    vehicleRegistration?: string;
   }) => void;
   columnName?: string;
 }
@@ -50,10 +52,21 @@ export default function AddTaskDialog({
     assignedTo: 'unassigned',
     dueDate: '',
     estimatedHours: '',
+    vehicleRegistration: '',
   });
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  
+  // Vehicle search state
+  const [vehicleSuggestions, setVehicleSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [vehicleValidation, setVehicleValidation] = useState({
+    isValid: false,
+    isChecking: false,
+    message: '',
+    stockId: ''
+  });
 
   // Fetch team members when dialog opens
   useEffect(() => {
@@ -93,6 +106,130 @@ export default function AddTaskDialog({
     }
   };
 
+  // Search for vehicle suggestions based on input
+  const searchVehicleSuggestions = async (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setVehicleSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/inventory/search?query=${encodeURIComponent(searchTerm)}&limit=5`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setVehicleSuggestions(result.data);
+        setShowSuggestions(true);
+      } else {
+        setVehicleSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error searching vehicles:', error);
+      setVehicleSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  // Validate vehicle registration against inventory
+  const validateVehicleRegistration = async (registration: string) => {
+    if (!registration.trim()) {
+      setVehicleValidation({
+        isValid: false,
+        isChecking: false,
+        message: '',
+        stockId: ''
+      });
+      setShowSuggestions(false);
+      return;
+    }
+
+    // Remove spaces and convert to uppercase
+    const cleanReg = registration.replace(/\s+/g, '').toUpperCase();
+    
+    setVehicleValidation({
+      isValid: false,
+      isChecking: true,
+      message: 'Checking vehicle inventory...',
+      stockId: ''
+    });
+
+    try {
+      // Check for exact match
+      const response = await fetch(`/api/inventory/search?registration=${encodeURIComponent(cleanReg)}`);
+      const result = await response.json();
+
+      if (result.success && result.data && result.data.length > 0) {
+        // Find exact match
+        const exactMatch = result.data.find((vehicle: any) => 
+          vehicle.registration?.toUpperCase() === cleanReg
+        );
+
+        if (exactMatch) {
+          setVehicleValidation({
+            isValid: true,
+            isChecking: false,
+            message: `Vehicle found: ${exactMatch.make} ${exactMatch.model}`,
+            stockId: exactMatch.stockId
+          });
+          // Update the form with clean registration
+          setFormData(prev => ({ ...prev, vehicleRegistration: cleanReg }));
+          setShowSuggestions(false);
+        } else {
+          setVehicleValidation({
+            isValid: false,
+            isChecking: false,
+            message: 'This vehicle is not in your vehicle inventory. You can still create the task.',
+            stockId: ''
+          });
+        }
+      } else {
+        setVehicleValidation({
+          isValid: false,
+          isChecking: false,
+          message: 'This vehicle is not in your vehicle inventory. You can still create the task.',
+          stockId: ''
+        });
+      }
+    } catch (error) {
+      console.error('Error validating vehicle registration:', error);
+      setVehicleValidation({
+        isValid: false,
+        isChecking: false,
+        message: 'Error checking vehicle. Please try again.',
+        stockId: ''
+      });
+    }
+  };
+
+  // Handle vehicle registration input change
+  const handleVehicleRegistrationChange = async (value: string) => {
+    setFormData(prev => ({ ...prev, vehicleRegistration: value }));
+    
+    // Search for suggestions as user types
+    await searchVehicleSuggestions(value);
+    
+    // Validate if user stops typing (debounced)
+    clearTimeout((window as any).vehicleValidationTimeout);
+    (window as any).vehicleValidationTimeout = setTimeout(() => {
+      validateVehicleRegistration(value);
+    }, 500);
+  };
+
+  // Handle selecting a vehicle from suggestions
+  const handleSelectVehicle = (vehicle: any) => {
+    const registration = vehicle.registration || '';
+    setFormData(prev => ({ ...prev, vehicleRegistration: registration }));
+    setVehicleValidation({
+      isValid: true,
+      isChecking: false,
+      message: `Vehicle selected: ${vehicle.make} ${vehicle.model}`,
+      stockId: vehicle.stockId
+    });
+    setShowSuggestions(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -107,6 +244,8 @@ export default function AddTaskDialog({
       assignedTo: formData.assignedTo === 'unassigned' ? undefined : formData.assignedTo || undefined,
       dueDate: formData.dueDate || undefined,
       estimatedHours: formData.estimatedHours ? parseInt(formData.estimatedHours) : undefined,
+      stockId: vehicleValidation.stockId || undefined,
+      vehicleRegistration: formData.vehicleRegistration.trim() || undefined,
     });
 
     // Reset form
@@ -117,7 +256,18 @@ export default function AddTaskDialog({
       assignedTo: 'unassigned',
       dueDate: '',
       estimatedHours: '',
+      vehicleRegistration: '',
     });
+
+    // Reset vehicle validation
+    setVehicleValidation({
+      isValid: false,
+      isChecking: false,
+      message: '',
+      stockId: ''
+    });
+    setVehicleSuggestions([]);
+    setShowSuggestions(false);
 
     onOpenChange(false);
   };
@@ -131,7 +281,19 @@ export default function AddTaskDialog({
       assignedTo: 'unassigned',
       dueDate: '',
       estimatedHours: '',
+      vehicleRegistration: '',
     });
+    
+    // Reset vehicle validation
+    setVehicleValidation({
+      isValid: false,
+      isChecking: false,
+      message: '',
+      stockId: ''
+    });
+    setVehicleSuggestions([]);
+    setShowSuggestions(false);
+    
     onOpenChange(false);
   };
 
@@ -173,6 +335,101 @@ export default function AddTaskDialog({
               className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
               rows={3}
             />
+          </div>
+
+          {/* Vehicle Registration */}
+          <div className="space-y-2">
+            <Label htmlFor="vehicleRegistration" className="flex items-center gap-1">
+              <Car className="w-3 h-3" />
+              Vehicle Registration (Optional)
+            </Label>
+            <div className="relative">
+              <Input
+                id="vehicleRegistration"
+                placeholder="Enter vehicle registration..."
+                value={formData.vehicleRegistration}
+                onChange={(e) => handleVehicleRegistrationChange(e.target.value)}
+                onFocus={() => {
+                  if (formData.vehicleRegistration.length >= 2) {
+                    searchVehicleSuggestions(formData.vehicleRegistration);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding suggestions to allow for clicks
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                className={`pr-10 ${
+                  vehicleValidation.isValid 
+                    ? 'border-green-500 focus-visible:ring-green-500' 
+                    : vehicleValidation.message && !vehicleValidation.isChecking
+                      ? 'border-orange-500 focus-visible:ring-orange-500'
+                      : ''
+                }`}
+              />
+              
+              {/* Validation Icon */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {vehicleValidation.isChecking ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                ) : vehicleValidation.isValid ? (
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                ) : vehicleValidation.message ? (
+                  <AlertCircle className="w-4 h-4 text-orange-500" />
+                ) : (
+                  <Search className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+
+              {/* Vehicle Suggestions Dropdown */}
+              {showSuggestions && vehicleSuggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                  {vehicleSuggestions.map((vehicle, index) => (
+                    <div
+                      key={`${vehicle.stockId}-${index}`}
+                      className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      onClick={() => handleSelectVehicle(vehicle)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-sm text-gray-900">
+                            {vehicle.registration || 'No Registration'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {vehicle.year} {vehicle.make} {vehicle.model}
+                          </div>
+                          {vehicle.stockId && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              Stock ID: {vehicle.stockId}
+                            </div>
+                          )}
+                        </div>
+                        <Car className="w-4 h-4 text-gray-400" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Validation Message */}
+            {vehicleValidation.message && (
+              <div className={`flex items-center gap-2 text-xs ${
+                vehicleValidation.isValid 
+                  ? 'text-green-600' 
+                  : vehicleValidation.isChecking
+                    ? 'text-blue-600'
+                    : 'text-orange-600'
+              }`}>
+                {vehicleValidation.isChecking ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : vehicleValidation.isValid ? (
+                  <CheckCircle className="w-3 h-3" />
+                ) : (
+                  <AlertCircle className="w-3 h-3" />
+                )}
+                <span>{vehicleValidation.message}</span>
+              </div>
+            )}
           </div>
 
           {/* Assignment */}
