@@ -189,10 +189,11 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, maxRetries
   throw new Error('Max retries exceeded');
 }
 
-// Cache configuration
+// Cache configuration - CACHE-FIRST STRATEGY
 const CACHE_CONFIG = {
-  STALE_AFTER_HOURS: 24,
-  MAX_CACHE_AGE_HOURS: 48,
+  STALE_AFTER_HOURS: 24 * 7, // 7 days - cache is considered "stale" but still usable
+  MAX_CACHE_AGE_HOURS: 24 * 30, // 30 days - cache is kept this long before cleanup
+  BACKGROUND_REFRESH_THRESHOLD: 24, // 24 hours - trigger background refresh after this time
   BATCH_SIZE: 50, // Reduced batch size for database inserts to avoid timeouts
   MAX_RETRIES: 3,
   DB_CONNECTION_TIMEOUT: 15000, // 15 seconds for database operations
@@ -251,6 +252,14 @@ export function needsForceRefresh(lastFetched: Date | string): boolean {
   const fetchDate = typeof lastFetched === 'string' ? new Date(lastFetched) : lastFetched;
   const hoursSinceLastFetch = (now.getTime() - fetchDate.getTime()) / (1000 * 60 * 60);
   return hoursSinceLastFetch >= CACHE_CONFIG.MAX_CACHE_AGE_HOURS;
+}
+
+// New: Check if background refresh should be triggered (more aggressive than stale)
+export function shouldBackgroundRefresh(lastFetched: Date | string): boolean {
+  const now = new Date();
+  const fetchDate = typeof lastFetched === 'string' ? new Date(lastFetched) : lastFetched;
+  const hoursSinceLastFetch = (now.getTime() - fetchDate.getTime()) / (1000 * 60 * 60);
+  return hoursSinceLastFetch >= CACHE_CONFIG.BACKGROUND_REFRESH_THRESHOLD;
 }
 
 // Interface for stock query options
@@ -413,68 +422,92 @@ export class StockCacheService {
     const cacheStatus = await this.getCacheStatus(dealerId, advertiserId);
     console.log('📊 Cache status:', cacheStatus);
     
-    // If no cache exists or cache is too old, try to fetch from AutoTrader
-    // BUT if fetch fails, we'll fall back to showing any available cached data
-    if (!cacheStatus.hasAnyCache || cacheStatus.needsForceRefresh) {
-      console.log('🔄 No cache or force refresh needed, fetching from AutoTrader...');
+    // ========================================
+    // CACHE-FIRST STRATEGY: NEVER call AutoTrader on page load
+    // ========================================
+    // Priority:
+    // 1. Return cached data if it exists (even if stale)
+    // 2. Refresh in background if needed
+    // 3. Only fetch from AutoTrader if NO cache exists at all
+    // ========================================
+    
+    // CASE 1: We have cached data (fresh or stale) - RETURN IT IMMEDIATELY
+    if (cacheStatus.hasAnyCache) {
+      console.log('✅ Cache exists - returning cached data immediately (cache-first)');
+      console.log(`📊 Cache age: ${cacheStatus.isStale ? 'STALE' : 'FRESH'}, Last fetched: ${cacheStatus.lastFetched}`);
       
-      try {
-        return await this.refreshAndGetStockData(options);
-      } catch (refreshError) {
-        console.error('❌ Failed to refresh from AutoTrader:', refreshError);
+      // Optionally refresh in background if cache is old enough (but don't wait for it)
+      const shouldRefresh = cacheStatus.lastFetched ? shouldBackgroundRefresh(cacheStatus.lastFetched) : false;
+      if (shouldRefresh) {
+        const cacheAgeHours = cacheStatus.lastFetched 
+          ? Math.round((Date.now() - new Date(cacheStatus.lastFetched).getTime()) / (1000 * 60 * 60))
+          : 0;
+        console.log(`🔄 Cache is ${cacheAgeHours}h old - scheduling background refresh (non-blocking)`);
         
-        // FALLBACK: Check if we have ANY cached data for this dealer (regardless of advertiser ID)
-        console.log('🆘 Refresh failed - attempting to return any available cached data for user...');
-        try {
-          const fallbackData = await this.getAnyCachedDataForDealer(dealerId, { ...options, page, pageSize });
-          if (fallbackData && fallbackData.results.length > 0) {
-            console.log('✅ Fallback successful - returning cached data despite refresh failure');
-            return {
-              ...fallbackData,
-              cacheStatus: {
-                ...fallbackData.cacheStatus,
-                staleCacheUsed: true,
-                lastRefresh: fallbackData.cacheStatus.lastRefresh || null,
-              }
-            };
-          }
-        } catch (fallbackError) {
-          console.error('❌ Fallback to cached data also failed:', fallbackError);
+        const mutexKey = `${dealerId}-${advertiserId}`;
+        
+        // Check if refresh is already in progress
+        if (!this.refreshMutex.has(mutexKey)) {
+          console.log('🔄 Starting background refresh (user will see cached data)...');
+          const refreshPromise = this.refreshStockDataBackground(dealerId, advertiserId)
+            .catch(error => {
+              console.error('❌ Background refresh failed (user not affected):', error);
+              // Don't throw - user is already seeing cached data
+            })
+            .finally(() => {
+              this.refreshMutex.delete(mutexKey);
+              console.log('🔓 Background refresh completed/failed');
+            });
+          
+          this.refreshMutex.set(mutexKey, refreshPromise);
+        } else {
+          console.log('⏳ Background refresh already in progress');
         }
-        
-        // Re-throw original error only if we have absolutely no cached data
-        throw refreshError;
-      }
-    }
-    
-    // If cache is stale but exists, try to refresh in background and return stale data
-    if (cacheStatus.isStale) {
-      console.log('⏰ Cache is stale, refreshing in background...');
-      
-      const mutexKey = `${dealerId}-${advertiserId}`;
-      
-      // Check if refresh is already in progress
-      if (!this.refreshMutex.has(mutexKey)) {
-        console.log('🔄 Starting new background refresh...');
-        const refreshPromise = this.refreshStockDataBackground(dealerId, advertiserId)
-          .catch(error => {
-            console.error('❌ Background refresh failed:', error);
-            // Don't throw - we'll still show cached data
-          })
-          .finally(() => {
-            this.refreshMutex.delete(mutexKey);
-            console.log('🔓 Background refresh mutex released');
-          });
-        
-        this.refreshMutex.set(mutexKey, refreshPromise);
       } else {
-        console.log('⏳ Background refresh already in progress, skipping...');
+        const cacheAgeHours = cacheStatus.lastFetched 
+          ? Math.round((Date.now() - new Date(cacheStatus.lastFetched).getTime()) / (1000 * 60 * 60))
+          : 0;
+        console.log(`✅ Cache is ${cacheAgeHours}h old - still fresh enough (no refresh needed)`);
       }
+      
+      // Return cached data immediately (don't wait for background refresh)
+      console.log('💾 Returning cached data (page load is fast!)...');
+      return await this.getCachedStockData({ ...options, dealerId }, cacheStatus.isStale);
     }
     
-    // Return cached data (this is now the happy path - cached data always wins)
-    console.log('💾 Returning cached data...');
-    return await this.getCachedStockData({ ...options, dealerId }, cacheStatus.isStale);
+    // CASE 2: NO cached data exists at all - Must fetch from AutoTrader
+    console.log('⚠️ No cached data found - must fetch from AutoTrader (first time setup)');
+    console.log('🔄 This should only happen on first use or after cache cleared');
+    
+    try {
+      console.log('📡 Fetching from AutoTrader (blocking - no cache exists)...');
+      return await this.refreshAndGetStockData(options);
+    } catch (refreshError) {
+      console.error('❌ AutoTrader fetch failed and no cache exists:', refreshError);
+      
+      // LAST RESORT: Try to find ANY cached data for this dealer (different advertiser ID?)
+      console.log('🆘 Emergency fallback: Searching for ANY cached data...');
+      try {
+        const fallbackData = await this.getAnyCachedDataForDealer(dealerId, { ...options, page, pageSize });
+        if (fallbackData && fallbackData.results.length > 0) {
+          console.log('✅ Emergency fallback successful - found cached data from different advertiser ID');
+          return {
+            ...fallbackData,
+            cacheStatus: {
+              ...fallbackData.cacheStatus,
+              staleCacheUsed: true,
+              lastRefresh: fallbackData.cacheStatus.lastRefresh || null,
+            }
+          };
+        }
+      } catch (fallbackError) {
+        console.error('❌ Emergency fallback also failed');
+      }
+      
+      // Only throw if we truly have no data to show
+      console.error('🚨 No data available - first fetch failed and no cache exists');
+      throw refreshError;
+    }
   }
   
   /**
@@ -687,6 +720,17 @@ export class StockCacheService {
   private static async getCachedStockData(options: StockQueryOptions, staleCacheUsed: boolean): Promise<CachedStockResponse> {
     const { dealerId, advertiserId, page = 1, pageSize = 10, sortBy = 'updated', sortOrder = 'desc' } = options;
     
+    console.log('\n💾 ===== getCachedStockData: FETCHING FROM CACHE =====');
+    console.log('🆔 Dealer ID:', dealerId);
+    console.log('🏢 Advertiser ID:', advertiserId);
+    console.log('📄 Page:', page, 'Size:', pageSize);
+    console.log('📊 Filters:', {
+      make: options.make,
+      model: options.model,
+      lifecycleState: options.lifecycleState,
+      ownershipCondition: options.ownershipCondition
+    });
+    
     try {
       // Build WHERE conditions
       const conditions = [
@@ -694,6 +738,8 @@ export class StockCacheService {
         eq(stockCache.advertiserId, advertiserId),
         eq(stockCache.isStale, false) // Only return active (non-stale) stock
       ];
+      
+      console.log('🔍 Base conditions: dealerId, advertiserId, isStale=false');
       
       if (options.make) {
         conditions.push(eq(stockCache.make, options.make));
@@ -772,16 +818,96 @@ export class StockCacheService {
       }
       
       // Get total count
+      console.log('🔢 Executing count query...');
       const totalResult = await db
         .select({ count: sql<number>`count(*)` })
         .from(stockCache)
         .where(and(...conditions));
       
       const totalResults = totalResult[0].count;
+      console.log('✅ Total results found in cache:', totalResults);
+      
+      if (totalResults === 0) {
+        console.warn('\n⚠️ ===== NO CACHE DATA FOUND =====');
+        console.warn('📭 Count query returned 0 results');
+        console.warn('🔍 This means:');
+        console.warn('   - No data in stock_cache for this dealer + advertiser');
+        console.warn('   - OR lifecycle/filter conditions too restrictive');
+        console.warn('   - OR isStale flag is true for all records');
+        console.warn('🆔 Queried dealer ID:', dealerId);
+        console.warn('🏢 Queried advertiser ID:', advertiserId);
+        
+        // Show applied filters
+        if (options.lifecycleState) {
+          console.warn('🔍 Lifecycle state filter:', options.lifecycleState);
+        }
+        if (options.make) console.warn('🔍 Make filter:', options.make);
+        if (options.model) console.warn('🔍 Model filter:', options.model);
+        
+        // Try to find ANY data for this dealer (ignore all filters except dealer)
+        console.log('\n🔍 Checking if ANY data exists for this dealer (ignoring filters)...');
+        const anyDataResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(stockCache)
+          .where(and(
+            eq(stockCache.dealerId, dealerId),
+            eq(stockCache.isStale, false)
+          ));
+        
+        const anyDataCount = anyDataResult[0].count;
+        console.log('📊 Total records for dealer (ignoring advertiser & filters):', anyDataCount);
+        
+        if (anyDataCount > 0) {
+          console.warn('⚠️ Data exists but filters are too restrictive!');
+          
+          // Show what advertiser IDs exist
+          const advertiserIds = await db
+            .selectDistinct({ advertiserId: stockCache.advertiserId })
+            .from(stockCache)
+            .where(and(
+              eq(stockCache.dealerId, dealerId),
+              eq(stockCache.isStale, false)
+            ));
+          
+          console.warn('📋 Advertiser IDs in cache:', advertiserIds.map(a => a.advertiserId));
+          
+          // If filtering by lifecycle state, show what states exist
+          if (options.lifecycleState) {
+            console.warn('\n🔍 Checking available lifecycle states...');
+            const lifecycleStates = await db
+              .select({ 
+                lifecycleState: stockCache.lifecycleState,
+                count: sql<number>`count(*)`.as('count')
+              })
+              .from(stockCache)
+              .where(and(
+                eq(stockCache.dealerId, dealerId),
+                eq(stockCache.advertiserId, advertiserId),
+                eq(stockCache.isStale, false)
+              ))
+              .groupBy(stockCache.lifecycleState);
+            
+            if (lifecycleStates.length > 0) {
+              console.warn('📊 Available lifecycle states for this dealer+advertiser:');
+              lifecycleStates.forEach(ls => {
+                console.warn(`   - ${ls.lifecycleState}: ${ls.count} vehicles`);
+              });
+              console.warn(`⚠️ You filtered for "${options.lifecycleState}" but only the above states exist!`);
+            } else {
+              console.warn('⚠️ No data for this advertiser ID, but data exists for other advertisers');
+            }
+          }
+        } else {
+          console.warn('❌ No data in cache for this dealer at all!');
+          console.warn('⚠️ Need to fetch from AutoTrader or check dealer setup');
+        }
+      }
+      
       const totalPages = Math.ceil(totalResults / pageSize);
       const offset = (page - 1) * pageSize;
       
       // Get paginated results
+      console.log('📄 Fetching paginated results:', { page, pageSize, offset, totalPages });
       const results = await db
         .select()
         .from(stockCache)
@@ -789,6 +915,8 @@ export class StockCacheService {
         .orderBy(orderByClause)
         .limit(pageSize)
         .offset(offset);
+      
+      console.log('✅ Retrieved', results.length, 'records from cache');
       
       // Transform to expected format (frontend expects most data in vehicle object)
       const transformedResults = results.map(cached => {

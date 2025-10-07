@@ -6,6 +6,37 @@ import { eq } from 'drizzle-orm';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 // Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
+// Server-side cache for AutoTrader limits with TTL
+interface CachedLimits {
+  data: any;
+  expiresAt: number;
+  lastUpdated: Date;
+}
+
+const limitsCache = new Map<string, CachedLimits>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 1000; // Prevent memory leaks
+
+// Clean up expired cache entries periodically
+function cleanupExpiredCache() {
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  for (const [key, value] of limitsCache.entries()) {
+    if (value.expiresAt < now) {
+      limitsCache.delete(key);
+      cleanedCount++;
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`🧹 Cleaned up ${cleanedCount} expired cache entries`);
+  }
+}
+
+// Cleanup every 10 minutes
+setInterval(cleanupExpiredCache, 10 * 60 * 1000);
+
 export async function GET() {
   try {
     console.log('🔍 AutoTrader Limits API: Starting request');
@@ -21,6 +52,25 @@ export async function GET() {
     }
 
     console.log('✅ AutoTrader Limits API: User authenticated:', userId);
+
+    // Check cache first
+    const cacheKey = `limits_${userId}`;
+    const cached = limitsCache.get(cacheKey);
+    
+    if (cached && cached.expiresAt > Date.now()) {
+      console.log('✅ Returning cached AutoTrader limits', {
+        age: Math.round((Date.now() - cached.lastUpdated.getTime()) / 1000),
+        expiresIn: Math.round((cached.expiresAt - Date.now()) / 1000)
+      });
+      
+      return NextResponse.json({
+        ...cached.data,
+        fromCache: true,
+        cachedAt: cached.lastUpdated.toISOString()
+      });
+    }
+    
+    console.log('🔄 Cache miss or expired, fetching fresh data...');
 
     // Get user email from Clerk
     const clerkSecretKey = process.env.CLERK_SECRET_KEY;
@@ -210,15 +260,41 @@ export async function GET() {
 
     console.log('📊 AutoTrader Limits API: Final calculated limit:', totalLimit);
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       data: {
         advertiserId,
         listingCount: totalLimit,
         allowances: allowancesData,
         lastUpdated: new Date().toISOString()
+      },
+      fromCache: false
+    };
+
+    // Cache the result
+    const cacheEntry: CachedLimits = {
+      data: responseData,
+      expiresAt: Date.now() + CACHE_TTL,
+      lastUpdated: new Date()
+    };
+    
+    limitsCache.set(cacheKey, cacheEntry);
+    console.log('✅ Cached AutoTrader limits for', CACHE_TTL / 1000, 'seconds');
+    
+    // Enforce max cache size to prevent memory leaks
+    if (limitsCache.size > MAX_CACHE_SIZE) {
+      console.warn('⚠️ Cache size exceeded, cleaning oldest entries...');
+      const sortedEntries = Array.from(limitsCache.entries())
+        .sort((a, b) => a[1].lastUpdated.getTime() - b[1].lastUpdated.getTime());
+      
+      // Remove oldest 10% of entries
+      const removeCount = Math.floor(MAX_CACHE_SIZE * 0.1);
+      for (let i = 0; i < removeCount; i++) {
+        limitsCache.delete(sortedEntries[i][0]);
       }
-    });
+    }
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Error fetching AutoTrader limits:', error);

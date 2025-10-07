@@ -343,12 +343,10 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
       ? stockQueryKeys.list(options, userCacheId)
       : ['stock', 'disabled'] as const, // Safe fallback key when disabled
     queryFn: async () => {
-      // Check retry interval to prevent rapid retries
-      const now = Date.now();
-      if (now - lastRetryTime < MIN_RETRY_INTERVAL) {
-        console.log('🕒 Skipping fetch due to retry interval');
-        throw new Error('Rate limited - too many recent retries');
-      }
+      console.log('\n📡 ===== useStockDataQuery: FETCH INITIATED =====');
+      console.log('⏰ Time:', new Date().toISOString());
+      console.log('👤 User:', user?.id);
+      console.log('📝 Options:', options);
       
       try {
         // Record fetch start
@@ -356,20 +354,45 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
           stockDataMonitor.recordEvent(userCacheId, 'fetch_start', { options });
         }
         
+        console.log('🔄 Calling fetchStockList (will use backend cache-first)...');
         const result = await fetchStockList(options, user?.id);
+        
+        if (!result) {
+          throw new Error('No data returned from fetchStockList');
+        }
+        
+        console.log('\n✅ ===== useStockDataQuery: FETCH SUCCESS =====');
+        console.log('📊 Stock items:', result.stock?.length || 0);
+        console.log('📊 Total results:', result.pagination?.totalResults || 0);
+        console.log('🗄️ From cache:', result.cache?.fromCache);
+        console.log('⏰ Time:', new Date().toISOString());
+        
         setLastRetryTime(0); // Reset on success
         
         // Record success
-        if (userCacheId && result) {
+        if (userCacheId) {
           stockDataMonitor.recordEvent(userCacheId, 'fetch_success', { 
             resultCount: result.stock?.length || 0,
             totalResults: result.pagination?.totalResults || 0
           });
         }
         
+        // Log if we got empty results (not an error, just informational)
+        if (result.stock?.length === 0) {
+          console.warn('\n⚠️ ===== EMPTY STOCK DATA =====');
+          console.warn('📭 No stock items in response');
+          console.warn('🔍 Check: Dealer record exists? Advertiser ID configured?');
+          console.warn('⏰ Time:', new Date().toISOString());
+        }
+        
         return result;
       } catch (error) {
+        const now = Date.now();
         setLastRetryTime(now);
+        
+        console.error('\n❌ ===== useStockDataQuery: FETCH FAILED =====');
+        console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown');
+        console.error('⏰ Time:', new Date().toISOString());
         
         // Record error
         if (userCacheId) {

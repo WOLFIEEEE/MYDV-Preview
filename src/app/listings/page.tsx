@@ -33,6 +33,7 @@ import { useStockDataQuery } from "@/hooks/useStockDataQuery";
 import type { StockItem } from "@/types/stock";
 import ChannelManagement from "@/components/listings/ChannelManagement";
 import { ListingsDebugPanel } from "@/components/shared/ListingsDebugPanel";
+import { useAutoTraderLimitsWithCapped } from "@/hooks/useAutoTraderLimits";
 
 // Define advertising channels with their properties
 const ADVERTISING_CHANNELS = [
@@ -90,13 +91,6 @@ interface RowEditState {
   channels: { [channelId: string]: boolean };
 }
 
-interface AutoTraderLimit {
-  current: number;
-  maximum: number;
-  capped: number;
-  available: number;
-}
-
 function ListingsManagementContent() {
   const { isSignedIn, isLoaded } = useUser();
   const { isDarkMode } = useTheme();
@@ -104,11 +98,8 @@ function ListingsManagementContent() {
   const isDebugMode = searchParams.get('debug') === 'true';
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [channelStatus, setChannelStatus] = useState<ChannelStatus>({});
 
-  const [channelTallies, setChannelTallies] = useState<{[key: string]: {active: number, total: number}}>({});
   const [isChannelManagementOpen, setIsChannelManagementOpen] = useState(false);
-  const [autoTraderLimit, setAutoTraderLimit] = useState<AutoTraderLimit | null>(null);
   const [editingRow, setEditingRow] = useState<RowEditState | null>(null);
   const [savingRow, setSavingRow] = useState<string | null>(null);
   const [updateStatus, setUpdateStatus] = useState<{
@@ -141,17 +132,33 @@ function ListingsManagementContent() {
     setCurrentPage(1);
   };
 
-  // Fetch stock data using the same approach as MyStock
+  // Fetch stock data - ensure query enables when auth completes
   const queryOptions = useMemo(() => {
-    if (!isSignedIn || !isLoaded) {
-      console.log('🚫 LISTINGS: Query disabled - user not signed in or not loaded');
+    const shouldFetch = isLoaded && isSignedIn;
+    
+    console.log('\n🔍 ===== LISTINGS: QUERY OPTIONS =====');
+    console.log('👤 isLoaded:', isLoaded);
+    console.log('👤 isSignedIn:', isSignedIn);
+    console.log('✅ shouldFetch:', shouldFetch);
+    console.log('⏰ Time:', new Date().toISOString());
+    
+    if (!shouldFetch) {
+      console.log('🚫 LISTINGS: Query disabled - waiting for auth');
       return { disabled: true };
     }
+    
+    // IMPORTANT: Only show FORECOURT vehicles on listings page
     const options = { 
       pageSize: 100, // Large page size to get all data
-      lifecycleState: 'FORECOURT' // Only show vehicles on forecourt (exclude sold, etc.)
+      lifecycleState: 'FORECOURT', // Only show vehicles on forecourt
+      disabled: false // Explicitly enable when conditions are met
     };
-    console.log('✅ LISTINGS: Query options set:', options);
+    
+    console.log('✅ LISTINGS: Query ENABLED');
+    console.log('📝 Query options:', options);
+    console.log('⚠️ NOTE: Filtering for FORECOURT vehicles only');
+    console.log('⚠️ If no results, check console logs to see available lifecycle states');
+    
     return options;
   }, [isSignedIn, isLoaded]);
   
@@ -161,6 +168,153 @@ function ListingsManagementContent() {
     error,
     refetch
   } = useStockDataQuery(queryOptions);
+
+  // 🔍 DEBUG: Log stock data whenever it changes
+  useEffect(() => {
+    console.log('\n📦 ===== LISTINGS: STOCK DATA RECEIVED =====');
+    console.log('📊 Total items:', stockData?.length || 0);
+    console.log('⏳ Loading:', loading);
+    console.log('❌ Error:', error);
+    console.log('⏰ Time:', new Date().toISOString());
+    
+    if (stockData && stockData.length > 0) {
+      console.log('\n✅ ===== STOCK DATA ANALYSIS =====');
+      
+      // Analyze lifecycle states
+      const lifecycleStates = new Map<string, number>();
+      const withAdverts = stockData.filter(v => v.adverts).length;
+      const withMedia = stockData.filter(v => v.media).length;
+      const withMake = stockData.filter(v => v.vehicle?.make || v.make).length;
+      
+      stockData.forEach(v => {
+        const state = v.metadata?.lifecycleState || v.lifecycleState || 'UNKNOWN';
+        lifecycleStates.set(state, (lifecycleStates.get(state) || 0) + 1);
+      });
+      
+      console.log('📊 Lifecycle States:');
+      lifecycleStates.forEach((count, state) => {
+        console.log(`   ${state}: ${count} vehicles`);
+      });
+      
+      console.log('📊 With Adverts:', withAdverts);
+      console.log('📊 With Media:', withMedia);
+      console.log('📊 With Make:', withMake);
+      
+      // Log first vehicle sample
+      const firstVehicle = stockData[0];
+      console.log('\n🚗 ===== FIRST VEHICLE SAMPLE =====');
+      console.log('🆔 Stock ID:', firstVehicle.stockId);
+      console.log('🚗 Make:', firstVehicle.vehicle?.make || firstVehicle.make);
+      console.log('🚗 Model:', firstVehicle.vehicle?.model || firstVehicle.model);
+      console.log('📋 Registration:', firstVehicle.vehicle?.registration || firstVehicle.registration);
+      console.log('📊 Lifecycle State:', firstVehicle.metadata?.lifecycleState || firstVehicle.lifecycleState);
+      console.log('💰 Price:', firstVehicle.adverts?.retailAdverts?.forecourtPrice?.amountGBP || 'N/A');
+      console.log('📢 Has Adverts:', !!firstVehicle.adverts);
+      console.log('🏗️ Top-level keys:', Object.keys(firstVehicle));
+    } else if (stockData?.length === 0) {
+      console.warn('\n⚠️ ===== NO FORECOURT VEHICLES FOUND =====');
+      console.warn('📭 Stock data array is empty (filtering for FORECOURT only)');
+      console.warn('🔍 Possible causes:');
+      console.warn('   1. No vehicles with lifecycleState = "FORECOURT" in database');
+      console.warn('   2. All vehicles have different lifecycle states (ACTIVE, RESERVED, SOLD, etc.)');
+      console.warn('   3. No dealer record for this user');
+      console.warn('   4. Wrong advertiser ID');
+      console.warn('   5. Team member not linked to store owner');
+      console.warn('');
+      console.warn('💡 SOLUTION:');
+      console.warn('   - Check backend logs for "NO CACHE DATA FOUND" message');
+      console.warn('   - Look for "Total records for dealer (any advertiser)" count');
+      console.warn('   - If count > 0, vehicles exist but might not be FORECOURT state');
+      console.warn('   - Check what lifecycle states exist in your data');
+      console.warn('⏰ Time:', new Date().toISOString());
+    }
+  }, [stockData, loading, error]);
+
+  // Helper functions - MUST be defined before useMemo/useEffect
+  const getVehicleProperty = useCallback((vehicle: StockItem, property: string): string => {
+    // Try nested structure first, then flattened
+    const nestedValue = vehicle.vehicle?.[property as keyof typeof vehicle.vehicle];
+    const flatValue = vehicle[property as keyof StockItem];
+    
+    // Convert to string and return
+    const value = nestedValue || flatValue;
+    return typeof value === 'string' ? value : String(value || '');
+  }, []);
+
+  const getPrice = useCallback((vehicle: StockItem) => {
+    return vehicle.adverts?.retailAdverts?.forecourtPrice?.amountGBP || 
+           vehicle.adverts?.retailAdverts?.totalPrice?.amountGBP ||
+           vehicle.forecourtPrice || 
+           vehicle.totalPrice || 
+           0;
+  }, []);
+
+  const getVehicleImage = useCallback((vehicle: StockItem) => {
+    const media = vehicle.media;
+    if (media?.images && media.images.length > 0) {
+      return media.images[0].href;
+    }
+    return null;
+  }, []);
+
+  // Initialize channel status from stock data - OPTIMIZED with useMemo
+  const channelStatus = useMemo(() => {
+    console.log('\n🎯 ===== LISTINGS: INITIALIZING CHANNEL STATUS =====');
+    console.log('📊 Stock data length:', stockData?.length || 0);
+    
+    if (!stockData || stockData.length === 0) {
+      console.log('⚠️ No stock data available for channel status initialization');
+      return {};
+    }
+    
+    const initialStatus: ChannelStatus = {};
+    
+    stockData.forEach((vehicle: StockItem, index: number) => {
+      const vehicleId = vehicle.stockId;
+      initialStatus[vehicleId] = {};
+      
+      // Map existing advert status to our channels - check both nested and flattened properties
+      const adverts = vehicle.adverts?.retailAdverts;
+      
+      // AutoTrader channel
+      const autotraderStatus = adverts?.autotraderAdvert?.status === 'PUBLISHED' ||
+        vehicle.advertStatus === 'PUBLISHED';
+      initialStatus[vehicleId]['autotrader'] = autotraderStatus;
+      
+      // Advertiser channel  
+      const advertiserStatus = adverts?.advertiserAdvert?.status === 'PUBLISHED' ||
+        vehicle.advertiserAdvertStatus === 'PUBLISHED';
+      initialStatus[vehicleId]['advertiser'] = advertiserStatus;
+        
+      // Locator channel
+      const locatorStatus = adverts?.locatorAdvert?.status === 'PUBLISHED';
+      initialStatus[vehicleId]['locator'] = locatorStatus;
+        
+      // Export channel (Partner Sites)
+      const exportStatus = adverts?.exportAdvert?.status === 'PUBLISHED';
+      initialStatus[vehicleId]['export'] = exportStatus;
+        
+      // Profile channel
+      const profileStatus = adverts?.profileAdvert?.status === 'PUBLISHED';
+      initialStatus[vehicleId]['profile'] = profileStatus;
+      
+      // Log channel status for first few vehicles
+      if (index < 3) {
+        console.log(`🎯 Vehicle ${vehicleId} channel status:`, {
+          autotrader: autotraderStatus,
+          advertiser: advertiserStatus,
+          locator: locatorStatus,
+          export: exportStatus,
+          profile: profileStatus,
+          advertStatus: vehicle.advertStatus,
+          advertiserAdvertStatus: vehicle.advertiserAdvertStatus
+        });
+      }
+    });
+    
+    console.log('✅ Channel status initialized for', Object.keys(initialStatus).length, 'vehicles');
+    return initialStatus;
+  }, [stockData]);
 
   // Enhanced logging for production debugging
   useEffect(() => {
@@ -203,18 +357,7 @@ function ListingsManagementContent() {
     if (error) {
       console.error('❌ LISTINGS: Error details:', error);
     }
-  }, [stockData, loading, error, isSignedIn, channelStatus]);
-
-  // Helper function to get vehicle properties (moved before useMemo hooks)
-  const getVehicleProperty = (vehicle: StockItem, property: string): string => {
-    // Try nested structure first, then flattened
-    const nestedValue = vehicle.vehicle?.[property as keyof typeof vehicle.vehicle];
-    const flatValue = vehicle[property as keyof StockItem];
-    
-    // Convert to string and return
-    const value = nestedValue || flatValue;
-    return typeof value === 'string' ? value : String(value || '');
-  };
+  }, [stockData, loading, error, isSignedIn, channelStatus, getVehicleProperty, getPrice]);
 
   // Filter and paginate stock data
   const filteredAndPaginatedData = useMemo(() => {
@@ -303,144 +446,35 @@ function ListingsManagementContent() {
     console.log('📄 Paginated stock length:', paginatedStock.length);
 
     return { filteredStock: filtered, paginatedStock, totalPages, totalItems };
-  }, [stockData, searchTerm, filterMake, filterModel, selectedChannelFilters, channelStatus, currentPage, itemsPerPage]);
+  }, [stockData, searchTerm, filterMake, filterModel, selectedChannelFilters, channelStatus, currentPage, itemsPerPage, getVehicleProperty]);
 
-  // Initialize channel status from stock data
-  useEffect(() => {
-    console.log('\n🎯 ===== LISTINGS: INITIALIZING CHANNEL STATUS =====');
-    console.log('📊 Stock data length:', stockData?.length || 0);
+  // Calculate channel tallies - OPTIMIZED with useMemo (no state needed)
+  const channelTallies = useMemo(() => {
+    if (!stockData || stockData.length === 0 || Object.keys(channelStatus).length === 0) {
+      return {};
+    }
     
-    if (stockData && stockData.length > 0) {
-      const initialStatus: ChannelStatus = {};
+    const tallies: {[key: string]: {active: number, total: number}} = {};
+    
+    ADVERTISING_CHANNELS.forEach(channel => {
+      tallies[channel.id] = { active: 0, total: stockData.length };
       
       stockData.forEach((vehicle: StockItem) => {
-        const vehicleId = vehicle.stockId;
-        initialStatus[vehicleId] = {};
-        
-        // Map existing advert status to our channels - check both nested and flattened properties
-        const adverts = vehicle.adverts?.retailAdverts;
-        
-        // AutoTrader channel
-        const autotraderStatus = adverts?.autotraderAdvert?.status === 'PUBLISHED' ||
-          vehicle.advertStatus === 'PUBLISHED';
-        initialStatus[vehicleId]['autotrader'] = autotraderStatus;
-        
-        // Advertiser channel  
-        const advertiserStatus = adverts?.advertiserAdvert?.status === 'PUBLISHED' ||
-          vehicle.advertiserAdvertStatus === 'PUBLISHED';
-        initialStatus[vehicleId]['advertiser'] = advertiserStatus;
-          
-        // Locator channel
-        const locatorStatus = adverts?.locatorAdvert?.status === 'PUBLISHED';
-        initialStatus[vehicleId]['locator'] = locatorStatus;
-          
-        // Export channel (Partner Sites)
-        const exportStatus = adverts?.exportAdvert?.status === 'PUBLISHED';
-        initialStatus[vehicleId]['export'] = exportStatus;
-          
-        // Profile channel
-        const profileStatus = adverts?.profileAdvert?.status === 'PUBLISHED';
-        initialStatus[vehicleId]['profile'] = profileStatus;
-        
-        // Log channel status for first few vehicles
-        if (stockData.indexOf(vehicle) < 3) {
-          console.log(`🎯 Vehicle ${vehicleId} channel status:`, {
-            autotrader: autotraderStatus,
-            advertiser: advertiserStatus,
-            locator: locatorStatus,
-            export: exportStatus,
-            profile: profileStatus,
-            advertStatus: vehicle.advertStatus,
-            advertiserAdvertStatus: vehicle.advertiserAdvertStatus
-          });
+        if (channelStatus[vehicle.stockId]?.[channel.id]) {
+          tallies[channel.id].active++;
         }
       });
-      
-      console.log('✅ Channel status initialized for', Object.keys(initialStatus).length, 'vehicles');
-      setChannelStatus(initialStatus);
-    } else {
-      console.log('⚠️ No stock data available for channel status initialization');
-    }
-  }, [stockData]);
-
-  // Define calculateAutoTraderLimits first
-  const calculateAutoTraderLimits = useCallback(async (vehicles: StockItem[], activeCount: number) => {
-    try {
-      // Fetch AutoTrader limit from API
-      const response = await fetch('/api/autotrader/limits', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const maxLimit = result.data.listingCount || 0;
-        
-        // Count CAPPED vehicles (vehicles that couldn't be published due to limits)
-        const cappedCount = vehicles.filter(vehicle => {
-          const adverts = vehicle.adverts?.retailAdverts;
-          return adverts?.autotraderAdvert?.status === 'CAPPED';
-        }).length;
-        
-        setAutoTraderLimit({
-          current: activeCount,
-          maximum: maxLimit,
-          capped: cappedCount,
-          available: Math.max(0, maxLimit - activeCount)
-        });
-        
-        console.log('AutoTrader limits updated:', {
-          current: activeCount,
-          maximum: maxLimit,
-          capped: cappedCount,
-          available: Math.max(0, maxLimit - activeCount)
-        });
-      } else {
-        console.warn('AutoTrader limits API returned unsuccessful result:', result);
-        throw new Error(result.error || 'Failed to get limits data');
-      }
-    } catch (error) {
-      console.error('Failed to fetch AutoTrader limits:', error);
-      // Fallback to basic calculation without API limits
-      setAutoTraderLimit({
-        current: activeCount,
-        maximum: 0, // Unknown limit
-        capped: 0,
-        available: 0
-      });
-    }
-  }, []);
-
-  // Calculate channel tallies and AutoTrader limits
-  useEffect(() => {
-    if (stockData && stockData.length > 0 && Object.keys(channelStatus).length > 0) {
-      const tallies: {[key: string]: {active: number, total: number}} = {};
-      
-      ADVERTISING_CHANNELS.forEach(channel => {
-        tallies[channel.id] = { active: 0, total: stockData.length };
-        
-        stockData.forEach((vehicle: StockItem) => {
-          if (channelStatus[vehicle.stockId]?.[channel.id]) {
-            tallies[channel.id].active++;
-          }
-        });
-      });
-      
-      setChannelTallies(tallies);
-      
-      // Calculate AutoTrader specific limits
-      if (tallies.autotrader && isSignedIn) {
-        calculateAutoTraderLimits(stockData, tallies.autotrader.active);
-      }
-    }
-  }, [stockData, channelStatus, calculateAutoTraderLimits, isSignedIn]);
+    });
+    
+    return tallies;
+  }, [stockData, channelStatus]);
+  
+  // Use the optimized hook for AutoTrader limits with caching
+  const { autoTraderLimit } = useAutoTraderLimitsWithCapped(
+    channelTallies.autotrader?.active || 0,
+    stockData || [],
+    isSignedIn && (channelTallies.autotrader?.active || 0) > 0
+  );
 
   // Get unique makes and models for filter options
   const availableMakes = useMemo(() => {
@@ -451,7 +485,7 @@ function ListingsManagementContent() {
       if (make) makes.add(make);
     });
     return Array.from(makes).sort();
-  }, [stockData]);
+  }, [stockData, getVehicleProperty]);
 
   const availableModels = useMemo(() => {
     if (!stockData) return [];
@@ -464,7 +498,7 @@ function ListingsManagementContent() {
       if (model) models.add(model);
     });
     return Array.from(models).sort();
-  }, [stockData, filterMake]);
+  }, [stockData, filterMake, getVehicleProperty]);
 
   // Filter vehicles based on search term and filters
   const filteredVehicles = useMemo(() => {
@@ -497,7 +531,7 @@ function ListingsManagementContent() {
       
       return true;
     });
-  }, [stockData, searchTerm, filterMake, filterModel]);
+  }, [stockData, searchTerm, filterMake, filterModel, getVehicleProperty]);
 
 
   // Reset to first page when filters change
@@ -532,7 +566,7 @@ function ListingsManagementContent() {
       price: price.toString(),
       channels
     });
-  }, [channelStatus]);
+  }, [channelStatus, getPrice]);
 
   const handleRowSave = useCallback(async (vehicleId: string) => {
     if (!editingRow || editingRow.vehicleId !== vehicleId) return;
@@ -571,7 +605,7 @@ function ListingsManagementContent() {
       // Add channels if any changed
       const originalChannels: { [channelId: string]: boolean } = {};
       ADVERTISING_CHANNELS.forEach(channel => {
-        originalChannels[channel.id] = channelStatus[vehicleId]?.[channel.id] || false;
+        originalChannels[channel.id] = channelStatus?.[vehicleId]?.[channel.id] || false;
       });
 
       const changedChannels: { [channelId: string]: boolean } = {};
@@ -604,16 +638,8 @@ function ListingsManagementContent() {
           throw new Error(result.error || 'Failed to update listing on AutoTrader');
         }
 
-        // Update local state
-        if (hasChannelChanges) {
-          setChannelStatus(prev => ({
-            ...prev,
-            [vehicleId]: {
-              ...prev[vehicleId],
-              ...editingRow.channels
-            }
-          }));
-        }
+        // Note: Channel status will be recalculated from stock data after refetch
+        // No need to update local state manually
 
         // Show success message in the loading dialog
         const updatedPrice = result.data?.price;
@@ -681,7 +707,7 @@ function ListingsManagementContent() {
       setSavingRow(null);
       setEditingRow(null); // Clear editing state on completion
     }
-  }, [editingRow, stockData, channelStatus, refetch]);
+  }, [editingRow, stockData, channelStatus, refetch, getPrice]);
 
   const handleRowCancel = useCallback(() => {
     setEditingRow(null);
@@ -698,22 +724,6 @@ function ListingsManagementContent() {
       }
     } : null);
   }, [editingRow]);
-
-  const getVehicleImage = (vehicle: StockItem) => {
-    const media = vehicle.media;
-    if (media?.images && media.images.length > 0) {
-      return media.images[0].href;
-    }
-    return null;
-  };
-
-  const getPrice = (vehicle: StockItem) => {
-    return vehicle.adverts?.retailAdverts?.forecourtPrice?.amountGBP || 
-           vehicle.adverts?.retailAdverts?.totalPrice?.amountGBP ||
-           vehicle.forecourtPrice || 
-           vehicle.totalPrice || 
-           0;
-  };
 
   if (!isLoaded) {
     return (
