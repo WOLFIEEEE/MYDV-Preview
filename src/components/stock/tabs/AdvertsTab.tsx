@@ -23,11 +23,11 @@ export default function AdvertsTab({ stockData }: AdvertsTabProps) {
   ];
 
   const advertStatusItems = [
-    { label: 'AutoTrader', value: retailAdverts.autotraderAdvert?.status || null },
-    { label: 'Your Website', value: retailAdverts.advertiserAdvert?.status || null },
-    { label: 'Dealer Search', value: retailAdverts.locatorAdvert?.status || null },
-    { label: 'Partner Sites', value: retailAdverts.exportAdvert?.status || null },
-    { label: 'Dealer Profile', value: retailAdverts.profileAdvert?.status || null },
+    { label: 'AT Search & Find', value: retailAdverts.autotraderAdvert?.status || null },
+    { label: 'AT Dealer Page', value: retailAdverts.profileAdvert?.status || null },
+    { label: 'Dealer Website', value: retailAdverts.advertiserAdvert?.status || null },
+    { label: 'AT Linked Advertisers', value: retailAdverts.exportAdvert?.status || null },
+    { label: 'Manufacturer Website / Used Vehicle Locators', value: retailAdverts.locatorAdvert?.status || null },
   ];
 
   const accordionItems = [

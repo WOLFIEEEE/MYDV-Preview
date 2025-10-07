@@ -36,42 +36,42 @@ import ChannelManagement from "@/components/listings/ChannelManagement";
 const ADVERTISING_CHANNELS = [
   {
     id: 'autotrader',
-    name: 'AutoTrader',
+    name: 'AT Search & Find',
     shortName: 'AT',
     color: 'bg-blue-500',
     description: 'Your main advert shown on AutoTrader\'s website.',
     status: 'Published or Hidden'
   },
   {
+    id: 'profile',
+    name: 'AT Dealer Page',
+    shortName: 'PRF',
+    color: 'bg-orange-500',
+    description: 'Advert shown on your dealership\'s profile page within AutoTrader.',
+    status: 'Published or Hidden'
+  },
+  {
     id: 'advertiser',
-    name: 'Your Website',
+    name: 'Dealer Website',
     shortName: 'WEB',
     color: 'bg-green-500',
     description: 'Advert shown on your own dealer website (if set up with AutoTrader).',
     status: 'Published or Hidden'
   },
   {
-    id: 'locator',
-    name: 'Dealer Search',
-    shortName: 'LOC',
-    color: 'bg-purple-500',
-    description: 'Advert shown in AutoTrader\'s dealer search tool where buyers find dealers near them.',
-    status: 'Published or Hidden'
-  },
-  {
     id: 'export',
-    name: 'Partner Sites',
+    name: 'AT Linked Advertisers',
     shortName: 'EXP',
     color: 'bg-yellow-500',
     description: 'Advert sent to third-party sites or partners linked with AutoTrader.',
     status: 'Published or Hidden'
   },
   {
-    id: 'profile',
-    name: 'Dealer Profile',
-    shortName: 'PRF',
-    color: 'bg-orange-500',
-    description: 'Advert shown on your dealership\'s profile page within AutoTrader.',
+    id: 'locator',
+    name: 'Manufacturer Website / Used Vehicle Locators',
+    shortName: 'LOC',
+    color: 'bg-purple-500',
+    description: 'Advert shown in AutoTrader\'s dealer search tool where buyers find dealers near them.',
     status: 'Published or Hidden'
   }
 ];
