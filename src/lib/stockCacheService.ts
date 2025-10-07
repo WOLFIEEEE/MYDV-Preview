@@ -352,30 +352,43 @@ export class StockCacheService {
    * OPTIMIZED: Will always try to return cached data for user before showing "no data" error
    */
   static async getStockData(options: StockQueryOptions): Promise<CachedStockResponse> {
-    console.log('🗄️ StockCacheService: Getting stock data with options:', options);
+    console.log('\n🗄️ ===== StockCacheService: GET STOCK DATA =====');
+    console.log('📝 Options:', options);
+    console.log('⏰ Request time:', new Date().toISOString());
     
     const { dealerId: clerkUserId, advertiserId, page = 1, pageSize = 10 } = options;
     
     // Add request tracking to detect race conditions
     const requestId = `${clerkUserId}-${advertiserId}-${Date.now()}`;
     console.log('🔍 Request ID:', requestId);
+    console.log('👤 Clerk User ID:', clerkUserId);
+    console.log('🏢 Advertiser ID:', advertiserId);
     
     // Resolve Clerk user ID to dealer UUID
+    console.log('\n🔍 ===== RESOLVING DEALER UUID =====');
     const dealerId = await this.resolveDealerUuid(clerkUserId);
+    
     if (!dealerId) {
-      console.log(`⚠️  Dealer record not found for Clerk user ID: ${clerkUserId}`);
-      console.log('This might indicate the user needs to complete their dealer registration.');
+      console.error('\n❌ ===== ROOT CAUSE #1: NO DEALER RECORD =====');
+      console.error('❌ No dealer UUID found for Clerk user ID:', clerkUserId);
+      console.error('🔍 This means:');
+      console.error('   - User is NOT in the dealers table');
+      console.error('   - User has NOT completed dealer registration');
+      console.error('   - OR user is NOT a team member with store owner access');
+      console.error('⚠️ Action required: User needs to complete registration or be added as team member');
+      console.error('⏰ Time:', new Date().toISOString());
       
       // Double-check with a small delay to handle potential race conditions
-      console.log('🔄 Double-checking dealer resolution after 1 second...');
+      console.log('\n🔄 Double-checking dealer resolution after 1 second (race condition check)...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const retryDealerId = await this.resolveDealerUuid(clerkUserId);
       if (!retryDealerId) {
-        console.log(`❌ Dealer record still not found after retry for: ${clerkUserId}`);
+        console.error('❌ Dealer record still not found after retry');
+        console.error('🔍 This confirms: NO dealer record exists for this user');
         
         // LAST RESORT: Try to find ANY cached data for this clerk user ID directly
-        console.log('🆘 Emergency fallback: Searching for any cached data by Clerk user ID...');
+        console.log('\n🆘 Emergency fallback: Searching for any cached data by Clerk user ID...');
         try {
           const emergencyData = await this.getAnyCachedDataForClerkUser(clerkUserId, { ...options, page, pageSize });
           if (emergencyData && emergencyData.results.length > 0) {
@@ -385,6 +398,9 @@ export class StockCacheService {
         } catch (emergencyError) {
           console.error('❌ Emergency fallback failed:', emergencyError);
         }
+        
+        console.error('\n🚨 ===== RETURNING EMPTY RESULTS =====');
+        console.error('📭 No data available - user has no dealer record and no cached data');
         
         // Return empty results only if absolutely no data exists
         return {
@@ -407,24 +423,74 @@ export class StockCacheService {
       return await this.getStockData({ ...options, dealerId: retryDealerId });
     }
     
-    console.log(`🔍 Resolved dealer UUID: ${dealerId} for Clerk user: ${clerkUserId}`);
+    console.log('✅ Resolved dealer UUID:', dealerId);
+    
+    // Check advertiser ID
+    console.log('\n🏢 ===== CHECKING ADVERTISER ID =====');
+    if (!advertiserId || advertiserId === 'UNKNOWN') {
+      console.error('\n⚠️ ===== ROOT CAUSE #2: NO ADVERTISER ID =====');
+      console.error('⚠️ Advertiser ID is missing or set to UNKNOWN:', advertiserId);
+      console.error('🔍 This means:');
+      console.error('   - User has not configured their AutoTrader advertiser ID');
+      console.error('   - Store configuration is incomplete');
+      console.error('⚠️ Action required: User needs to add advertiser ID in settings');
+      console.error('⏰ Time:', new Date().toISOString());
+      
+      // Try to return any cached data if available
+      console.log('\n🔍 Attempting to return any cached data despite missing advertiser ID...');
+      try {
+        const fallbackData = await this.getAnyCachedDataForDealer(dealerId, { ...options, page, pageSize });
+        if (fallbackData && fallbackData.results.length > 0) {
+          console.log('✅ Found cached data - returning it despite missing advertiser ID');
+          return fallbackData;
+        }
+      } catch (error) {
+        console.error('❌ No cached data available');
+      }
+      
+      console.error('\n🚨 ===== RETURNING EMPTY RESULTS =====');
+      console.error('📭 No data available - missing advertiser ID and no cached data');
+    }
+    
+    console.log('✅ Advertiser ID is set:', advertiserId);
     
     // Check if we have any cached data for this dealer/advertiser
+    console.log('\n📊 ===== CHECKING CACHE STATUS =====');
     const cacheStatus = await this.getCacheStatus(dealerId, advertiserId);
-    console.log('📊 Cache status:', cacheStatus);
+    console.log('📊 Cache status:', {
+      hasAnyCache: cacheStatus.hasAnyCache,
+      isStale: cacheStatus.isStale,
+      needsForceRefresh: cacheStatus.needsForceRefresh,
+      totalCachedRecords: cacheStatus.totalCachedRecords,
+      lastFetched: cacheStatus.lastFetched,
+    });
     
     // If no cache exists or cache is too old, try to fetch from AutoTrader
     // BUT if fetch fails, we'll fall back to showing any available cached data
     if (!cacheStatus.hasAnyCache || cacheStatus.needsForceRefresh) {
-      console.log('🔄 No cache or force refresh needed, fetching from AutoTrader...');
+      console.log('\n🔄 ===== FETCHING FROM AUTOTRADER =====');
+      console.log('🔄 Reason:', !cacheStatus.hasAnyCache ? 'No cache exists' : 'Cache needs force refresh');
       
       try {
         return await this.refreshAndGetStockData(options);
       } catch (refreshError) {
-        console.error('❌ Failed to refresh from AutoTrader:', refreshError);
+        console.error('\n❌ ===== AUTOTRADER FETCH FAILED =====');
+        console.error('❌ Error:', refreshError instanceof Error ? refreshError.message : 'Unknown error');
+        
+        // Check if this is a configuration error
+        const errorMsg = refreshError instanceof Error ? refreshError.message : '';
+        if (errorMsg.includes('Invalid advertiser') || errorMsg.includes('403') || errorMsg.includes('401')) {
+          console.error('\n⚠️ ===== ROOT CAUSE #3: INVALID ADVERTISER ID =====');
+          console.error('⚠️ Advertiser ID is set but invalid:', advertiserId);
+          console.error('🔍 This means:');
+          console.error('   - Advertiser ID does not exist in AutoTrader');
+          console.error('   - OR user does not have permission to access this advertiser');
+          console.error('   - OR AutoTrader API credentials are invalid');
+          console.error('⚠️ Action required: Verify advertiser ID and API credentials in settings');
+        }
         
         // FALLBACK: Check if we have ANY cached data for this dealer (regardless of advertiser ID)
-        console.log('🆘 Refresh failed - attempting to return any available cached data for user...');
+        console.log('\n🆘 Refresh failed - attempting to return any available cached data for user...');
         try {
           const fallbackData = await this.getAnyCachedDataForDealer(dealerId, { ...options, page, pageSize });
           if (fallbackData && fallbackData.results.length > 0) {
@@ -441,6 +507,9 @@ export class StockCacheService {
         } catch (fallbackError) {
           console.error('❌ Fallback to cached data also failed:', fallbackError);
         }
+        
+        console.error('\n🚨 ===== RETURNING EMPTY RESULTS =====');
+        console.error('📭 No data available - AutoTrader fetch failed and no cached data');
         
         // Re-throw original error only if we have absolutely no cached data
         throw refreshError;
@@ -1407,6 +1476,19 @@ export class StockCacheService {
     }
     
     console.log(`✅ Fetched ${allResults.length} stock items from AutoTrader across ${currentPage - 1} pages`);
+    
+    // Check if AutoTrader returned 0 vehicles
+    if (allResults.length === 0) {
+      console.warn('\n⚠️ ===== ROOT CAUSE #4: NO VEHICLES IN AUTOTRADER FEED =====');
+      console.warn('📭 AutoTrader API returned 0 vehicles');
+      console.warn('🔍 This means:');
+      console.warn('   - Advertiser ID is valid and accessible');
+      console.warn('   - BUT this advertiser has no vehicles in their stock feed');
+      console.warn('   - User may need to add vehicles to their AutoTrader account');
+      console.warn('⚠️ This is NOT an error - user simply has no stock');
+      console.warn('⏰ Time:', new Date().toISOString());
+    }
+    
     return allResults;
   }
   

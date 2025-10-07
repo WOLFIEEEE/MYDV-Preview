@@ -343,12 +343,10 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
       ? stockQueryKeys.list(options, userCacheId)
       : ['stock', 'disabled'] as const, // Safe fallback key when disabled
     queryFn: async () => {
-      // Check retry interval to prevent rapid retries
-      const now = Date.now();
-      if (now - lastRetryTime < MIN_RETRY_INTERVAL) {
-        console.log('🕒 Skipping fetch due to retry interval');
-        throw new Error('Rate limited - too many recent retries');
-      }
+      console.log('\n🚀 ===== useStockDataQuery: FETCH STARTING =====');
+      console.log('⏰ Fetch initiated at:', new Date().toISOString());
+      console.log('👤 User ID:', user?.id);
+      console.log('📝 Options:', options);
       
       try {
         // Record fetch start
@@ -356,7 +354,14 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
           stockDataMonitor.recordEvent(userCacheId, 'fetch_start', { options });
         }
         
+        console.log('📡 Calling fetchStockList...');
         const result = await fetchStockList(options, user?.id);
+        
+        console.log('\n✅ ===== useStockDataQuery: FETCH SUCCESS =====');
+        console.log('📊 Stock items received:', result.stock?.length || 0);
+        console.log('📊 Total results:', result.pagination?.totalResults || 0);
+        console.log('🗄️ From cache:', result.cache?.fromCache);
+        
         setLastRetryTime(0); // Reset on success
         
         // Record success
@@ -367,8 +372,29 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
           });
         }
         
+        // 🔍 DEBUG: Check if we got empty results - this is not an error!
+        if (result.stock?.length === 0) {
+          console.warn('\n⚠️ ===== EMPTY RESULTS RECEIVED =====');
+          console.warn('📭 No stock items in response');
+          console.warn('🔍 Possible reasons:');
+          console.warn('   1. No dealer record in database');
+          console.warn('   2. No advertiser ID configured');
+          console.warn('   3. Advertiser ID is invalid');
+          console.warn('   4. No vehicles in AutoTrader stock feed');
+          console.warn('⏰ Time:', new Date().toISOString());
+        }
+        
         return result;
       } catch (error) {
+        console.error('\n❌ ===== useStockDataQuery: FETCH FAILED =====');
+        console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
+        console.error('⏰ Failed at:', new Date().toISOString());
+        
+        const now = Date.now();
+        const timeSinceLastRetry = now - lastRetryTime;
+        console.log('🕒 Time since last retry:', timeSinceLastRetry, 'ms');
+        console.log('🕒 Min retry interval:', MIN_RETRY_INTERVAL, 'ms');
+        
         setLastRetryTime(now);
         
         // Record error

@@ -18,12 +18,30 @@ export const revalidate = 0;
 
 // GET method to retrieve stock items with intelligent caching
 export async function GET(request: NextRequest) {
-  console.log('📦 API Route: Stock list request received (with caching)');
+  const requestTimestamp = new Date().toISOString();
+  console.log('\n🌐 ===== API ROUTE: STOCK LIST REQUEST =====');
+  console.log('📦 Request received at:', requestTimestamp);
+  console.log('🔗 Request URL:', request.url);
+  console.log('📋 Request method:', request.method);
+  console.log('🔑 Request headers:', {
+    'content-type': request.headers.get('content-type'),
+    'user-agent': request.headers.get('user-agent')?.substring(0, 50) + '...',
+    'referer': request.headers.get('referer'),
+  });
   
   try {
+    console.log('\n🔐 ===== API ROUTE: CHECKING CLERK AUTH =====');
+    console.log('⏰ Before currentUser() call:', new Date().toISOString());
+    
     // Get current user from Clerk - SECURITY: This check remains unchanged
     const user = await currentUser();
+    
+    console.log('⏰ After currentUser() call:', new Date().toISOString());
+    console.log('👤 User authenticated:', !!user);
+    console.log('👤 User ID:', user?.id);
+    
     if (!user) {
+      console.error('❌ API ROUTE: No user authenticated - returning 401');
       const authError = {
         type: ErrorType.AUTHENTICATION,
         message: 'User not authenticated',
