@@ -146,36 +146,16 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
   const userCacheId = user?.id && isLoaded ? `user_${user.id}` : null;
   const shouldExecuteQuery = isLoaded && !!userCacheId && !options.disabled;
 
-  // 🔍 DEBUG: Log Clerk auth state
-  console.log('\n🔐 ===== CLERK AUTH STATE (useOptimizedStockData) =====');
-  console.log('👤 isLoaded:', isLoaded);
-  console.log('👤 user exists:', !!user);
-  console.log('👤 user.id:', user?.id);
-  console.log('🆔 userCacheId:', userCacheId);
-  console.log('✅ shouldExecuteQuery:', shouldExecuteQuery);
-  console.log('🚫 options.disabled:', options.disabled);
-  console.log('⏰ Timestamp:', new Date().toISOString());
-
   // Get existing cached data immediately
   const existingData = queryClient.getQueryData(
     shouldExecuteQuery ? stockQueryKeys.list(options, userCacheId) : ['stock', 'disabled']
   ) as StockAPIResponse['data'] | undefined;
 
-  // 🔍 DEBUG: Log cached data state
-  console.log('\n📦 ===== CACHED DATA CHECK =====');
-  console.log('🗄️ existingData found:', !!existingData);
-  console.log('📊 existingData.stock length:', existingData?.stock?.length || 0);
-  console.log('⏰ lastRefresh:', existingData?.cache?.lastRefresh);
-
   const query = useQuery({
     queryKey: shouldExecuteQuery 
       ? stockQueryKeys.list(options, userCacheId)
       : ['stock', 'disabled'] as const,
-    queryFn: () => {
-      console.log('\n🚀 ===== QUERY FUNCTION EXECUTING =====');
-      console.log('⏰ Query started at:', new Date().toISOString());
-      return fetchStockListOptimized(options);
-    },
+    queryFn: () => fetchStockListOptimized(options),
     enabled: shouldExecuteQuery,
     staleTime: 0, // Always consider data potentially stale to enable background refresh
     gcTime: 48 * 60 * 60 * 1000, // 48 hours cache retention
@@ -219,18 +199,7 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
   // Update loading state based on query status and data availability
   // OPTIMIZED: Don't show error state if we have cached data
   useEffect(() => {
-    console.log('\n🔄 ===== LOADING STATE UPDATE (useEffect) =====');
-    console.log('🎯 shouldExecuteQuery:', shouldExecuteQuery);
-    console.log('📊 query.isLoading:', query.isLoading);
-    console.log('📊 query.isFetching:', query.isFetching);
-    console.log('📊 query.error:', query.error?.message || null);
-    console.log('📊 query.data exists:', !!query.data);
-    console.log('📊 existingData exists:', !!existingData);
-    console.log('📊 query.status:', query.status);
-    console.log('📊 query.fetchStatus:', query.fetchStatus);
-
     if (!shouldExecuteQuery) {
-      console.log('⚠️ Query disabled - setting initial state');
       setLoadingState('initial');
       return;
     }
@@ -238,7 +207,6 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
     if (query.error) {
       // IMPORTANT: Only show error if we have absolutely no data (cached or fresh)
       if (!query.data && !existingData) {
-        console.log('❌ Error with no data - setting error state');
         setLoadingState('error');
       } else {
         // We have cached data, so show it instead of error
@@ -247,17 +215,13 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
       }
     } else if (query.data || existingData) {
       if (query.isFetching) {
-        console.log('🔄 Data exists and fetching - setting refreshing state');
         setLoadingState('refreshing');
       } else {
-        console.log('✅ Data exists - setting complete state');
         setLoadingState('complete');
       }
     } else if (query.isLoading) {
-      console.log('⏳ Loading - setting initial state');
       setLoadingState('initial');
     } else {
-      console.log('📦 Fallback - setting cached state');
       setLoadingState('cached');
     }
   }, [query.isLoading, query.isFetching, query.error, query.data, existingData, shouldExecuteQuery]);
@@ -297,7 +261,7 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
   const displayData = query.data || existingData;
   const hasData = !!displayData?.stock;
 
-  const returnValue = {
+  return {
     data: displayData?.stock || [],
     loading: loadingState === 'initial' && !hasData,
     // OPTIMIZED: Only show error if we truly have no data to display
@@ -323,17 +287,4 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
     invalidateStockCache,
     updateStockInCache,
   };
-
-  // 🔍 DEBUG: Log final return value
-  console.log('\n📤 ===== HOOK RETURN VALUE =====');
-  console.log('📊 data.length:', returnValue.data.length);
-  console.log('⏳ loading:', returnValue.loading);
-  console.log('❌ error:', returnValue.error);
-  console.log('🎯 loadingState:', returnValue.loadingState);
-  console.log('📄 pagination.totalResults:', returnValue.pagination.totalResults);
-  console.log('🗄️ cacheStatus.fromCache:', returnValue.cacheStatus.fromCache);
-  console.log('🔄 isFetching:', returnValue.isFetching);
-  console.log('⏰ Timestamp:', new Date().toISOString());
-
-  return returnValue;
 }

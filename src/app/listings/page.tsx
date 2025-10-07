@@ -136,24 +136,30 @@ function ListingsManagementContent() {
   const queryOptions = useMemo(() => {
     const shouldFetch = isLoaded && isSignedIn;
     
-    console.log('🔍 LISTINGS: Query options recalculating', { 
-      isLoaded, 
-      isSignedIn, 
-      shouldFetch,
-      timestamp: new Date().toISOString()
-    });
+    console.log('\n🔍 ===== LISTINGS: QUERY OPTIONS =====');
+    console.log('👤 isLoaded:', isLoaded);
+    console.log('👤 isSignedIn:', isSignedIn);
+    console.log('✅ shouldFetch:', shouldFetch);
+    console.log('⏰ Time:', new Date().toISOString());
     
     if (!shouldFetch) {
       console.log('🚫 LISTINGS: Query disabled - waiting for auth');
       return { disabled: true };
     }
     
+    // IMPORTANT: Remove lifecycleState filter to get ALL stock first
+    // Frontend will handle filtering by channel status
     const options = { 
       pageSize: 100, // Large page size to get all data
-      lifecycleState: 'FORECOURT', // Only show vehicles on forecourt (exclude sold, etc.)
+      // lifecycleState: 'FORECOURT', // ← REMOVED: This was filtering out all data!
       disabled: false // Explicitly enable when conditions are met
     };
-    console.log('✅ LISTINGS: Query ENABLED - ready to fetch stock data');
+    
+    console.log('✅ LISTINGS: Query ENABLED');
+    console.log('📝 Query options:', options);
+    console.log('⚠️ NOTE: Fetching ALL lifecycle states (not just FORECOURT)');
+    console.log('⚠️ Listings should show advertised vehicles regardless of lifecycle state');
+    
     return options;
   }, [isSignedIn, isLoaded]);
   
@@ -163,6 +169,61 @@ function ListingsManagementContent() {
     error,
     refetch
   } = useStockDataQuery(queryOptions);
+
+  // 🔍 DEBUG: Log stock data whenever it changes
+  useEffect(() => {
+    console.log('\n📦 ===== LISTINGS: STOCK DATA RECEIVED =====');
+    console.log('📊 Total items:', stockData?.length || 0);
+    console.log('⏳ Loading:', loading);
+    console.log('❌ Error:', error);
+    console.log('⏰ Time:', new Date().toISOString());
+    
+    if (stockData && stockData.length > 0) {
+      console.log('\n✅ ===== STOCK DATA ANALYSIS =====');
+      
+      // Analyze lifecycle states
+      const lifecycleStates = new Map<string, number>();
+      const withAdverts = stockData.filter(v => v.adverts).length;
+      const withMedia = stockData.filter(v => v.media).length;
+      const withMake = stockData.filter(v => v.vehicle?.make || v.make).length;
+      
+      stockData.forEach(v => {
+        const state = v.metadata?.lifecycleState || v.lifecycleState || 'UNKNOWN';
+        lifecycleStates.set(state, (lifecycleStates.get(state) || 0) + 1);
+      });
+      
+      console.log('📊 Lifecycle States:');
+      lifecycleStates.forEach((count, state) => {
+        console.log(`   ${state}: ${count} vehicles`);
+      });
+      
+      console.log('📊 With Adverts:', withAdverts);
+      console.log('📊 With Media:', withMedia);
+      console.log('📊 With Make:', withMake);
+      
+      // Log first vehicle sample
+      const firstVehicle = stockData[0];
+      console.log('\n🚗 ===== FIRST VEHICLE SAMPLE =====');
+      console.log('🆔 Stock ID:', firstVehicle.stockId);
+      console.log('🚗 Make:', firstVehicle.vehicle?.make || firstVehicle.make);
+      console.log('🚗 Model:', firstVehicle.vehicle?.model || firstVehicle.model);
+      console.log('📋 Registration:', firstVehicle.vehicle?.registration || firstVehicle.registration);
+      console.log('📊 Lifecycle State:', firstVehicle.metadata?.lifecycleState || firstVehicle.lifecycleState);
+      console.log('💰 Price:', firstVehicle.adverts?.retailAdverts?.forecourtPrice?.amountGBP || 'N/A');
+      console.log('📢 Has Adverts:', !!firstVehicle.adverts);
+      console.log('🏗️ Top-level keys:', Object.keys(firstVehicle));
+    } else if (stockData?.length === 0) {
+      console.warn('\n⚠️ ===== NO STOCK DATA - DEBUGGING =====');
+      console.warn('📭 Stock data array is empty');
+      console.warn('🔍 Possible causes:');
+      console.warn('   1. No dealer record for this user');
+      console.warn('   2. No data in stock_cache table');
+      console.warn('   3. Wrong advertiser ID');
+      console.warn('   4. Lifecycle state filter too restrictive');
+      console.warn('   5. Team member not linked to store owner');
+      console.warn('⏰ Time:', new Date().toISOString());
+    }
+  }, [stockData, loading, error]);
 
   // Helper functions - MUST be defined before useMemo/useEffect
   const getVehicleProperty = useCallback((vehicle: StockItem, property: string): string => {

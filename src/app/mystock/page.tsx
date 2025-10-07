@@ -5,7 +5,6 @@ import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { useStockDataQuery, usePrefetchStockDetail } from "@/hooks/useStockDataQuery";
 import { useOptimizedStockData } from "@/hooks/useOptimizedStockData";
-import { useAutoTraderLimitsWithCapped } from "@/hooks/useAutoTraderLimits";
 import type { StockItem, ViewMode, VehicleInfo, MetadataInfo } from "@/types/stock";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,6 +107,14 @@ function MyStockContent() {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockItem | null>(null);
   const [isInventorySettingsOpen, setIsInventorySettingsOpen] = useState(false);
+  
+  // AutoTrader limits state
+  const [autoTraderLimit, setAutoTraderLimit] = useState<{
+    current: number;
+    maximum: number;
+    capped: number;
+    available: number;
+  } | null>(null);
   const [selectedInventoryStock, setSelectedInventoryStock] = useState<StockItem | null>(null);
 
   // Loading states for stock actions (kept for backward compatibility)
@@ -283,39 +290,6 @@ function MyStockContent() {
     isStale,
     invalidateStockCache
   } = useOptimizedStockData(queryOptions);
-
-  // 🔍 DEBUG: Log data received from hook in component
-  console.log('\n🖥️ ===== MYSTOCK PAGE - DATA STATE =====');
-  console.log('👤 Clerk isLoaded:', isLoaded);
-  console.log('👤 Clerk isSignedIn:', isSignedIn);
-  console.log('👤 Clerk user.id:', user?.id);
-  console.log('📊 allStockData.length:', allStockData.length);
-  console.log('⏳ loading:', loading);
-  console.log('❌ error:', error);
-  console.log('🎯 loadingState:', loadingState);
-  console.log('📄 apiPagination.totalResults:', apiPagination.totalResults);
-  console.log('🗄️ cacheStatus.fromCache:', cacheStatus.fromCache);
-  console.log('🔄 isFetching:', isFetching);
-  console.log('📝 queryOptions:', queryOptions);
-  console.log('⏰ Timestamp:', new Date().toISOString());
-
-  // 🔍 DEBUG: Track Clerk auth loading and potential race conditions
-  useEffect(() => {
-    console.log('\n🔐 ===== CLERK AUTH STATE CHANGE =====');
-    console.log('👤 isLoaded changed to:', isLoaded);
-    console.log('👤 isSignedIn:', isSignedIn);
-    console.log('👤 user exists:', !!user);
-    console.log('👤 user.id:', user?.id);
-    console.log('⏰ Timestamp:', new Date().toISOString());
-    
-    if (isLoaded && !isSignedIn) {
-      console.warn('⚠️ User is loaded but NOT signed in - redirecting to sign-in');
-    } else if (isLoaded && isSignedIn && user) {
-      console.log('✅ User is fully authenticated - query should be enabled now');
-    } else if (!isLoaded) {
-      console.log('⏳ Clerk auth still loading...');
-    }
-  }, [isLoaded, isSignedIn, user]);
 
   // Enhanced error handling
   useEffect(() => {
@@ -640,12 +614,67 @@ function MyStockContent() {
     return stats;
   }, [allStockData, hideSoldVehicles]);
 
-  // Use the optimized hook for AutoTrader limits with caching
-  const { autoTraderLimit } = useAutoTraderLimitsWithCapped(
-    calculateChannelStats?.autotrader?.published || 0,
-    allStockData || [],
-    isSignedIn && (calculateChannelStats?.autotrader?.published || 0) > 0
-  );
+  // Calculate AutoTrader limits
+  const calculateAutoTraderLimits = useCallback(async (vehicles: StockItem[], activeCount: number) => {
+    try {
+      // Fetch AutoTrader limit from API
+      const response = await fetch('/api/autotrader/limits', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const maxLimit = result.data.listingCount || 0;
+        
+        // Count CAPPED vehicles (vehicles that couldn't be published due to limits)
+        const cappedCount = vehicles.filter(vehicle => {
+          const adverts = vehicle.adverts?.retailAdverts;
+          return adverts?.autotraderAdvert?.status === 'CAPPED';
+        }).length;
+        
+        setAutoTraderLimit({
+          current: activeCount,
+          maximum: maxLimit,
+          capped: cappedCount,
+          available: Math.max(0, maxLimit - activeCount)
+        });
+        
+        console.log('AutoTrader limits updated:', {
+          current: activeCount,
+          maximum: maxLimit,
+          capped: cappedCount,
+          available: Math.max(0, maxLimit - activeCount)
+        });
+      } else {
+        console.warn('AutoTrader limits API returned unsuccessful result:', result);
+        throw new Error(result.error || 'Failed to get limits data');
+      }
+    } catch (error) {
+      console.error('Failed to fetch AutoTrader limits:', error);
+      // Fallback to basic calculation without API limits
+      setAutoTraderLimit({
+        current: activeCount,
+        maximum: 0, // Unknown limit
+        capped: 0,
+        available: 0
+      });
+    }
+  }, []);
+
+  // Calculate AutoTrader limits when data changes
+  useEffect(() => {
+    if (allStockData && allStockData.length > 0 && calculateChannelStats && isSignedIn) {
+      calculateAutoTraderLimits(allStockData, calculateChannelStats.autotrader.published);
+    }
+  }, [allStockData, calculateChannelStats, calculateAutoTraderLimits, isSignedIn]);
 
   // Stock action handlers
   const handleDeleteStock = async (item: StockItem) => {
