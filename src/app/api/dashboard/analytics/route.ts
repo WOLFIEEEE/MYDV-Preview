@@ -65,7 +65,7 @@ export async function GET() {
       email: user.emailAddresses[0]?.emailAddress
     });
 
-    let dealerId: string;
+    let dealerId: string | null = null;
 
     if (userType === 'team_member' && storeOwnerId) {
       // Team member: Use their store owner's dealer ID
@@ -81,21 +81,104 @@ export async function GET() {
         .limit(1);
 
       if (dealerResult.length === 0) {
-        const notFoundError = {
-          type: ErrorType.NOT_FOUND,
-          message: 'Dealer record not found',
-          details: `No dealer record found for user: ${user.id}`,
-          httpStatus: 404,
-          timestamp: new Date().toISOString(),
-          endpoint: 'dashboard/analytics'
+        console.log('⚠️ No dealer record found for user:', user.id);
+        console.log('📊 Will return empty analytics instead of error');
+        
+        // OPTIMIZED: Return empty analytics instead of throwing error
+        // This allows dashboard to show "no data" state instead of error state
+        const emptyAnalytics = {
+          inventory: {
+            overview: {
+              totalVehicles: 0,
+              totalValue: 0,
+              averagePrice: 0,
+              averageDaysInStock: 0,
+              averageYear: 0,
+              priceRange: { min: 0, max: 0 }
+            },
+            byStatus: [],
+            byMake: [],
+            byFuelType: [],
+            byBodyType: []
+          },
+          dataCompleteness: {
+            overview: {
+              totalStock: 0,
+              missingChecklist: 0,
+              missingSaleDetails: 0,
+              missingCosts: 0,
+              missingMargins: 0,
+              missingInventoryDetails: 0,
+              missingInvoices: 0
+            },
+            byDataType: [],
+            stockDetails: []
+          },
+          summary: {
+            hasInventory: false,
+            dataCompletionRate: 0,
+            mostMissingDataType: 'No data available'
+          }
         };
-        return NextResponse.json(
-          createErrorResponse(notFoundError),
-          { status: 404 }
+
+        const response = NextResponse.json(
+          createSuccessResponse(emptyAnalytics, 'dashboard/analytics')
         );
+
+        // CRITICAL SECURITY FIX: Use private caching
+        response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate, max-age=0');
+        response.headers.set('CDN-Cache-Control', 'no-store');
+        response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        
+        return response;
       }
 
       dealerId = dealerResult[0].id;
+    }
+
+    // Safety check - should never happen but just in case
+    if (!dealerId) {
+      console.log('❌ Dealer ID is null - this should not happen');
+      const emptyAnalytics = {
+        inventory: {
+          overview: {
+            totalVehicles: 0,
+            totalValue: 0,
+            averagePrice: 0,
+            averageDaysInStock: 0,
+            averageYear: 0,
+            priceRange: { min: 0, max: 0 }
+          },
+          byStatus: [],
+          byMake: [],
+          byFuelType: [],
+          byBodyType: []
+        },
+        dataCompleteness: {
+          overview: {
+            totalStock: 0,
+            missingChecklist: 0,
+            missingSaleDetails: 0,
+            missingCosts: 0,
+            missingMargins: 0,
+            missingInventoryDetails: 0,
+            missingInvoices: 0
+          },
+          byDataType: [],
+          stockDetails: []
+        },
+        summary: {
+          hasInventory: false,
+          dataCompletionRate: 0,
+          mostMissingDataType: 'No data available'
+        }
+      };
+
+      return NextResponse.json(
+        createSuccessResponse(emptyAnalytics, 'dashboard/analytics')
+      );
     }
 
     console.log('📊 Fetching dashboard analytics for dealer:', dealerId);
