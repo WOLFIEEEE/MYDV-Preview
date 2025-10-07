@@ -160,20 +160,24 @@ export default function TopActionNavigation({ activeTab, onTabChange, stockId, s
   };
 
   // Handle deposit toggle
-  const handleDepositToggle = (value: boolean) => {
+  const handleDepositToggle = async (value: boolean) => {
     setIsDepositTaken(value);
     if (value) {
+      // Immediately save the deposit status as true when toggled on
+      await updateDepositStatus(true);
+      // Then open the modal to optionally fill in details
       setIsDepositModalOpen(true);
     } else {
       // If turning off, reset deposit status without modal
-      updateDepositStatus(false);
+      await updateDepositStatus(false);
     }
   };
 
-  // Handle modal close with auto-reset if no data saved
+  // Handle modal close - keep toggle state as is (don't reset)
   const handleModalClose = () => {
     setIsDepositModalOpen(false);
-    // Reset toggle if user closes modal without saving
+    // Don't reset toggle - it should stay as the user set it
+    // Only refresh to ensure we have the latest data
     loadDepositStatus();
   };
 

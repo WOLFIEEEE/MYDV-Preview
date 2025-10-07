@@ -124,16 +124,16 @@ export default function DepositDetailsModal({
       }
 
       // Update the sale details with deposit information and customer details
+      // Note: depositPaid is already set by the toggle, so we don't need to update it here
       const apiData = {
         stockId: currentStockId,
         stockReference: currentStockId,
         registration: stockData?.vehicle?.registration || '',
-        // Always save deposit data regardless of depositPaid status
+        // Always save deposit data - all fields are optional
         requiredAmount: depositData.requiredDeposit || null,
         depositAmount: depositData.depositAmount || null,
         depositDate: depositData.depositDate || null,
-        // Set depositPaid to true only if deposit amount is provided, otherwise preserve existing state
-        depositPaid: depositData.depositAmount ? true : undefined, // undefined means don't update this field
+        // Don't send depositPaid field - it's already set by the toggle in TopActionNavigation
         firstName: depositData.firstName || null,
         lastName: depositData.lastName || null,
         emailAddress: depositData.emailAddress || null,
