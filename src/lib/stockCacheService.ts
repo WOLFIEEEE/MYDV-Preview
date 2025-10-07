@@ -329,7 +329,9 @@ export class StockCacheService {
 
   /**
    * Get stock data with intelligent caching
-   * Priority: Fresh cache > Stale cache > AutoTrader API
+   * Priority: Fresh cache > Stale cache > AutoTrader API > Any cached data for user
+   * 
+   * OPTIMIZED: Will always try to return cached data for user before showing "no data" error
    */
   static async getStockData(options: StockQueryOptions): Promise<CachedStockResponse> {
     console.log('🗄️ StockCacheService: Getting stock data with options:', options);
@@ -354,7 +356,19 @@ export class StockCacheService {
       if (!retryDealerId) {
         console.log(`❌ Dealer record still not found after retry for: ${clerkUserId}`);
         
-        // Return empty results instead of throwing an error
+        // LAST RESORT: Try to find ANY cached data for this clerk user ID directly
+        console.log('🆘 Emergency fallback: Searching for any cached data by Clerk user ID...');
+        try {
+          const emergencyData = await this.getAnyCachedDataForClerkUser(clerkUserId, { ...options, page, pageSize });
+          if (emergencyData && emergencyData.results.length > 0) {
+            console.log('✅ Emergency fallback successful - found cached data for user!');
+            return emergencyData;
+          }
+        } catch (emergencyError) {
+          console.error('❌ Emergency fallback failed:', emergencyError);
+        }
+        
+        // Return empty results only if absolutely no data exists
         return {
           results: [],
           totalResults: 0,
@@ -381,10 +395,38 @@ export class StockCacheService {
     const cacheStatus = await this.getCacheStatus(dealerId, advertiserId);
     console.log('📊 Cache status:', cacheStatus);
     
-    // If no cache exists or cache is too old, fetch from AutoTrader
+    // If no cache exists or cache is too old, try to fetch from AutoTrader
+    // BUT if fetch fails, we'll fall back to showing any available cached data
     if (!cacheStatus.hasAnyCache || cacheStatus.needsForceRefresh) {
       console.log('🔄 No cache or force refresh needed, fetching from AutoTrader...');
-      return await this.refreshAndGetStockData(options);
+      
+      try {
+        return await this.refreshAndGetStockData(options);
+      } catch (refreshError) {
+        console.error('❌ Failed to refresh from AutoTrader:', refreshError);
+        
+        // FALLBACK: Check if we have ANY cached data for this dealer (regardless of advertiser ID)
+        console.log('🆘 Refresh failed - attempting to return any available cached data for user...');
+        try {
+          const fallbackData = await this.getAnyCachedDataForDealer(dealerId, { ...options, page, pageSize });
+          if (fallbackData && fallbackData.results.length > 0) {
+            console.log('✅ Fallback successful - returning cached data despite refresh failure');
+            return {
+              ...fallbackData,
+              cacheStatus: {
+                ...fallbackData.cacheStatus,
+                staleCacheUsed: true,
+                lastRefresh: fallbackData.cacheStatus.lastRefresh || null,
+              }
+            };
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback to cached data also failed:', fallbackError);
+        }
+        
+        // Re-throw original error only if we have absolutely no cached data
+        throw refreshError;
+      }
     }
     
     // If cache is stale but exists, try to refresh in background and return stale data
@@ -399,6 +441,7 @@ export class StockCacheService {
         const refreshPromise = this.refreshStockDataBackground(dealerId, advertiserId)
           .catch(error => {
             console.error('❌ Background refresh failed:', error);
+            // Don't throw - we'll still show cached data
           })
           .finally(() => {
             this.refreshMutex.delete(mutexKey);
@@ -411,7 +454,7 @@ export class StockCacheService {
       }
     }
     
-    // Return cached data
+    // Return cached data (this is now the happy path - cached data always wins)
     console.log('💾 Returning cached data...');
     return await this.getCachedStockData({ ...options, dealerId }, cacheStatus.isStale);
   }
@@ -818,6 +861,177 @@ export class StockCacheService {
     } catch (error) {
       this.logError('Error getting cached stock data', error);
       throw error;
+    }
+  }
+  
+  /**
+   * EMERGENCY FALLBACK: Get any cached data for a dealer UUID (ignores advertiser ID)
+   * This is used when advertiser ID validation fails but we want to show cached data
+   * USER ISOLATION: Only returns data for the specified dealer UUID
+   */
+  private static async getAnyCachedDataForDealer(dealerId: string, options: { page: number; pageSize: number; make?: string; model?: string; lifecycleState?: string }): Promise<CachedStockResponse | null> {
+    console.log('🆘 Emergency: Getting any cached data for dealer:', dealerId);
+    
+    try {
+      const { page = 1, pageSize = 10 } = options;
+      
+      // Build WHERE conditions - ONLY filter by dealer ID for user isolation
+      const conditions = [
+        eq(stockCache.dealerId, dealerId),
+        eq(stockCache.isStale, false) // Only return active (non-stale) stock
+      ];
+      
+      // Apply additional filters if provided
+      if (options.make) {
+        conditions.push(eq(stockCache.make, options.make));
+      }
+      if (options.model) {
+        conditions.push(eq(stockCache.model, options.model));
+      }
+      if (options.lifecycleState) {
+        conditions.push(eq(stockCache.lifecycleState, options.lifecycleState));
+      }
+      
+      // Get total count
+      const totalResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(stockCache)
+        .where(and(...conditions));
+      
+      const totalResults = totalResult[0].count;
+      
+      if (totalResults === 0) {
+        console.log('❌ No cached data found for dealer:', dealerId);
+        return null;
+      }
+      
+      const totalPages = Math.ceil(totalResults / pageSize);
+      const offset = (page - 1) * pageSize;
+      
+      // Get paginated results
+      const results = await db
+        .select()
+        .from(stockCache)
+        .where(and(...conditions))
+        .orderBy(desc(stockCache.lastFetchedFromAutoTrader))
+        .limit(pageSize)
+        .offset(offset);
+      
+      // Transform to expected format (same as getCachedStockData)
+      const transformedResults = results.map(cached => {
+        const vehicleData = cached.vehicleData || {};
+        
+        return {
+          stockId: cached.stockId,
+          vehicle: {
+            ...vehicleData,
+            registration: cached.registration || (vehicleData as any).registration,
+            vin: cached.vin || (vehicleData as any).vin,
+            make: cached.make || (vehicleData as any).make,
+            model: cached.model || (vehicleData as any).model,
+            derivative: cached.derivative || (vehicleData as any).derivative,
+            yearOfManufacture: cached.yearOfManufacture || (vehicleData as any).yearOfManufacture,
+            odometerReadingMiles: cached.odometerReadingMiles || (vehicleData as any).odometerReadingMiles,
+            fuelType: cached.fuelType || (vehicleData as any).fuelType,
+            bodyType: cached.bodyType || (vehicleData as any).bodyType,
+            ownershipCondition: cached.ownershipCondition || (vehicleData as any).ownershipCondition,
+          },
+          make: cached.make,
+          model: cached.model,
+          derivative: cached.derivative,
+          registration: cached.registration,
+          yearOfManufacture: cached.yearOfManufacture?.toString(),
+          fuelType: cached.fuelType,
+          transmissionType: (vehicleData as any).transmissionType,
+          bodyType: cached.bodyType,
+          doors: (vehicleData as any).doors,
+          seats: (vehicleData as any).seats,
+          enginePowerBHP: (vehicleData as any).enginePowerBHP,
+          odometerReadingMiles: cached.odometerReadingMiles,
+          colour: (vehicleData as any).colour,
+          lifecycleState: cached.lifecycleState,
+          dateOnForecourt: (cached.metadataRaw as any)?.dateOnForecourt,
+          lastUpdated: (cached.metadataRaw as any)?.lastUpdated,
+          metadata: {
+            ...(cached.metadataRaw || {}),
+            lifecycleState: cached.lifecycleState,
+            stockId: cached.stockId,
+            dateOnForecourt: (cached.metadataRaw as any)?.dateOnForecourt,
+            lastUpdated: (cached.metadataRaw as any)?.lastUpdated,
+          },
+          totalPrice: cached.totalPriceGBP ? { amountGBP: Number(cached.totalPriceGBP) } : undefined,
+          suppliedPrice: (cached.advertsData as any)?.retailAdverts?.suppliedPrice,
+          forecourtPrice: cached.forecourtPriceGBP ? { amountGBP: Number(cached.forecourtPriceGBP) } : undefined,
+          priceIndicatorRating: (cached.advertsData as any)?.retailAdverts?.priceIndicatorRating,
+          advertiser: cached.advertiserData,
+          adverts: cached.advertsData,
+          features: cached.featuresData,
+          media: cached.mediaData,
+          history: cached.historyData,
+          check: cached.checkData,
+          highlights: cached.highlightsData,
+          valuations: cached.valuationsData,
+          responseMetrics: cached.responseMetricsData,
+        };
+      });
+      
+      const lastRefresh = results.length > 0 ? results[0].lastFetchedFromAutoTrader : null;
+      
+      console.log(`✅ Emergency fallback found ${transformedResults.length} cached items for dealer`);
+      
+      return {
+        results: transformedResults,
+        totalResults,
+        totalPages,
+        page,
+        pageSize,
+        hasNextPage: page < totalPages,
+        cacheStatus: {
+          fromCache: true,
+          lastRefresh,
+          staleCacheUsed: true, // Mark as stale since we're using emergency fallback
+        },
+      };
+      
+    } catch (error) {
+      console.error('❌ Emergency fallback error:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * EMERGENCY FALLBACK: Get cached data by Clerk user ID directly
+   * Used when dealer UUID resolution fails but we still want to try showing data
+   * USER ISOLATION: Joins with dealers table to ensure user can only see their own data
+   */
+  private static async getAnyCachedDataForClerkUser(clerkUserId: string, options: { page: number; pageSize: number }): Promise<CachedStockResponse | null> {
+    console.log('🆘 Ultimate emergency: Getting cached data by Clerk user ID:', clerkUserId);
+    
+    try {
+      const { page = 1, pageSize = 10 } = options;
+      
+      // First, try to find dealer UUID via direct query with JOIN
+      // This ensures USER ISOLATION - only returns data linked to this clerk user
+      const dealerResult = await db
+        .select({ dealerId: dealers.id })
+        .from(dealers)
+        .where(eq(dealers.clerkUserId, clerkUserId))
+        .limit(1);
+      
+      if (dealerResult.length === 0) {
+        console.log('❌ No dealer record found for Clerk user in emergency fallback');
+        return null;
+      }
+      
+      const dealerId = dealerResult[0].dealerId;
+      console.log('✅ Found dealer UUID via emergency lookup:', dealerId);
+      
+      // Now use the standard emergency fallback with the found dealer ID
+      return await this.getAnyCachedDataForDealer(dealerId, options);
+      
+    } catch (error) {
+      console.error('❌ Ultimate emergency fallback error:', error);
+      return null;
     }
   }
   

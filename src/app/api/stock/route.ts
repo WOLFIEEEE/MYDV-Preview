@@ -102,22 +102,39 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     logAdvertiserIdResolution(userStoreConfig, 'stock/route');
 
     if (!advertiserId) {
-      const configError = {
-        type: ErrorType.NOT_FOUND,
-        message: 'Advertisement ID not configured',
-        details: 'No advertisement ID found in store configuration. Please configure your advertiser ID in settings.',
-        httpStatus: 404,
-        timestamp: new Date().toISOString(),
-        endpoint: 'stock'
-      };
-      console.log('❌ No advertisement ID found for user:', user.id);
-      return NextResponse.json(
-        createErrorResponse(configError),
-        { status: 404 }
-      );
+      console.log('⚠️ No advertisement ID found for user:', user.id);
+      console.log('🔍 Will attempt to use cached data if available...');
+      
+      // Try to get cached data even without advertiser ID
+      // Use a placeholder advertiser ID for cache lookup
+      const cachedDataCheck = await StockCacheService.getStockData({
+        dealerId: user.id,
+        advertiserId: 'UNKNOWN', // Placeholder - emergency fallback will ignore this
+        page: 1,
+        pageSize: 10,
+      }).catch(() => null);
+      
+      if (cachedDataCheck && cachedDataCheck.results.length > 0) {
+        console.log('✅ Found cached data despite missing advertiser ID - returning cached data');
+        // Continue with cached data - set advertiserId to UNKNOWN
+      } else {
+        // Only fail if we truly have no data
+        const configError = {
+          type: ErrorType.NOT_FOUND,
+          message: 'Advertisement ID not configured',
+          details: 'No advertisement ID found in store configuration and no cached data available. Please configure your advertiser ID in settings.',
+          httpStatus: 404,
+          timestamp: new Date().toISOString(),
+          endpoint: 'stock'
+        };
+        return NextResponse.json(
+          createErrorResponse(configError),
+          { status: 404 }
+        );
+      }
     }
 
-    console.log('✅ Resolved advertisement ID:', advertiserId);
+    console.log('✅ Resolved advertisement ID:', advertiserId || 'USING_CACHED_DATA');
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -149,7 +166,7 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     // Build options for cache service
     const options: StockQueryOptions = {
       dealerId: user.id,
-      advertiserId: advertiserId,
+      advertiserId: advertiserId || 'UNKNOWN', // Use placeholder if no advertiser ID (will use cached data)
       page,
       pageSize: effectivePageSize,
       make,

@@ -197,6 +197,7 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
   });
 
   // Update loading state based on query status and data availability
+  // OPTIMIZED: Don't show error state if we have cached data
   useEffect(() => {
     if (!shouldExecuteQuery) {
       setLoadingState('initial');
@@ -204,7 +205,14 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
     }
 
     if (query.error) {
-      setLoadingState('error');
+      // IMPORTANT: Only show error if we have absolutely no data (cached or fresh)
+      if (!query.data && !existingData) {
+        setLoadingState('error');
+      } else {
+        // We have cached data, so show it instead of error
+        console.log('⚠️ Query error but cached data available - showing cached data instead');
+        setLoadingState('complete');
+      }
     } else if (query.data || existingData) {
       if (query.isFetching) {
         setLoadingState('refreshing');
@@ -256,7 +264,8 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
   return {
     data: displayData?.stock || [],
     loading: loadingState === 'initial' && !hasData,
-    error: query.error?.message || null,
+    // OPTIMIZED: Only show error if we truly have no data to display
+    error: (query.error?.message && !hasData) ? query.error.message : null,
     loadingState,
     pagination: displayData?.pagination || {
       page: 1,

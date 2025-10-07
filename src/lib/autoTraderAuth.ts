@@ -126,15 +126,25 @@ export async function getCentralizedAutoTraderToken(): Promise<AuthResult> {
       };
     }
 
-    // Calculate expiry time - AutoTrader tokens are valid for 15 minutes
-    // Always use expires_in from API response, default to 900 seconds (15 minutes) if not provided
-    const expiresIn = tokenData.expires_in || 900; // 15 minutes default
-    const expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
+    // Handle expiry time - prefer expires_at if provided by API, otherwise calculate from expires_in
+    let expiresAt: string;
+    
+    if (tokenData.expires_at) {
+      // API provided absolute expiry timestamp - use it directly
+      expiresAt = tokenData.expires_at;
+      console.log('✅ Using expires_at from API:', expiresAt);
+    } else {
+      // Calculate expiry time from expires_in (duration in seconds)
+      // AutoTrader tokens are typically valid for 15 minutes
+      const expiresIn = tokenData.expires_in || 900; // 15 minutes default
+      expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
+      console.log('✅ Calculated expires_at from expires_in:', { expiresIn, expiresAt });
+    }
 
+    const remainingMinutes = Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000 / 60);
     console.log('✅ Centralized token obtained and cached', {
-      expiresIn,
       expiresAt,
-      expiresInMinutes: Math.round(expiresIn / 60)
+      expiresInMinutes: remainingMinutes
     });
 
     // Cache the token
@@ -363,18 +373,28 @@ async function performTokenRefresh(email: string): Promise<AuthResult> {
 
     const tokenData = await authResponse.json();
     
-    // Calculate expiry time - AutoTrader tokens are valid for 15 minutes
-    // Always use expires_in from API response, default to 900 seconds (15 minutes) if not provided
-    const expiresIn = tokenData.expires_in || 900; // 15 minutes default
-    const expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
+    // Handle expiry time - prefer expires_at if provided by API, otherwise calculate from expires_in
+    let expiresAt: string;
+    
+    if (tokenData.expires_at) {
+      // API provided absolute expiry timestamp - use it directly
+      expiresAt = tokenData.expires_at;
+      console.log('✅ Using expires_at from API:', expiresAt);
+    } else {
+      // Calculate expiry time from expires_in (duration in seconds)
+      // AutoTrader tokens are typically valid for 15 minutes
+      const expiresIn = tokenData.expires_in || 900; // 15 minutes default
+      expiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
+      console.log('✅ Calculated expires_at from expires_in:', { expiresIn, expiresAt });
+    }
 
+    const remainingMinutes = Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000 / 60);
     console.log('✅ New token obtained and cached', {
-      expiresIn,
       expiresAt,
-      expiresInMinutes: Math.round(expiresIn / 60)
+      expiresInMinutes: remainingMinutes
     });
 
-    // Cache the new token with calculated expiry
+    // Cache the new token with expiry
     TokenCache.setCachedToken(key, secret, baseUrl, {
       access_token: tokenData.access_token,
       expires_at: expiresAt

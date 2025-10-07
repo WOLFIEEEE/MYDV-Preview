@@ -33,12 +33,31 @@ class TokenCache {
    * Check if a token is still valid (with 5-minute buffer)
    */
   private isTokenValid(cachedToken: CachedToken): boolean {
-    const now = Date.now();
-    const expiryTime = new Date(cachedToken.expires_at).getTime();
-    const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
+    try {
+      const now = Date.now();
+      const expiryTime = new Date(cachedToken.expires_at).getTime();
+      
+      // Validate that expiryTime is a valid number
+      if (isNaN(expiryTime)) {
+        console.error('⚠️ Invalid expires_at format:', cachedToken.expires_at);
+        return false;
+      }
+      
+      const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
 
-    // Token is valid if it expires more than 5 minutes from now
-    return expiryTime > (now + bufferTime);
+      // Token is valid if it expires more than 5 minutes from now
+      const isValid = expiryTime > (now + bufferTime);
+      
+      if (!isValid) {
+        const secondsUntilExpiry = Math.round((expiryTime - now) / 1000);
+        console.log(`⏰ Token expired or expiring soon (${secondsUntilExpiry}s remaining)`);
+      }
+      
+      return isValid;
+    } catch (error) {
+      console.error('❌ Error validating token expiry:', error);
+      return false;
+    }
   }
 
   /**
@@ -68,17 +87,34 @@ class TokenCache {
    * Store a new token in cache
    */
   setCachedToken(key: string, secret: string, baseUrl: string, tokenData: { access_token: string; expires_at: string }): void {
-    const cacheKey = this.getCacheKey(key, secret, baseUrl);
-    const cachedToken: CachedToken = {
-      access_token: tokenData.access_token,
-      expires_at: tokenData.expires_at,
-      cached_at: Date.now()
-    };
+    try {
+      // Validate expires_at format
+      const expiryTime = new Date(tokenData.expires_at).getTime();
+      if (isNaN(expiryTime)) {
+        console.error('❌ Invalid expires_at format, cannot cache token:', tokenData.expires_at);
+        return;
+      }
+      
+      // Check if token is already expired
+      if (expiryTime <= Date.now()) {
+        console.error('❌ Token is already expired, not caching:', tokenData.expires_at);
+        return;
+      }
 
-    this.cache.set(cacheKey, cachedToken);
-    
-    const remainingTime = Math.round((new Date(tokenData.expires_at).getTime() - Date.now()) / 1000 / 60);
-    console.log(`💾 Token cached successfully (expires in ${remainingTime} minutes)`);
+      const cacheKey = this.getCacheKey(key, secret, baseUrl);
+      const cachedToken: CachedToken = {
+        access_token: tokenData.access_token,
+        expires_at: tokenData.expires_at,
+        cached_at: Date.now()
+      };
+
+      this.cache.set(cacheKey, cachedToken);
+      
+      const remainingTime = Math.round((expiryTime - Date.now()) / 1000 / 60);
+      console.log(`💾 Token cached successfully (expires in ${remainingTime} minutes at ${tokenData.expires_at})`);
+    } catch (error) {
+      console.error('❌ Error caching token:', error);
+    }
   }
 
   /**
