@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +27,8 @@ import {
   useDeleteBoardMutation 
 } from "@/hooks/useKanbanQuery";
 
-export default function KanbanPage() {
+// Component that uses useSearchParams
+function KanbanPageContent() {
   const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -364,5 +365,21 @@ export default function KanbanPage() {
         />
       )}
     </div>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function KanbanPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-slate-600">Loading Kanban Board...</p>
+        </div>
+      </div>
+    }>
+      <KanbanPageContent />
+    </Suspense>
   );
 }
