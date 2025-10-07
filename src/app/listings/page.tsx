@@ -947,6 +947,64 @@ export default function ListingsManagement() {
           </div>
         </div>
 
+        {/* Channel Filter Checkboxes */}
+        <div className={`mb-6 p-4 rounded-xl border ${
+          isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white/50 border-gray-200/50'
+        } shadow-lg backdrop-blur-sm`}>
+          <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
+            Filter by Publishing Channels
+          </h4>
+          <div className="flex flex-wrap gap-3">
+            {ADVERTISING_CHANNELS.map(channel => {
+              const isSelected = selectedChannelFilters.includes(channel.id);
+              const tally = channelTallies[channel.id] || { active: 0, total: 0 };
+              
+              return (
+                <label
+                  key={channel.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-200 hover:scale-105 ${
+                    isSelected
+                      ? `${channel.color} text-white border-transparent shadow-md`
+                      : isDarkMode
+                        ? 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleChannelFilterToggle(channel.id)}
+                    className="sr-only"
+                  />
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                    isSelected
+                      ? 'bg-white border-white'
+                      : isDarkMode
+                        ? 'border-gray-400'
+                        : 'border-gray-300'
+                  }`}>
+                    {isSelected && (
+                      <Check className="w-3 h-3 text-gray-800" />
+                    )}
+                  </div>
+                  <span className="text-sm font-medium">
+                    {channel.name}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    isSelected
+                      ? 'bg-white/20 text-white'
+                      : isDarkMode
+                        ? 'bg-gray-600 text-gray-300'
+                        : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {tally.active}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Filter Summary */}
         {(searchTerm || filterMake || filterModel || selectedChannelFilters.length > 0) && (
           <div className={`mb-6 p-4 rounded-xl border ${
