@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +27,11 @@ import {
   useDeleteBoardMutation 
 } from "@/hooks/useKanbanQuery";
 
-export default function KanbanPage() {
+// Component that uses useSearchParams
+function KanbanPageContent() {
   const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isDarkMode } = useTheme();
   
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
@@ -57,16 +59,37 @@ export default function KanbanPage() {
     }
   }, [isLoaded, isSignedIn, router]);
 
-  // Auto-select default board or first board when boards load
+  // Auto-select board based on URL parameter or default board
   useEffect(() => {
     if (boards.length > 0 && !selectedBoardId) {
-      const defaultBoard = boards.find(board => board.isDefault);
-      const boardToSelect = defaultBoard || boards[0];
+      // Check if there's a board parameter in the URL
+      const boardParam = searchParams.get('board');
+      
+      let boardToSelect = null;
+      
+      if (boardParam) {
+        // Try to find board by ID first
+        boardToSelect = boards.find(board => board.id === boardParam);
+        
+        // If not found by ID, try to find by name
+        if (!boardToSelect) {
+          boardToSelect = boards.find(board => 
+            board.name.toLowerCase().replace(/\s+/g, '-') === boardParam.toLowerCase()
+          );
+        }
+      }
+      
+      // If no board found from URL param, use default logic
+      if (!boardToSelect) {
+        const defaultBoard = boards.find(board => board.isDefault);
+        boardToSelect = defaultBoard || boards[0];
+      }
+      
       if (boardToSelect) {
         setSelectedBoardId(boardToSelect.id);
       }
     }
-  }, [boards, selectedBoardId]);
+  }, [boards, selectedBoardId, searchParams]);
 
   // Create new board
   const createBoard = async () => {
@@ -342,5 +365,21 @@ export default function KanbanPage() {
         />
       )}
     </div>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function KanbanPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-slate-600">Loading Kanban Board...</p>
+        </div>
+      </div>
+    }>
+      <KanbanPageContent />
+    </Suspense>
   );
 }
