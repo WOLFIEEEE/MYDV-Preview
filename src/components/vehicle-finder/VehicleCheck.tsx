@@ -3,12 +3,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, ChevronDown, ChevronUp, ExternalLink, FileText, Loader2, Eye } from "lucide-react";
+import { Shield, ChevronDown, ExternalLink, FileText, Loader2, Eye } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useRouter } from "next/navigation";
 import { useNavigationHistory } from "@/hooks/useNavigationHistory";
 import { navigateToRetailCheck, extractRetailCheckParams } from "@/lib/utils/retailCheckNavigation";
-import { AUTOTRADER_CONFIG } from "@/lib/autoTraderConfig";
 import VehicleDetailsDialog from "./VehicleDetailsDialog";
 
 interface VehicleCheckProps {
@@ -54,7 +53,7 @@ interface ProcessedVehicleCheck {
       };
       allChanges: Array<{
         date: string;
-        [key: string]: any;
+        [key: string]: unknown;
       }>;
     };
     finance: {
@@ -181,6 +180,7 @@ export default function VehicleCheck({ vehicleData }: VehicleCheckProps) {
   const [checkData, setCheckData] = useState<ProcessedVehicleCheck | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     risk: true,
     finance: true,
@@ -195,7 +195,7 @@ export default function VehicleCheck({ vehicleData }: VehicleCheckProps) {
   const [dialogState, setDialogState] = useState<{
     isOpen: boolean;
     title: string;
-    data: any[];
+    data: unknown[];
     dataType: 'keeperChanges' | 'v5cs' | 'previousSearches' | 'financeAgreements' | 'plateChanges' | 'colourChanges' | 'odometerReadings' | 'highRiskMarkers' | 'insuranceHistory';
   }>({
     isOpen: false,
@@ -270,21 +270,70 @@ export default function VehicleCheck({ vehicleData }: VehicleCheckProps) {
     setPreviousPath(window.location.pathname + window.location.search);
     
     // Navigate to the full vehicle check page
-    const vehicleCheckUrl = `/mystock/vehicle-check?registration=${cleanRegistration}`;
+    const vehicleCheckUrl = `/mystock/vehicle-history-check?registration=${cleanRegistration}`;
     router.push(vehicleCheckUrl);
   };
 
-  const handleDownloadPDF = () => {
-    // Use the report URL from the API response if available
-    const reportUrl = checkData?.sections?.policeMarkers?.details ? 
-      AUTOTRADER_CONFIG.VEHICLE_CHECK_URL : 
-      AUTOTRADER_CONFIG.VEHICLE_CHECK_SAMPLE_URL;
-    window.open(reportUrl, '_blank');
+  const handleDownloadPDF = async () => {
+    if (!vehicleData.registration) {
+      setError('Vehicle registration is required to download PDF report');
+      return;
+    }
+
+    setIsPdfDownloading(true);
+    setError(null);
+
+    try {
+      console.log('📄 Initiating PDF download for registration:', vehicleData.registration);
+      
+      // Build the API URL for PDF download
+      const params = new URLSearchParams({
+        registration: vehicleData.registration.toUpperCase()
+      });
+      
+      // Add report URL if available from the check data to avoid extra API call
+      // Note: The API response structure shows the PDF URL is in check.report
+      // We'll let the backend handle fetching this, but we could optimize later
+
+      const pdfUrl = `/api/vehicle-check/pdf?${params.toString()}`;
+      console.log('📡 Making PDF download request to:', pdfUrl);
+
+      // Make a fetch request to check if the PDF is available
+      const response = await fetch(pdfUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || errorData.message || `HTTP ${response.status}: Failed to download PDF`);
+      }
+
+      // Create a temporary link to trigger download
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `vehicle-check-${vehicleData.registration.replace(/[^A-Z0-9]/gi, '')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Add the link to the document, click it, then remove it
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      console.log('✅ PDF download initiated successfully');
+      
+    } catch (error) {
+      console.error('❌ PDF download error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to download PDF report');
+    } finally {
+      setIsPdfDownloading(false);
+    }
   };
 
   const openDetailsDialog = (
     title: string, 
-    data: any[], 
+    data: unknown[], 
     dataType: 'keeperChanges' | 'v5cs' | 'previousSearches' | 'financeAgreements' | 'plateChanges' | 'colourChanges' | 'odometerReadings' | 'highRiskMarkers' | 'insuranceHistory'
   ) => {
     setDialogState({
@@ -304,7 +353,7 @@ export default function VehicleCheck({ vehicleData }: VehicleCheckProps) {
     });
   };
 
-  const SectionHeader = ({ title, icon: Icon, section }: { title: string; icon: any; section: string }) => (
+  const SectionHeader = ({ title, icon: Icon, section }: { title: string; icon: React.ComponentType<{ className?: string }>; section: string }) => (
     <div 
       className={`flex items-center justify-between cursor-pointer p-4 rounded-lg transition-all duration-200 ${
         isDarkMode 
@@ -840,10 +889,20 @@ export default function VehicleCheck({ vehicleData }: VehicleCheckProps) {
                 </label>
                 <Button 
                   onClick={handleDownloadPDF}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-3 py-3 text-base font-medium"
+                  disabled={isPdfDownloading}
+                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white flex items-center justify-center gap-3 py-3 text-base font-medium transition-all duration-200"
                 >
-                  <FileText className="w-5 h-5" />
-                  Download PDF Report
+                  {isPdfDownloading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Downloading PDF...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-5 h-5" />
+                      Download PDF Report
+                    </>
+                  )}
                 </Button>
                 <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                   Download the complete vehicle check report as PDF
