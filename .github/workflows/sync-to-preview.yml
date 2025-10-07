@@ -2,25 +2,27 @@ name: Sync staging → Preview (MYDV-DMS → MYDV-Preview)
 
 on:
   push:
-    branches:
-      - staging  # Trigger only when staging branch updates
+    branches: [staging]
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repo A (MYDV-DMS)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # full history needed for force-push
+          fetch-depth: 0
+          token: ${{ secrets.REPO_B_TOKEN }}   # use the PAT here
 
-      - name: Configure Git
+      - name: Configure Git identity
         run: |
           git config user.name "GitHub Action"
           git config user.email "actions@github.com"
 
-      - name: Push staging to MYDV-Preview/main
+      - name: Push staging → MYDV-Preview/main
+        env:
+          TOKEN: ${{ secrets.REPO_B_TOKEN }}
         run: |
-          git remote add target https://mydealershipview:${{ secrets.REPO_B_TOKEN }}@github.com/WOLFIEEEE/MYDV-Preview.git
+          git remote add target https://WOLFIEEEE:${TOKEN}@github.com/WOLFIEEEE/MYDV-Preview.git
           git push target staging:main --force
