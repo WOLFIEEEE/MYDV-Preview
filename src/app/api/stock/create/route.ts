@@ -285,7 +285,7 @@ interface AutoTraderStockPayload {
     make: string;
     model: string;
   };
-    metadata: {
+  metadata: {
     lifecycleState: string;
     stockReference?: string;
   };
@@ -299,11 +299,15 @@ interface AutoTraderStockPayload {
     advertiserId: string;
     location: unknown[];
   };
-  adverts: Array<{
+  adverts?: {
     forecourtPrice?: {
       amountGBP: number;
     };
     retailAdverts?: {
+      priceOnApplication?: boolean;
+      suppliedPrice?: {
+        amountGBP: number;
+      };
       attentionGrabber?: string;
       description?: string;
       autotraderAdvert?: {
@@ -312,8 +316,14 @@ interface AutoTraderStockPayload {
       advertiserAdvert?: {
         status: string;
       };
+      locatorAdvert?: {
+        status: string;
+      };
+      profileAdvert?: {
+        status: string;
+      };
     };
-  }>;
+  };
 }
 
 /**
@@ -510,6 +520,7 @@ export async function POST(request: NextRequest) {
       vehicleData = vehicleApiData.vehicle;
       
       if (!vehicleData) {
+        console.error('❌ No vehicle data in AutoTrader response');
         return NextResponse.json(
           createErrorResponse({
             type: ErrorType.NOT_FOUND,
@@ -521,6 +532,21 @@ export async function POST(request: NextRequest) {
           }),
           { status: 404 }
         );
+      }
+      
+      console.log('✅ Vehicle data retrieved:', { 
+        make: vehicleData.make, 
+        model: vehicleData.model, 
+        derivative: vehicleData.derivative,
+        registration: vehicleData.registration 
+      });
+      
+      // FIX: Handle commercial vehicles where model may be null
+      // Use derivative/trim/vehicleType as fallback to populate model field
+      if (!vehicleData.model) {
+        const fallbackModel = vehicleData.derivative || vehicleData.trim || vehicleData.vehicleType || 'Unknown Model';
+        console.log(`⚠️ Model is null, using fallback: ${fallbackModel}`);
+        vehicleData.model = fallbackModel;
       }
 
     } else {
@@ -602,12 +628,24 @@ export async function POST(request: NextRequest) {
       if ('colour' in requestData && requestData.colour) {
         vehicleData.colour = requestData.colour;
       }
+      
+      // FIX: Handle taxonomy vehicles where model may be null
+      // Use derivative/trim/vehicleType as fallback to populate model field
+      if (!vehicleData.model) {
+        vehicleData.model = vehicleData.derivative || vehicleData.trim || vehicleData.vehicleType || 'Unknown Model';
+      }
 
       console.log('✅ Full vehicle technical data retrieved for derivative:', requestData.derivativeId);
     }
 
     // Validate essential vehicle fields
     if (!vehicleData.make || !vehicleData.model) {
+      console.error('❌ Validation failed:', { 
+        make: vehicleData.make, 
+        model: vehicleData.model,
+        derivative: vehicleData.derivative,
+        availableKeys: Object.keys(vehicleData).slice(0, 20)
+      });
     return NextResponse.json(
         createErrorResponse({
           type: ErrorType.VALIDATION,
@@ -620,6 +658,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    console.log('✅ Validation passed - Make:', vehicleData.make, 'Model:', vehicleData.model);
 
     // Get dealer ID and retrieve stock images for Default/Fallback logic
     const dealer = await createOrGetDealer(user.id, 'Unknown', userEmail);
@@ -694,7 +734,7 @@ export async function POST(request: NextRequest) {
       console.log('   - Dealer can configure default/fallback images in Store Settings');
     }
 
-    // Build the complete AutoTrader stock creation payload
+    // Build the complete AutoTrader stock creation payload  
     // Use the vehicle object directly and just override key fields
     const stockPayload: AutoTraderStockPayload = {
       vehicle: {
@@ -724,27 +764,33 @@ export async function POST(request: NextRequest) {
         advertiserId,
         location: []
       },
-      adverts: []
-    };
-
-    // Add advert data if pricing is provided
-    if (requestData.forecourtPrice) {
-      stockPayload.adverts.push({
+      // Add adverts object if pricing is provided
+      adverts: requestData.forecourtPrice ? {
         forecourtPrice: {
           amountGBP: requestData.forecourtPrice
         },
         retailAdverts: {
-          attentionGrabber: requestData.attentionGrabber,
-          description: requestData.description,
+          priceOnApplication: false,
+          suppliedPrice: {
+            amountGBP: requestData.forecourtPrice
+          },
+          attentionGrabber: requestData.attentionGrabber || 'Available Now',
+          description: requestData.description || `${vehicleData.make} ${vehicleData.model} - Excellent condition`,
           autotraderAdvert: {
             status: 'PUBLISHED'
           },
           advertiserAdvert: {
             status: 'PUBLISHED'
+          },
+          locatorAdvert: {
+            status: 'NOT_PUBLISHED'
+          },
+          profileAdvert: {
+            status: 'NOT_PUBLISHED'
           }
         }
-      });
-    }
+      } : undefined
+    };
 
     // Log the complete payload for debugging
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
@@ -932,11 +978,11 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('❌ API Route stock create info error:', error);
+    console.error('❌ API Route stock create error:', error);
     const internalError = createInternalErrorResponse(error, 'stock/create');
     return NextResponse.json(
       createErrorResponse(internalError),
       { status: 500 }
     );
   }
-} 
+}
