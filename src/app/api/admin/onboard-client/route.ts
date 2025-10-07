@@ -285,7 +285,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Send welcome email using Resend (similar to team member invitations)
+    // TODO: Temporarily commented out - Admin requested to disable email sending for onboarding
     let welcomeEmailResult = null;
+    /*
     try {
       console.log('📧 Sending welcome email using Resend...');
       
@@ -333,6 +335,15 @@ export async function POST(request: NextRequest) {
         error: emailError instanceof Error ? emailError.message : 'Unknown email error'
       };
     }
+    */
+    
+    // Set welcome email result to null since email sending is disabled
+    welcomeEmailResult = {
+      success: false,
+      error: 'Email sending temporarily disabled by admin request'
+    };
+    
+    console.log('⚠️ Welcome email sending is currently disabled');
 
     console.log('✅ Client onboarding completed successfully');
     
@@ -348,13 +359,9 @@ export async function POST(request: NextRequest) {
         advertisementIds: onboardingData.advertisementIds,
         primaryAdvertisementId: onboardingData.primaryAdvertisementId || onboardingData.advertisementIds[0]
       },
-      message: invitationResult?.success && welcomeEmailResult?.success
-        ? 'Client onboarded successfully with invitation and welcome email sent'
-        : invitationResult?.success 
-          ? 'Client onboarded successfully with invitation sent (welcome email failed)'
-          : welcomeEmailResult?.success
-            ? 'Client onboarded successfully with welcome email sent (invitation failed)'
-            : 'Client onboarded successfully (both invitation and welcome email failed)'
+      message: invitationResult?.success 
+        ? 'Client onboarded successfully with invitation sent (welcome email disabled)'
+        : 'Client onboarded successfully (invitation failed, welcome email disabled)'
     };
     
     return NextResponse.json(
