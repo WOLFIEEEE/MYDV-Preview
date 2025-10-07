@@ -368,8 +368,8 @@ export default function InventoryVehicleDetails() {
       'history': 'History',
       'valuations': 'Valuations',
       'metrics': 'Metrics',
-      'metadata': 'Metadata',
-      'json': 'JSON'
+      'metadata': 'Metadata'
+      // 'json': 'JSON' // Hidden as requested
     };
     return actionLabels[actionId] || 'Stock Action';
   }

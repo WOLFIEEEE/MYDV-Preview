@@ -46,7 +46,7 @@ const viewTabs = [
   { id: "valuations", label: "Valuations", icon: BarChart3 },
   { id: "metrics", label: "Advert Statistics", icon: TrendingUp },
   { id: "metadata", label: "Detailed Information", icon: Database },
-  { id: "json", label: "Raw JSON", icon: Code },
+  // { id: "json", label: "Raw JSON", icon: Code }, // Hidden as requested
 ] as const;
 
 const actionTabs = [

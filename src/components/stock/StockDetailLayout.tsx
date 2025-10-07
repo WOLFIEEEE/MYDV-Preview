@@ -18,7 +18,7 @@ import HistoryTab from "./tabs/HistoryTab";
 import ValuationsTab from "./tabs/ValuationsTab";
 import MetricsTab from "./tabs/MetricsTab";
 import MetadataTab from "./tabs/MetadataTab";
-import JsonTab from "./tabs/JsonTab";
+// import JsonTab from "./tabs/JsonTab"; // Hidden as requested
 import EditInventoryForm from "./tabs/actions/EditInventoryForm";
 import AddChecklistForm from "./tabs/actions/AddChecklistForm";
 import AddCostsForm from "./tabs/actions/AddCostsForm";
@@ -47,7 +47,7 @@ export type TabType =
   | "valuations" 
   | "metrics" 
   | "metadata" 
-  | "json"
+  // | "json" // Hidden as requested
   | "edit-inventory"
   | "add-checklist" 
   | "add-costs"
@@ -117,8 +117,8 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
         return <MetricsTab stockData={stockData} />;
       case "metadata":
         return <MetadataTab stockData={stockData} />;
-      case "json":
-        return <JsonTab stockData={stockData} />;
+      // case "json": // Hidden as requested
+      //   return <JsonTab stockData={stockData} />;
       case "edit-inventory":
         return <EditInventoryForm stockData={stockData} onSuccess={refreshActionStatuses} />;
       case "add-checklist":

@@ -107,6 +107,14 @@ function MyStockContent() {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockItem | null>(null);
   const [isInventorySettingsOpen, setIsInventorySettingsOpen] = useState(false);
+  
+  // AutoTrader limits state
+  const [autoTraderLimit, setAutoTraderLimit] = useState<{
+    current: number;
+    maximum: number;
+    capped: number;
+    available: number;
+  } | null>(null);
   const [selectedInventoryStock, setSelectedInventoryStock] = useState<StockItem | null>(null);
 
   // Loading states for stock actions (kept for backward compatibility)
@@ -606,7 +614,67 @@ function MyStockContent() {
     return stats;
   }, [allStockData, hideSoldVehicles]);
 
+  // Calculate AutoTrader limits
+  const calculateAutoTraderLimits = useCallback(async (vehicles: StockItem[], activeCount: number) => {
+    try {
+      // Fetch AutoTrader limit from API
+      const response = await fetch('/api/autotrader/limits', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const maxLimit = result.data.listingCount || 0;
+        
+        // Count CAPPED vehicles (vehicles that couldn't be published due to limits)
+        const cappedCount = vehicles.filter(vehicle => {
+          const adverts = vehicle.adverts?.retailAdverts;
+          return adverts?.autotraderAdvert?.status === 'CAPPED';
+        }).length;
+        
+        setAutoTraderLimit({
+          current: activeCount,
+          maximum: maxLimit,
+          capped: cappedCount,
+          available: Math.max(0, maxLimit - activeCount)
+        });
+        
+        console.log('AutoTrader limits updated:', {
+          current: activeCount,
+          maximum: maxLimit,
+          capped: cappedCount,
+          available: Math.max(0, maxLimit - activeCount)
+        });
+      } else {
+        console.warn('AutoTrader limits API returned unsuccessful result:', result);
+        throw new Error(result.error || 'Failed to get limits data');
+      }
+    } catch (error) {
+      console.error('Failed to fetch AutoTrader limits:', error);
+      // Fallback to basic calculation without API limits
+      setAutoTraderLimit({
+        current: activeCount,
+        maximum: 0, // Unknown limit
+        capped: 0,
+        available: 0
+      });
+    }
+  }, []);
 
+  // Calculate AutoTrader limits when data changes
+  useEffect(() => {
+    if (allStockData && allStockData.length > 0 && calculateChannelStats && isSignedIn) {
+      calculateAutoTraderLimits(allStockData, calculateChannelStats.autotrader.published);
+    }
+  }, [allStockData, calculateChannelStats, calculateAutoTraderLimits, isSignedIn]);
 
   // Stock action handlers
   const handleDeleteStock = async (item: StockItem) => {
@@ -1508,24 +1576,15 @@ function MyStockContent() {
                             { 
                               key: 'autotraderAdvert', 
                               label: 'AT Search & Find', 
-                              count: `${calculateChannelStats.autotrader.published}/${calculateChannelStats.autotrader.total}`,
+                              count: autoTraderLimit ? `${autoTraderLimit.current}/${autoTraderLimit.maximum}` : `${calculateChannelStats.autotrader.published}/${calculateChannelStats.autotrader.total}`,
                               icon: Car,
                               gradient: 'from-blue-500 to-blue-600',
                               shadow: 'shadow-blue-500/20',
                               bg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50',
                               border: isDarkMode ? 'border-blue-500/20' : 'border-blue-200',
-                              text: isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                            },
-                            { 
-                              key: 'notAdvertisedAnywhere', 
-                              label: 'Not Advertised Anywhere', 
-                              count: calculateChannelStats.notAdvertisedAnywhere || 0,
-                              icon: X,
-                              gradient: 'from-gray-500 to-slate-600',
-                              shadow: 'shadow-gray-500/20',
-                              bg: isDarkMode ? 'bg-gray-500/10' : 'bg-gray-50',
-                              border: isDarkMode ? 'border-gray-500/20' : 'border-gray-200',
-                              text: isDarkMode ? 'text-white' : 'text-gray-700'
+                              text: isDarkMode ? 'text-blue-300' : 'text-blue-700',
+                              hasLimit: true,
+                              limitInfo: autoTraderLimit
                             },
                             { 
                               key: 'profileAdvert', 
@@ -1571,9 +1630,85 @@ function MyStockContent() {
                               border: isDarkMode ? 'border-yellow-500/20' : 'border-yellow-200',
                               text: isDarkMode ? 'text-yellow-300' : 'text-yellow-700'
                             },
-                          ].map(({ key, label, count, icon: IconComponent, gradient, shadow, bg, border, text }) => {
+                            { 
+                              key: 'notAdvertisedAnywhere', 
+                              label: 'Not Advertised Anywhere', 
+                              count: calculateChannelStats.notAdvertisedAnywhere || 0,
+                              icon: X,
+                              gradient: 'from-gray-500 to-slate-600',
+                              shadow: 'shadow-gray-500/20',
+                              bg: isDarkMode ? 'bg-gray-500/10' : 'bg-gray-50',
+                              border: isDarkMode ? 'border-gray-500/20' : 'border-gray-200',
+                              text: isDarkMode ? 'text-white' : 'text-gray-700'
+                            },
+                          ].map(({ key, label, count, icon: IconComponent, gradient, shadow, bg, border, text, hasLimit, limitInfo }) => {
                             const isActive = filterChannelStatus.includes(key);
                             
+                            // Special handling for AutoTrader with limits
+                            if (hasLimit && limitInfo && key === 'autotraderAdvert') {
+                              const limitPercentage = limitInfo.maximum > 0 ? Math.round((limitInfo.current / limitInfo.maximum) * 100) : 0;
+                              const isNearLimit = limitPercentage >= 90;
+                              const isAtLimit = limitInfo.current >= limitInfo.maximum;
+                              
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => {
+                                    if (isActive) {
+                                      setFilterChannelStatus(filterChannelStatus.filter(channel => channel !== key));
+                                    } else {
+                                      setFilterChannelStatus([...filterChannelStatus, key]);
+                                    }
+                                  }}
+                                  className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:scale-105 border ${
+                                    isActive 
+                                      ? `bg-gradient-to-r ${gradient} text-white shadow-lg ${shadow} scale-105 border-transparent` 
+                                      : `${bg} ${border} ${text} hover:shadow-md hover:border-opacity-60 shadow-sm`
+                                  } ${isAtLimit ? 'ring-2 ring-red-500/50' : isNearLimit ? 'ring-2 ring-yellow-500/50' : ''}`}
+                                >
+                                  <div className={`p-1.5 rounded-xl transition-all duration-300 ${
+                                    isActive 
+                                      ? 'bg-white/20' 
+                                      : `bg-gradient-to-r ${gradient} shadow-sm`
+                                  }`}>
+                                    <IconComponent className={`w-3.5 h-3.5 ${
+                                      isActive ? 'text-white' : 'text-white'
+                                    }`} />
+                                  </div>
+                                  <div className="flex flex-col items-start">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-semibold tracking-wide">{label}</span>
+                                      {isAtLimit && (
+                                        <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">
+                                          LIMIT REACHED
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-300 ${
+                                      isActive 
+                                        ? 'bg-white/20 text-white' 
+                                        : `bg-gradient-to-r ${gradient} text-white shadow-sm`
+                                    }`}>
+                                      {count}
+                                    </div>
+                                    {limitInfo.available > 0 && (
+                                      <span className={`text-xs mt-1 ${
+                                        isActive ? 'text-white/60' : 'opacity-50'
+                                      }`}>
+                                        Available: {limitInfo.available}
+                                      </span>
+                                    )}
+                                    {limitInfo.capped > 0 && (
+                                      <span className="text-xs mt-1 text-red-500 font-medium">
+                                        Capped: {limitInfo.capped}
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            }
+                            
+                            // Regular channel display
                             return (
                               <button
                                 key={key}
@@ -2580,9 +2715,17 @@ function MyStockContent() {
                                   </td>
 
                                 <td className={`px-2 py-1 border-r align-middle ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
+                                  <div className="flex flex-col gap-1">
                                     <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(apiItem.metadata?.lifecycleState || apiItem.lifecycleState, isDarkMode)}`}>
                                       {getStatusLabel(apiItem.metadata?.lifecycleState || apiItem.lifecycleState)}
-                                </span>
+                                    </span>
+                                    {/* Show capped status if vehicle is capped */}
+                                    {apiItem.adverts?.retailAdverts?.autotraderAdvert?.status === 'CAPPED' && (
+                                      <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                                        AT Capped
+                                      </span>
+                                    )}
+                                  </div>
                               </td>
 
                               <td className={`px-2 py-1 text-xs align-middle border-r ${isDarkMode ? 'text-slate-300 border-slate-700/20' : 'text-slate-700 border-slate-200/30'}`}>
