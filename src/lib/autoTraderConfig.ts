@@ -15,7 +15,7 @@
  */
 const API_ENDPOINTS = {
   SANDBOX: 'https://api-sandbox.autotrader.co.uk',
-  PRODUCTION: 'https://api.autotrader.co.uk'
+  PRODUCTION: 'https://api-sandbox.autotrader.co.uk'
 } as const;
 
 /**

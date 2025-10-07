@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 export async function GET(request: NextRequest) {
   console.log('📊 API Route: Taxonomy Features request received');
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(authResult.error, { status: 401 });
     }
 
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
 
     // Build features URL
     console.log('🔍 Step 2: Fetching taxonomy features...');

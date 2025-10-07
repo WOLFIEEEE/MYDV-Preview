@@ -1593,11 +1593,6 @@ function MyStockContent() {
                               label: 'AT Search & Find', 
                               count: autoTraderLimit ? `${autoTraderLimit.current}/${autoTraderLimit.maximum}` : `${calculateChannelStats.autotrader.published}/${calculateChannelStats.autotrader.total}`,
                               icon: Car,
-                              gradient: 'from-blue-500 to-blue-600',
-                              shadow: 'shadow-blue-500/20',
-                              bg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50',
-                              border: isDarkMode ? 'border-blue-500/20' : 'border-blue-200',
-                              text: isDarkMode ? 'text-blue-300' : 'text-blue-700',
                               hasLimit: true,
                               limitInfo: autoTraderLimit
                             },
@@ -1605,58 +1600,33 @@ function MyStockContent() {
                               key: 'profileAdvert', 
                               label: 'AT Dealer Page', 
                               count: calculateChannelStats.profile.published,
-                              icon: Store,
-                              gradient: 'from-indigo-500 to-indigo-600',
-                              shadow: 'shadow-indigo-500/20',
-                              bg: isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50',
-                              border: isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200',
-                              text: isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                              icon: Store
                             },
                             { 
                               key: 'advertiserAdvert', 
                               label: 'Dealer Website', 
                               count: calculateChannelStats.advertiser.published,
-                              icon: Globe,
-                              gradient: 'from-emerald-500 to-green-600',
-                              shadow: 'shadow-emerald-500/20',
-                              bg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50',
-                              border: isDarkMode ? 'border-emerald-500/20' : 'border-emerald-200',
-                              text: isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                              icon: Globe
                             },
                             { 
                               key: 'exportAdvert', 
                               label: 'AT Linked Advertisers', 
                               count: calculateChannelStats.export.published,
-                              icon: Share2,
-                              gradient: 'from-purple-500 to-violet-600',
-                              shadow: 'shadow-purple-500/20',
-                              bg: isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50',
-                              border: isDarkMode ? 'border-purple-500/20' : 'border-purple-200',
-                              text: isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                              icon: Share2
                             },
                             { 
                               key: 'locatorAdvert', 
                               label: 'Manufacturer Website / Used Vehicle Locators', 
                               count: calculateChannelStats.locator.published,
-                              icon: MapPin,
-                              gradient: 'from-yellow-500 to-orange-600',
-                              shadow: 'shadow-yellow-500/20',
-                              bg: isDarkMode ? 'bg-yellow-500/10' : 'bg-yellow-50',
-                              border: isDarkMode ? 'border-yellow-500/20' : 'border-yellow-200',
-                              text: isDarkMode ? 'text-yellow-300' : 'text-yellow-700'
+                              icon: MapPin
                             },
                             { 
                               key: 'notAdvertisedAnywhere', 
                               label: 'Not Advertised Anywhere', 
                               count: calculateChannelStats.notAdvertisedAnywhere || 0,
-                              icon: X,
-                              gradient: 'from-gray-500 to-slate-600',
-                              shadow: 'shadow-gray-500/20',
-                              bg: isDarkMode ? 'bg-gray-500/10' : 'bg-gray-50',
-                              border: isDarkMode ? 'border-gray-500/20' : 'border-gray-200',
-                              text: isDarkMode ? 'text-white' : 'text-gray-700'
+                              icon: X
                             },
-                          ].map(({ key, label, count, icon: IconComponent, gradient, shadow, bg, border, text, hasLimit, limitInfo }) => {
+                          ].map(({ key, label, count, icon: IconComponent, hasLimit, limitInfo }) => {
                             const isActive = filterChannelStatus.includes(key);
                             
                             // Special handling for AutoTrader with limits
@@ -1675,47 +1645,55 @@ function MyStockContent() {
                                       setFilterChannelStatus([...filterChannelStatus, key]);
                                     }
                                   }}
-                                  className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:scale-105 border ${
+                                  className={`group flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all duration-300 hover:scale-105 border ${
                                     isActive 
-                                      ? `bg-gradient-to-r ${gradient} text-white shadow-lg ${shadow} scale-105 border-transparent` 
-                                      : `${bg} ${border} ${text} hover:shadow-md hover:border-opacity-60 shadow-sm`
+                                      ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 scale-105 border-transparent' 
+                                      : isDarkMode
+                                        ? 'bg-slate-800 border-slate-700 text-slate-200 hover:shadow-md hover:border-slate-600 shadow-sm'
+                                        : 'bg-white border-gray-200 text-gray-700 hover:shadow-md hover:border-gray-300 shadow-sm'
                                   } ${isAtLimit ? 'ring-2 ring-red-500/50' : isNearLimit ? 'ring-2 ring-yellow-500/50' : ''}`}
                                 >
-                                  <div className={`p-1.5 rounded-xl transition-all duration-300 ${
+                                  <div className={`p-1.5 rounded-xl transition-all duration-300 flex-shrink-0 ${
                                     isActive 
                                       ? 'bg-white/20' 
-                                      : `bg-gradient-to-r ${gradient} shadow-sm`
+                                      : isDarkMode
+                                        ? 'bg-slate-700'
+                                        : 'bg-gray-100'
                                   }`}>
                                     <IconComponent className={`w-3.5 h-3.5 ${
-                                      isActive ? 'text-white' : 'text-white'
+                                      isActive ? 'text-white' : isDarkMode ? 'text-slate-300' : 'text-gray-600'
                                     }`} />
                                   </div>
-                                  <div className="flex flex-col items-start">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold tracking-wide">{label}</span>
-                                      {isAtLimit && (
-                                        <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full font-medium">
-                                          LIMIT REACHED
-                                        </span>
-                                      )}
-                                    </div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-semibold tracking-wide whitespace-nowrap">{label}</span>
                                     <div className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-300 ${
                                       isActive 
                                         ? 'bg-white/20 text-white' 
-                                        : `bg-gradient-to-r ${gradient} text-white shadow-sm`
+                                        : isDarkMode
+                                          ? 'bg-slate-700 text-slate-200'
+                                          : 'bg-gray-100 text-gray-700'
                                     }`}>
                                       {count}
                                     </div>
                                     {limitInfo.available > 0 && (
-                                      <span className={`text-xs mt-1 ${
-                                        isActive ? 'text-white/60' : 'opacity-50'
+                                      <span className={`text-xs px-2 py-0.5 rounded-md ${
+                                        isActive 
+                                          ? 'bg-white/10 text-white/80' 
+                                          : isDarkMode 
+                                            ? 'bg-slate-700 text-slate-300' 
+                                            : 'bg-gray-100 text-gray-600'
                                       }`}>
                                         Available: {limitInfo.available}
                                       </span>
                                     )}
                                     {limitInfo.capped > 0 && (
-                                      <span className="text-xs mt-1 text-red-500 font-medium">
+                                      <span className="text-xs px-2 py-0.5 rounded-md bg-red-100 text-red-700 font-medium">
                                         Capped: {limitInfo.capped}
+                                      </span>
+                                    )}
+                                    {isAtLimit && (
+                                      <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-md font-medium">
+                                        LIMIT REACHED
                                       </span>
                                     )}
                                   </div>
@@ -1734,26 +1712,32 @@ function MyStockContent() {
                                     setFilterChannelStatus([...filterChannelStatus, key]);
                                   }
                                 }}
-                                className={`group flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 hover:scale-105 border ${
+                                className={`group flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all duration-300 hover:scale-105 border ${
                                   isActive 
-                                    ? `bg-gradient-to-r ${gradient} text-white shadow-lg ${shadow} scale-105 border-transparent` 
-                                    : `${bg} ${border} ${text} hover:shadow-md hover:border-opacity-60 shadow-sm`
+                                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 scale-105 border-transparent' 
+                                    : isDarkMode
+                                      ? 'bg-slate-800 border-slate-700 text-slate-200 hover:shadow-md hover:border-slate-600 shadow-sm'
+                                      : 'bg-white border-gray-200 text-gray-700 hover:shadow-md hover:border-gray-300 shadow-sm'
                                 }`}
                               >
-                                <div className={`p-1.5 rounded-xl transition-all duration-300 ${
+                                <div className={`p-1.5 rounded-xl transition-all duration-300 flex-shrink-0 ${
                                   isActive 
                                     ? 'bg-white/20' 
-                                    : `bg-gradient-to-r ${gradient} shadow-sm`
+                                    : isDarkMode
+                                      ? 'bg-slate-700'
+                                      : 'bg-gray-100'
                                 }`}>
                                   <IconComponent className={`w-3.5 h-3.5 ${
-                                    isActive ? 'text-white' : 'text-white'
+                                    isActive ? 'text-white' : isDarkMode ? 'text-slate-300' : 'text-gray-600'
                                   }`} />
                                 </div>
-                                <span className="text-sm font-semibold tracking-wide">{label}</span>
+                                <span className="text-sm font-semibold tracking-wide whitespace-nowrap">{label}</span>
                                 <div className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all duration-300 ${
                                   isActive 
                                     ? 'bg-white/20 text-white' 
-                                    : `bg-gradient-to-r ${gradient} text-white shadow-sm`
+                                    : isDarkMode
+                                      ? 'bg-slate-700 text-slate-200'
+                                      : 'bg-gray-100 text-gray-700'
                                 }`}>
                                   {count}
                                 </div>
@@ -2729,14 +2713,14 @@ function MyStockContent() {
                                     {formatMileage(apiItem.vehicle?.odometerReadingMiles || apiItem.odometerReadingMiles)}
                                   </td>
 
-                                <td className={`px-2 py-1 border-r align-middle ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
-                                  <div className="flex flex-col gap-1">
-                                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(apiItem.metadata?.lifecycleState || apiItem.lifecycleState, isDarkMode)}`}>
+                                <td className={`px-2 py-1 border-r align-middle text-center ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
+                                  <div className="flex flex-col gap-1 items-center justify-center">
+                                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium border text-center ${getStatusColor(apiItem.metadata?.lifecycleState || apiItem.lifecycleState, isDarkMode)}`}>
                                       {getStatusLabel(apiItem.metadata?.lifecycleState || apiItem.lifecycleState)}
                                     </span>
                                     {/* Show capped status if vehicle is capped */}
                                     {apiItem.adverts?.retailAdverts?.autotraderAdvert?.status === 'CAPPED' && (
-                                      <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                                      <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200 text-center">
                                         AT Capped
                                       </span>
                                     )}

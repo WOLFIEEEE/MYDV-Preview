@@ -10,7 +10,7 @@ import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { db } from '@/lib/db';
 import { storeConfig, stockCache } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Trended Valuations Request Interface
 interface TrendedValuationsRequest {
@@ -272,7 +272,7 @@ async function fetchTrendedValuationsFromAPI(
   advertiserId?: string
 ): Promise<TrendedValuationsResponse | null> {
   try {
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     
     if (!advertiserId) {
       console.error('❌ Advertiser ID is required for trended valuations');

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { createSuccessResponse, createErrorResponse, createInternalErrorResponse, ErrorType } from '@/lib/errorHandler';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Enhanced Vehicle Metrics Request Types
 interface VehicleData {
@@ -190,7 +190,7 @@ async function performEnhancedVehicleMetrics(
 
   console.log('🔍 Starting enhanced vehicle metrics analysis:', analysisType);
 
-  const baseUrl = getAutoTraderBaseUrlForServer();
+  const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
   const endpoint = `${baseUrl}/vehicle-metrics`;
 
   // Build request payload based on analysis type

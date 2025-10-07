@@ -5,7 +5,7 @@ import { parseAutoTraderError, createErrorResponse, createSuccessResponse, creat
 import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 interface ValuationRequest {
   vehicle: {
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(authResult.error, { status: 401 });
     }
 
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
 
     // Prepare valuation request payload
     const valuationPayload: ValuationRequest = {

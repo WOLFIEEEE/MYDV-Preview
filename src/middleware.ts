@@ -1,6 +1,68 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-export default clerkMiddleware();
+// Define public routes that anyone can access
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/about',
+  '/contact',
+  '/features',
+  '/pricing',
+  '/guides',
+  '/success-stories',
+  '/privacy',
+  '/terms',
+  '/cookies',
+  '/join',
+  '/accept-invitation'
+]);
+
+// Define routes that should be explicitly protected
+const isProtectedRoute = createRouteMatcher([
+  '/admin(.*)',
+  '/dashboard-redirect',
+  '/store-owner(.*)',
+  '/inventory(.*)',
+  '/mystock(.*)',
+  '/invoice(.*)',
+  '/invoices(.*)',
+  '/invoice-pdf-editor(.*)',
+  '/dynamic-invoice-editor(.*)',
+  '/enterprise-invoice-editor(.*)',
+  '/kanban(.*)',
+  '/documents(.*)',
+  '/notifications(.*)',
+  '/vehicle-check(.*)',
+  '/vehicle-finder(.*)',
+  '/listings(.*)',
+  '/stock-management(.*)',
+  '/stock-actions(.*)',
+  '/services(.*)'
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  // Allow public routes first
+  if (isPublicRoute(req)) {
+    return;
+  }
+  
+  // Protect all protected routes
+  if (isProtectedRoute(req)) {
+    await auth.protect();
+  }
+  
+  // Protect API routes (except public ones)
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    // Allow some public API endpoints if needed
+    const publicApiRoutes = ['/api/webhooks'];
+    const isPublicApi = publicApiRoutes.some(route => req.nextUrl.pathname.startsWith(route));
+    
+    if (!isPublicApi) {
+      await auth.protect();
+    }
+  }
+});
 
 export const config = {
   matcher: [

@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  // Keep database and heavy dependencies server-side only
+  serverExternalPackages: ['pg', 'postgres', 'drizzle-orm'],
 };
 
 export default nextConfig;

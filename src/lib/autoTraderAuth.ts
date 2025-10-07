@@ -9,7 +9,7 @@ import {
 import { db } from './db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Token refresh mutex to prevent concurrent token requests
 const tokenRefreshMutex = new Map<string, Promise<AuthResult>>();
@@ -54,7 +54,7 @@ export async function getCentralizedAutoTraderToken(): Promise<AuthResult> {
   try {
     const key = process.env.AUTOTRADER_API_KEY;
     const secret = process.env.AUTOTRADER_SECRET;
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
 
     console.log('🔍 Centralized auth check:', {
       hasKey: !!key,
@@ -62,10 +62,11 @@ export async function getCentralizedAutoTraderToken(): Promise<AuthResult> {
       baseUrl
     });
 
-    if (!key || !secret) {
+    if (!key || !secret || !baseUrl) {
       console.error('❌ Centralized credentials not available:', {
         AUTOTRADER_API_KEY: key ? 'SET' : 'MISSING',
-        AUTOTRADER_SECRET: secret ? 'SET' : 'MISSING'
+        AUTOTRADER_SECRET: secret ? 'SET' : 'MISSING',
+        NEXT_PUBLIC_AUTOTRADER_API_BASE_URL: baseUrl ? 'SET' : 'MISSING'
       });
       return {
         success: false,
@@ -325,7 +326,24 @@ async function performTokenRefresh(email: string): Promise<AuthResult> {
     }
 
     // Get base URL from environment variables only
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
+    
+    if (!baseUrl) {
+      console.error('❌ Base URL not configured');
+      const authError = {
+        type: ErrorType.AUTHENTICATION,
+        message: 'AutoTrader API base URL not configured',
+        details: 'NEXT_PUBLIC_AUTOTRADER_API_BASE_URL environment variable is missing',
+        httpStatus: 500,
+        timestamp: new Date().toISOString(),
+        endpoint: 'auth'
+      };
+      return {
+        success: false,
+        error: createErrorResponse(authError)
+      };
+    }
+    
     console.log('🔍 Using base URL:', baseUrl);
     console.log('🏪 Store config found for:', userConfig.storeName);
     console.log('🔑 Using centralized API credentials');
@@ -454,9 +472,13 @@ export async function invalidateTokenByEmail(email: string): Promise<void> {
     if (userConfig.length > 0) {
       const { autotraderKey, autotraderSecret } = userConfig[0];
       if (autotraderKey && autotraderSecret) {
-        const baseUrl = getAutoTraderBaseUrlForServer();
-        TokenCache.invalidateToken(autotraderKey, autotraderSecret, baseUrl);
-        console.log('🗑️ Token invalidated for user:', email);
+        const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
+        if (baseUrl) {
+          TokenCache.invalidateToken(autotraderKey, autotraderSecret, baseUrl);
+          console.log('🗑️ Token invalidated for user:', email);
+        } else {
+          console.warn('⚠️ Cannot invalidate token: base URL not configured');
+        }
       }
     }
   } catch (error) {

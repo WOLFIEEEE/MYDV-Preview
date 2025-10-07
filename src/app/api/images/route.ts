@@ -7,7 +7,7 @@ import {
   ErrorType
 } from '@/lib/errorHandler';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // POST handler for uploading images to AutoTrader
 export async function POST(request: NextRequest) {
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     autoTraderFormData.append('file', imageFile);
 
     // Make POST request to AutoTrader images API
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     const autoTraderUrl = `${baseUrl}/images?advertiserId=${advertiserId}`;
 
     console.log('📡 Making POST request to AutoTrader images API:', autoTraderUrl);

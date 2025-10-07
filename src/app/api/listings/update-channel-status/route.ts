@@ -5,7 +5,7 @@ import { stockCache } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAutoTraderToken, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
 import { BrowserCompatibilityManager } from '@/lib/browserCompatibility';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 import { 
   createErrorResponse, 
   createInternalErrorResponse, 
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     // For AutoTrader channel, we need to make API calls to actually publish/unpublish
     if (channelId === 'autotrader' && authResult.access_token) {
       try {
-        const baseUrl = getAutoTraderBaseUrlForServer();
+        const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
         
         if (status) {
           // Publish to AutoTrader

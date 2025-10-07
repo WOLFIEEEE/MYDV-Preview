@@ -13,7 +13,7 @@ import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Types for vehicle check response
 interface VehicleCheckResponse {
@@ -605,7 +605,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get base URL from environment variables
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     console.log('🔍 Using base URL:', baseUrl);
     console.log('📢 Using advertiser ID:', finalAdvertiserId);
 

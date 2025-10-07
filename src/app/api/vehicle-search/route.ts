@@ -11,7 +11,7 @@ import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Vehicle search parameters interface
 interface VehicleSearchParams {
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
     console.log('✅ AutoTrader authentication successful');
 
     // Get base URL from environment variables
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     console.log('🔍 Using base URL:', baseUrl);
 
     // Build search parameters for AutoTrader API

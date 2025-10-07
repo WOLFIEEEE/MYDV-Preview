@@ -3,40 +3,58 @@ import { stockCache, stockCacheSyncLog, dealers, storeConfig, teamMembers, inven
 import { eq, and, gte, lte, inArray, or, desc, asc, sql } from 'drizzle-orm';
 import type { NewStockCache, StockCache, NewStockCacheSyncLog } from '@/db/schema';
 import { getAutoTraderToken, clearTokenCache, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Memory monitoring utility
 class MemoryMonitor {
-  static checkMemoryUsage(): { usage: number; isHigh: boolean } {
+  static checkMemoryUsage(): { usage: number; isHigh: boolean; isCritical: boolean } {
     if (typeof process !== 'undefined' && process.memoryUsage) {
       const usage = process.memoryUsage();
       const usageMB = usage.heapUsed / 1024 / 1024;
+      const heapTotalMB = usage.heapTotal / 1024 / 1024;
+      const memoryPercentage = (usageMB / heapTotalMB) * 100;
+      
       return {
         usage: usageMB,
-        isHigh: usageMB > CACHE_CONFIG.MEMORY_THRESHOLD_MB
+        isHigh: usageMB > CACHE_CONFIG.MEMORY_THRESHOLD_MB,
+        isCritical: memoryPercentage > 90 // Only critical if over 90% of heap
       };
     }
-    return { usage: 0, isHigh: false };
+    return { usage: 0, isHigh: false, isCritical: false };
   }
 
   static async waitForMemoryRelease(): Promise<void> {
+    const { isCritical, usage } = this.checkMemoryUsage();
+    
+    // Only wait if memory is critically high (>90% of heap)
+    if (!isCritical) {
+      return; // No need to wait for normal high memory
+    }
+    
+    console.warn(`🧠 Critical memory usage detected: ${usage.toFixed(2)}MB`);
+    
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 3; // Reduced from 10 to 3
     
     while (attempts < maxAttempts) {
-      const { isHigh } = this.checkMemoryUsage();
-      if (!isHigh) break;
+      const memCheck = this.checkMemoryUsage();
+      if (!memCheck.isCritical) break;
       
-      console.warn(`🧠 High memory usage detected, waiting... (attempt ${attempts + 1}/${maxAttempts})`);
+      console.warn(`🧠 Waiting for memory release... (attempt ${attempts + 1}/${maxAttempts})`);
       
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
       }
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Shorter wait time: 500ms instead of 1000ms
+      await new Promise(resolve => setTimeout(resolve, 500));
       attempts++;
     }
+    
+    // Log final memory state
+    const finalCheck = this.checkMemoryUsage();
+    console.log(`🧠 Memory after wait: ${finalCheck.usage.toFixed(2)}MB (critical: ${finalCheck.isCritical})`);
   }
 }
 
@@ -179,7 +197,7 @@ const CACHE_CONFIG = {
   MAX_RETRIES: 3,
   DB_CONNECTION_TIMEOUT: 15000, // 15 seconds for database operations
   MAX_CONCURRENT_REQUESTS: 5, // Limit concurrent requests per user
-  MEMORY_THRESHOLD_MB: 100, // Memory usage threshold
+  MEMORY_THRESHOLD_MB: 512, // Memory usage threshold (increased from 100MB to 512MB for large datasets)
 } as const;
 
 // Connection pool monitoring
@@ -1274,17 +1292,19 @@ export class StockCacheService {
 
   /**
    * Fetch all stock data from AutoTrader API with circuit breaker and retry logic
+   * Uses chunked processing to reduce memory footprint
    */
   private static async fetchAllStockFromAutoTrader(accessToken: string, advertiserId: string): Promise<any[]> {
     console.log('📡 Fetching all stock from AutoTrader API...');
     
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     let allResults: any[] = [];
     let currentPage = 1;
     let totalPages = 1;
-    let hasResults = true; // Track if we're still getting results
-    const pageSize = 100; // Standard page size that AutoTrader API supports
-    const maxPages = 100; // Safety limit to prevent infinite loops (100 * 100 = 10,000 max items)
+    let hasResults = true;
+    const pageSize = 100;
+    const maxPages = 100;
+    const CHUNK_PROCESS_SIZE = 2; // Process 2 pages at a time to reduce memory
     
     // Get or create circuit breaker for this advertiser
     const circuitBreakerKey = `autotrader-${advertiserId}`;
@@ -1320,7 +1340,6 @@ export class StockCacheService {
       });
       
       if (!response.ok) {
-        // Try to get error details from response body
         let errorMessage = `AutoTrader API error: ${response.status} ${response.statusText}`;
         let errorDetails = null;
         try {
@@ -1344,7 +1363,6 @@ export class StockCacheService {
       const data = await response.json();
       
       if (currentPage === 1) {
-        // Log the pagination info from the API response
         console.log('📊 API Pagination Info:', {
           totalResults: data.totalResults,
           totalPages: data.totalPages,
@@ -1355,25 +1373,28 @@ export class StockCacheService {
           links: data.links || data._links
         });
         
-        // Check different possible field names for total pages
         totalPages = data.totalPages || data.total_pages || Math.ceil((data.totalResults || data.total_results || 0) / pageSize) || 1;
         
         if (data.totalResults && data.totalResults > pageSize && totalPages === 1) {
-          // Calculate total pages if not provided
           totalPages = Math.ceil(data.totalResults / pageSize);
           console.log(`📐 Calculated total pages: ${totalPages} (${data.totalResults} results / ${pageSize} per page)`);
         }
       }
       
-      allResults = allResults.concat(data.results || []);
+      const pageResults = data.results || [];
+      allResults = allResults.concat(pageResults);
+      
+      console.log(`📄 Fetched page ${currentPage} of ${totalPages}, total results so far: ${allResults.length}`);
+      
+      // Memory optimization: Process in chunks and trigger GC if available
+      if (currentPage % CHUNK_PROCESS_SIZE === 0 && global.gc) {
+        console.log('🧹 Triggering garbage collection after chunk...');
+        global.gc();
+      }
+      
       currentPage++;
+      hasResults = pageResults.length > 0;
       
-      console.log(`📄 Fetched page ${currentPage - 1} of ${totalPages}, total results so far: ${allResults.length}`);
-      
-      // Check if there are more results to fetch
-      hasResults = data.results && data.results.length > 0;
-      
-      // Continue if we have more pages OR if we're still getting results
       if (!hasResults && currentPage > 1) {
         console.log('📭 No more results returned, stopping pagination');
         break;

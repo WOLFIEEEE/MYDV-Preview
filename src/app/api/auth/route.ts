@@ -11,7 +11,7 @@ import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 export async function POST() {
   console.log('🔑 API Route: Authentication request received');
@@ -111,7 +111,7 @@ export async function POST() {
     }
 
     // Get base URL from environment variables
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     console.log('🔍 Using base URL:', baseUrl);
     console.log('🏪 Store config found for:', userConfig.storeName);
     console.log('🔑 Using centralized API credentials');

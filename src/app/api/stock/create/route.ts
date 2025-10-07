@@ -10,7 +10,7 @@ import {
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 import { getStockImagesByDealer, createOrGetDealer } from '@/lib/database';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Flow type definitions
 interface VehicleFinderFlow {
@@ -130,7 +130,7 @@ async function uploadStockImagesToAutoTrader(
       formData.append('file', finalBlob, finalName);
       
       // Debug: Log upload details
-      const baseUrl = getAutoTraderBaseUrlForServer();
+      const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
       const uploadUrl = `${baseUrl}/images?advertiserId=${advertiserId}`;
       console.log(`📤 Uploading to AutoTrader:`, {
         url: uploadUrl,
@@ -466,7 +466,7 @@ export async function POST(request: NextRequest) {
     const token = authResult.access_token;
     console.log(`✅ Token retrieved successfully - Length: ${token.length} characters`);
 
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     
     console.log('🔍 Using base URL:', baseUrl);
     console.log('📢 Using advertiser ID:', advertiserId);

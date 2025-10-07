@@ -3,7 +3,7 @@ import { currentUser } from '@clerk/nextjs/server';
 import { getAutoTraderToken, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
 import { BrowserCompatibilityManager } from '@/lib/browserCompatibility';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 import { 
   createErrorResponse, 
   createInternalErrorResponse, 
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
 
     // Send update to AutoTrader API (only update AutoTrader, not local database)
     try {
-      const baseUrl = getAutoTraderBaseUrlForServer();
+      const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
       
       console.log('📡 Sending update to AutoTrader:', {
         stockId,

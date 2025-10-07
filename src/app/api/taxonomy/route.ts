@@ -12,7 +12,7 @@ import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Helper function for parameter validation errors
 function createParameterValidationError(parameter: string, description: string) {
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
 
     // Build taxonomy URL based on type
     console.log('🔍 Fetching taxonomy data...');

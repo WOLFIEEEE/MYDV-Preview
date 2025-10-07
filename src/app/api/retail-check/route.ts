@@ -8,7 +8,7 @@ import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 import { RetailCheckData, VehicleInfo } from '@/types/retail-check';
 import { OptimizedRetailCheckService } from '@/lib/services/optimizedRetailCheckService';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 interface RetailCheckRequest {
   // Flow type
@@ -371,7 +371,7 @@ async function getVehicleInfoFromRegistration(registration: string, mileage: num
     advertiserId = process.env.ADVERTISER_ID || process.env.NEXT_PUBLIC_ADVERTISER_ID || '10028737';
   }
 
-  const baseUrl = getAutoTraderBaseUrlForServer();
+  const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
   
   // Build vehicle lookup request with proper parameters including competitors
   const vehicleParams = new URLSearchParams();
@@ -517,7 +517,7 @@ async function getVehicleInfoFromDerivative(derivativeId: string, mileage: numbe
     advertiserId = process.env.ADVERTISER_ID || process.env.NEXT_PUBLIC_ADVERTISER_ID || '10028737';
   }
 
-  const baseUrl = getAutoTraderBaseUrlForServer();
+  const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
   
   // Step 1: Get derivative details
   const derivativeParams = new URLSearchParams();
@@ -669,7 +669,7 @@ async function performRetailCheck(vehicleInfo: VehicleInfo, email: string, inclu
       advertiserId = process.env.ADVERTISER_ID || process.env.NEXT_PUBLIC_ADVERTISER_ID || '10028737';
     }
 
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
 
     // Extract valuations from the vehicle API response (no separate API call needed)
     console.log('📊 Extracting valuations from vehicle API response');

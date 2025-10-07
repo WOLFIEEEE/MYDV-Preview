@@ -8,7 +8,7 @@ import {
 } from '@/lib/errorHandler';
 import { StockCacheService } from '@/lib/stockCacheService';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Force dynamic rendering - prevent static optimization and caching issues
 export const dynamic = 'force-dynamic';
@@ -311,7 +311,7 @@ export async function PATCH(
     }
 
     // Make PATCH request to AutoTrader API
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     const autoTraderUrl = `${baseUrl}/stock/${stockId}?advertiserId=${advertiserId}`;
 
     console.log('📡 Making PATCH request to AutoTrader:', autoTraderUrl);

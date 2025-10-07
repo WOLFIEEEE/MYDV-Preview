@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { stockCache } from '@/db/schema';
 import { sql } from 'drizzle-orm';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 interface HealthCheck {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
   // Check AutoTrader API Health (lightweight check)
   try {
     const autotraderStart = Date.now();
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     
     // Simple connectivity check (don't authenticate)
     const controller = new AbortController();

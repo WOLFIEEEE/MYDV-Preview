@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 export async function GET() {
   try {
@@ -116,7 +116,7 @@ export async function GET() {
     console.log('✅ AutoTrader Limits API: Final advertiser ID:', advertiserId);
 
     // Fetch advertiser data with allowances from AutoTrader API
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     const advertiserUrl = `${baseUrl}/advertisers?autotraderAdvertAllowances=true`;
 
     console.log('📡 AutoTrader Limits API: Fetching advertiser data from:', advertiserUrl);

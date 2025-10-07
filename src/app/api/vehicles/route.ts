@@ -13,7 +13,7 @@ import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 import { getAdvertiserId, logAdvertiserIdResolution } from '@/lib/advertiserIdResolver';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 export async function GET(request: NextRequest) {
   console.log('🚗 API Route: Vehicle lookup request received');
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get base URL from environment variables
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     console.log('🔍 Using base URL:', baseUrl);
     console.log('🏪 Store config found for:', userStoreConfig.storeName);
     console.log('📢 Using advertiser ID:', advertiserId);

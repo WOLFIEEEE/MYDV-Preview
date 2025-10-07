@@ -9,7 +9,7 @@ import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 interface VehicleMetricsRequest {
   registration?: string;
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     }
 
     const accessToken = authResult.access_token;
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
 
     // Note: Vehicle metrics should be obtained from the main retail check API
     // This endpoint is for cases where we need metrics separately

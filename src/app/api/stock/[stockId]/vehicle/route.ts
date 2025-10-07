@@ -3,7 +3,7 @@ import { currentUser } from '@clerk/nextjs/server';
 import { createErrorResponse, createInternalErrorResponse, ErrorType, parseAutoTraderError } from '@/lib/errorHandler';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { StockCacheService } from '@/lib/stockCacheService';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 interface VehicleUpdateRequest {
   vehicle?: {
@@ -306,7 +306,7 @@ export async function PATCH(
     console.log('✅ AutoTrader token obtained successfully');
 
     // Make API call to AutoTrader
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     const autoTraderUrl = `${baseUrl}/stock/${stockId}?advertiserId=${advertiserId}`;
     
     console.log('🌐 AutoTrader API call details:', {

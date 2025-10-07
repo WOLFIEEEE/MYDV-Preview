@@ -10,7 +10,7 @@ import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+// Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Competition Analysis Request Interface
 interface CompetitionRequest {
@@ -367,7 +367,7 @@ async function fetchCompetitorData(
   advertiserId?: string
 ): Promise<any[]> {
   try {
-    const baseUrl = getAutoTraderBaseUrlForServer();
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     
     // If we have a competitors URL from the vehicle data, use it directly
     if (vehicle.competitorsUrl) {
