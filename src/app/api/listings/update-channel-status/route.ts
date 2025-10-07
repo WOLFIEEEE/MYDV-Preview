@@ -3,7 +3,8 @@ import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { stockCache } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAutoTraderToken } from '@/lib/autoTraderAuth';
+import { getAutoTraderToken, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
+import { BrowserCompatibilityManager } from '@/lib/browserCompatibility';
 import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 import { 
   createErrorResponse, 
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
         
         if (status) {
           // Publish to AutoTrader
-          const publishResponse = await fetch(`${baseUrl}/stock/${stockId}/adverts`, {
+          const publishResponse = await BrowserCompatibilityManager.enhancedFetch(`${baseUrl}/stock/${stockId}/adverts`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${authResult.access_token}`,
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
           }
         } else {
           // Unpublish from AutoTrader
-          const unpublishResponse = await fetch(`${baseUrl}/stock/${stockId}/adverts/autotrader`, {
+          const unpublishResponse = await BrowserCompatibilityManager.enhancedFetch(`${baseUrl}/stock/${stockId}/adverts/autotrader`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${authResult.access_token}`,

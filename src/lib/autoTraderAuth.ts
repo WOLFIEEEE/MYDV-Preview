@@ -417,6 +417,34 @@ export function invalidateToken(key: string, secret: string, baseUrl: string): v
 }
 
 /**
+ * Invalidate token by email (safer than clearing all tokens)
+ */
+export async function invalidateTokenByEmail(email: string): Promise<void> {
+  try {
+    // Get user config to find the specific token to invalidate
+    const userConfig = await db
+      .select({
+        autotraderKey: storeConfig.autotraderKey,
+        autotraderSecret: storeConfig.autotraderSecret
+      })
+      .from(storeConfig)
+      .where(eq(storeConfig.email, email))
+      .limit(1);
+
+    if (userConfig.length > 0) {
+      const { autotraderKey, autotraderSecret } = userConfig[0];
+      if (autotraderKey && autotraderSecret) {
+        const baseUrl = getAutoTraderBaseUrlForServer();
+        TokenCache.invalidateToken(autotraderKey, autotraderSecret, baseUrl);
+        console.log('🗑️ Token invalidated for user:', email);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error invalidating token by email:', error);
+  }
+}
+
+/**
  * Get token cache statistics
  */
 export function getTokenCacheStats() {

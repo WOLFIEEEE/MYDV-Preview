@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
-import { getAutoTraderToken } from '@/lib/autoTraderAuth';
+import { getAutoTraderToken, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
+import { BrowserCompatibilityManager } from '@/lib/browserCompatibility';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 import { 
@@ -197,7 +198,8 @@ export async function POST(request: NextRequest) {
         payload: autotraderPayload
       });
 
-      const updateResponse = await fetch(`${baseUrl}/stock/${stockId}?advertiserId=${advertiserId}`, {
+      // Use browser-aware fetch with enhanced error handling
+      const updateResponse = await BrowserCompatibilityManager.enhancedFetch(`${baseUrl}/stock/${stockId}?advertiserId=${advertiserId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authResult.access_token}`,
@@ -213,6 +215,41 @@ export async function POST(request: NextRequest) {
           statusText: updateResponse.statusText,
           error: errorText
         });
+        
+        // Handle authentication errors specifically
+        if (updateResponse.status === 401) {
+          console.warn('🔑 Token expired during listing update, invalidating cache');
+          await invalidateTokenByEmail(userEmail);
+          
+          const authError = {
+            type: ErrorType.AUTHENTICATION,
+            message: 'Authentication expired',
+            details: 'Your session has expired. Please refresh the page and try again.',
+            httpStatus: 401,
+            timestamp: new Date().toISOString(),
+            endpoint: 'listings/update-row'
+          };
+          return NextResponse.json(
+            createErrorResponse(authError),
+            { status: 401 }
+          );
+        }
+        
+        // Handle rate limiting
+        if (updateResponse.status === 429) {
+          const rateLimitError = {
+            type: ErrorType.RATE_LIMIT,
+            message: 'AutoTrader API rate limit exceeded',
+            details: 'Too many requests to AutoTrader. Please wait a moment and try again.',
+            httpStatus: 429,
+            timestamp: new Date().toISOString(),
+            endpoint: 'listings/update-row'
+          };
+          return NextResponse.json(
+            createErrorResponse(rateLimitError),
+            { status: 429 }
+          );
+        }
         
         const autotraderError = {
           type: ErrorType.SERVER_ERROR,

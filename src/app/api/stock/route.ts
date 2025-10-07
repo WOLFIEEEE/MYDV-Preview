@@ -170,18 +170,35 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     console.log('🗄️ Using StockCacheService to get stock data...');
     const stockResponse = await StockCacheService.getStockData(options);
 
+    // Validate response data
+    if (!stockResponse) {
+      console.error('❌ StockCacheService returned null/undefined response');
+      const errorResponse = {
+        type: ErrorType.SERVER_ERROR,
+        message: 'Stock data service returned invalid response',
+        details: 'The stock data service did not return a valid response. Please try again.',
+        httpStatus: 500,
+        timestamp: new Date().toISOString(),
+        endpoint: 'stock'
+      };
+      return NextResponse.json(
+        createErrorResponse(errorResponse),
+        { status: 500 }
+      );
+    }
+
     // Extract filter options from results for frontend
-    const availableFilters = extractFilterOptions(stockResponse.results);
+    const availableFilters = extractFilterOptions(stockResponse.results || []);
 
     // Prepare final response (hook expects 'stock' array)
     const responseData = {
-      stock: stockResponse.results,  // Changed from 'results' to 'stock' 
+      stock: stockResponse.results || [],  // Ensure we always return an array
       pagination: {
-        page: stockResponse.page,
-        pageSize: stockResponse.pageSize,
-        totalResults: stockResponse.totalResults,
-        totalPages: stockResponse.totalPages,
-        hasNextPage: stockResponse.hasNextPage,
+        page: stockResponse.page || 1,
+        pageSize: stockResponse.pageSize || 10,
+        totalResults: stockResponse.totalResults || 0,
+        totalPages: stockResponse.totalPages || 0,
+        hasNextPage: stockResponse.hasNextPage || false,
       },
       availableFilters,
       cache: stockResponse.cacheStatus,

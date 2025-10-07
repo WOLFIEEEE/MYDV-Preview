@@ -2,14 +2,50 @@ import { db } from '@/lib/db';
 import { stockCache, stockCacheSyncLog, dealers, storeConfig, teamMembers, inventoryDetails, saleDetails } from '@/db/schema';
 import { eq, and, gte, lte, inArray, or, desc, asc, sql } from 'drizzle-orm';
 import type { NewStockCache, StockCache, NewStockCacheSyncLog } from '@/db/schema';
-import { getAutoTraderToken, clearTokenCache } from '@/lib/autoTraderAuth';
+import { getAutoTraderToken, clearTokenCache, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
 import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
-// Circuit Breaker implementation for API resilience
+// Memory monitoring utility
+class MemoryMonitor {
+  static checkMemoryUsage(): { usage: number; isHigh: boolean } {
+    if (typeof process !== 'undefined' && process.memoryUsage) {
+      const usage = process.memoryUsage();
+      const usageMB = usage.heapUsed / 1024 / 1024;
+      return {
+        usage: usageMB,
+        isHigh: usageMB > CACHE_CONFIG.MEMORY_THRESHOLD_MB
+      };
+    }
+    return { usage: 0, isHigh: false };
+  }
+
+  static async waitForMemoryRelease(): Promise<void> {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      const { isHigh } = this.checkMemoryUsage();
+      if (!isHigh) break;
+      
+      console.warn(`🧠 High memory usage detected, waiting... (attempt ${attempts + 1}/${maxAttempts})`);
+      
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      attempts++;
+    }
+  }
+}
+
+// Enhanced Circuit Breaker with AutoTrader API specific logic
 class CircuitBreaker {
   private failures = 0;
   private lastFailTime = 0;
   private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+  private rateLimitResetTime = 0;
   
   constructor(
     private threshold = 5,
@@ -17,6 +53,13 @@ class CircuitBreaker {
   ) {}
   
   async execute<T>(fn: () => Promise<T>): Promise<T> {
+    // Check for rate limiting
+    if (this.rateLimitResetTime > Date.now()) {
+      const waitTime = this.rateLimitResetTime - Date.now();
+      console.warn(`🚦 AutoTrader API rate limited, waiting ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+
     if (this.state === 'OPEN') {
       if (Date.now() - this.lastFailTime > this.timeout) {
         this.state = 'HALF_OPEN';
@@ -25,11 +68,21 @@ class CircuitBreaker {
       }
     }
     
+    // Check memory before executing
+    await MemoryMonitor.waitForMemoryRelease();
+    
     try {
       const result = await fn();
       this.onSuccess();
       return result;
     } catch (error) {
+      // Handle rate limiting specifically
+      if (error instanceof Error && error.message.includes('429')) {
+        console.warn('🚦 AutoTrader API rate limit hit');
+        this.rateLimitResetTime = Date.now() + (60 * 1000); // Wait 1 minute
+        throw new Error('AutoTrader API rate limit exceeded. Please wait a moment and try again.');
+      }
+
       // Don't count configuration errors as failures for circuit breaker
       if (error instanceof Error) {
         const message = error.message.toLowerCase();
@@ -124,7 +177,48 @@ const CACHE_CONFIG = {
   MAX_CACHE_AGE_HOURS: 48,
   BATCH_SIZE: 50, // Reduced batch size for database inserts to avoid timeouts
   MAX_RETRIES: 3,
+  DB_CONNECTION_TIMEOUT: 15000, // 15 seconds for database operations
+  MAX_CONCURRENT_REQUESTS: 5, // Limit concurrent requests per user
+  MEMORY_THRESHOLD_MB: 100, // Memory usage threshold
 } as const;
+
+// Connection pool monitoring
+class DatabaseConnectionMonitor {
+  private static activeConnections = 0;
+  private static readonly MAX_CONNECTIONS = 20;
+  private static waitingQueue: Array<() => void> = [];
+
+  static async acquireConnection<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.activeConnections >= this.MAX_CONNECTIONS) {
+      console.warn('🚨 Database connection pool near limit, queuing request...');
+      await new Promise<void>(resolve => {
+        this.waitingQueue.push(resolve);
+      });
+    }
+
+    this.activeConnections++;
+    try {
+      return await Promise.race([
+        operation(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Database operation timeout')), CACHE_CONFIG.DB_CONNECTION_TIMEOUT)
+        )
+      ]);
+    } finally {
+      this.activeConnections--;
+      const next = this.waitingQueue.shift();
+      if (next) next();
+    }
+  }
+
+  static getStats() {
+    return {
+      activeConnections: this.activeConnections,
+      queueLength: this.waitingQueue.length,
+      maxConnections: this.MAX_CONNECTIONS
+    };
+  }
+}
 
 // Utility functions for cache timing
 export function isCacheStale(lastFetched: Date | string): boolean {
@@ -188,13 +282,14 @@ export class StockCacheService {
    * Resolve Clerk user ID to actual dealer UUID (supports both store owners and team members)
    */
   static async resolveDealerUuid(clerkUserId: string): Promise<string | null> {
-    try {
-      // First check if user is a team member
-      const teamMemberResult = await db
-        .select({ storeOwnerId: teamMembers.storeOwnerId })
-        .from(teamMembers)
-        .where(eq(teamMembers.clerkUserId, clerkUserId))
-        .limit(1);
+    return await DatabaseConnectionMonitor.acquireConnection(async () => {
+      try {
+        // First check if user is a team member
+        const teamMemberResult = await db
+          .select({ storeOwnerId: teamMembers.storeOwnerId })
+          .from(teamMembers)
+          .where(eq(teamMembers.clerkUserId, clerkUserId))
+          .limit(1);
       
       if (teamMemberResult.length > 0) {
         // User is a team member - return their store owner's dealer ID
@@ -214,12 +309,13 @@ export class StockCacheService {
         return dealerResult[0].id;
       }
       
-      console.log('❌ No dealer record found for user:', clerkUserId);
-      return null;
-    } catch (error) {
-      this.logError('Error resolving dealer UUID', error);
-      return null;
-    }
+        console.log('❌ No dealer record found for user:', clerkUserId);
+        return null;
+      } catch (error) {
+        this.logError('Error resolving dealer UUID', error);
+        return null;
+      }
+    });
   }
   
   /**
@@ -240,26 +336,43 @@ export class StockCacheService {
     
     const { dealerId: clerkUserId, advertiserId, page = 1, pageSize = 10 } = options;
     
+    // Add request tracking to detect race conditions
+    const requestId = `${clerkUserId}-${advertiserId}-${Date.now()}`;
+    console.log('🔍 Request ID:', requestId);
+    
     // Resolve Clerk user ID to dealer UUID
     const dealerId = await this.resolveDealerUuid(clerkUserId);
     if (!dealerId) {
       console.log(`⚠️  Dealer record not found for Clerk user ID: ${clerkUserId}`);
       console.log('This might indicate the user needs to complete their dealer registration.');
       
-      // Return empty results instead of throwing an error
-      return {
-        results: [],
-        totalResults: 0,
-        totalPages: 0,
-        page: page,
-        pageSize: pageSize,
-        hasNextPage: false,
-        cacheStatus: {
-          fromCache: false,
-          lastRefresh: null,
-          staleCacheUsed: false,
-        },
-      };
+      // Double-check with a small delay to handle potential race conditions
+      console.log('🔄 Double-checking dealer resolution after 1 second...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const retryDealerId = await this.resolveDealerUuid(clerkUserId);
+      if (!retryDealerId) {
+        console.log(`❌ Dealer record still not found after retry for: ${clerkUserId}`);
+        
+        // Return empty results instead of throwing an error
+        return {
+          results: [],
+          totalResults: 0,
+          totalPages: 0,
+          page: page,
+          pageSize: pageSize,
+          hasNextPage: false,
+          cacheStatus: {
+            fromCache: false,
+            lastRefresh: null,
+            staleCacheUsed: false,
+          },
+        };
+      }
+      
+      console.log('✅ Dealer found on retry:', retryDealerId);
+      // Continue with the retry result
+      return await this.getStockData({ ...options, dealerId: retryDealerId });
     }
     
     console.log(`🔍 Resolved dealer UUID: ${dealerId} for Clerk user: ${clerkUserId}`);
@@ -919,8 +1032,8 @@ export class StockCacheService {
         if (is401Error && retryCount < MAX_TOKEN_RETRIES) {
           console.warn(`⚠️ Token expired (attempt ${retryCount + 1}/${MAX_TOKEN_RETRIES}), fetching fresh token...`);
           
-          // Clear the expired token from cache
-          clearTokenCache();
+          // Invalidate only the specific user's token instead of clearing all tokens
+          await invalidateTokenByEmail(userEmail);
           
           // Get a fresh token
           const newTokenResult = await getAutoTraderToken(userEmail);

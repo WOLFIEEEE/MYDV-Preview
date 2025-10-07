@@ -82,7 +82,39 @@ async function fetchStockListOptimized(options: UseStockDataOptions = {}): Promi
 
   const responseText = await response.text();
   if (!responseText || responseText.trim() === '') {
-    throw new Error('NO_STOCK_DATA_AVAILABLE');
+    console.error('❌ Empty response from optimized stock API');
+    
+    // Retry once more after a short delay for transient issues
+    console.log('🔄 Retrying empty response after 1 second...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const retryResponse = await fetch(`/api/stock?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const retryText = await retryResponse.text();
+    if (!retryText || retryText.trim() === '') {
+      throw new Error('NO_STOCK_DATA_AVAILABLE');
+    }
+    
+    // Use retry response if it has content
+    const retryResult = JSON.parse(retryText);
+    if (!retryResponse.ok) {
+      let errorMessage = `HTTP ${retryResponse.status}: ${retryResponse.statusText}`;
+      if (retryResult.error?.message) {
+        errorMessage = retryResult.error.message;
+      }
+      throw new Error(errorMessage);
+    }
+    
+    if (!retryResult.data) {
+      throw new Error('No data received from API after retry');
+    }
+    
+    return retryResult.data;
   }
 
   let result: StockAPIResponse;

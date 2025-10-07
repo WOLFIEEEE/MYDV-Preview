@@ -30,10 +30,22 @@ export default function StockDataError({ error, onRetry, isRetrying = false }: S
         type: 'no_data',
         title: 'No Stock Data Available',
         message: 'There is currently no stock data available for your account.',
-        details: 'This could be due to an incorrect Advertiser ID configuration or no vehicles currently in your stock feed.',
+        details: 'This could be due to: 1) Incorrect Advertiser ID configuration, 2) No vehicles in your stock feed, 3) Temporary synchronization issue. Please try refreshing first.',
         icon: Database,
         color: 'blue',
         showContactAdmin: true
+      };
+    }
+    
+    if (errorMessage.includes('Rate limited')) {
+      return {
+        type: 'rate_limit',
+        title: 'Too Many Requests',
+        message: 'Please wait a moment before trying again.',
+        details: 'We\'ve detected multiple rapid requests. This helps ensure system stability for all users.',
+        icon: AlertTriangle,
+        color: 'orange',
+        showContactAdmin: false
       };
     }
     

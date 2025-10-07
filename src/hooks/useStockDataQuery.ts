@@ -1,8 +1,12 @@
 "use client";
 
+import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { StockAPIResponse, StockItem, UseStockDataOptions } from './useStockData';
+import { stockDataMonitor } from '@/lib/stockDataMonitor';
+import { BrowserCompatibilityManager } from '@/lib/browserCompatibility';
+import { userConcurrencyManager } from '@/lib/userConcurrencyManager';
 
 // Query key factory for consistent cache keys with better deduplication and USER ISOLATION
 export const stockQueryKeys = {
@@ -113,8 +117,23 @@ async function fetchWithRetryRQ(url: string, options: RequestInit = {}, maxRetri
   throw new Error('Max retries exceeded');
 }
 
-// Fetch function for stock list with enhanced error handling
-async function fetchStockList(options: UseStockDataOptions = {}): Promise<StockAPIResponse['data']> {
+// Fetch function for stock list with enhanced error handling and concurrency control
+async function fetchStockList(options: UseStockDataOptions = {}, userId?: string): Promise<StockAPIResponse['data']> {
+  // If userId is provided, use concurrency control
+  if (userId) {
+    return await userConcurrencyManager.executeRequest(
+      userId,
+      'stock_fetch',
+      () => fetchStockListInternal(options),
+      'medium'
+    );
+  }
+  
+  return await fetchStockListInternal(options);
+}
+
+// Internal fetch function
+async function fetchStockListInternal(options: UseStockDataOptions = {}): Promise<StockAPIResponse['data']> {
   const params = new URLSearchParams();
   
   // Add query parameters
@@ -136,7 +155,8 @@ async function fetchStockList(options: UseStockDataOptions = {}): Promise<StockA
   console.log('📡 Request URL:', `/api/stock?${params.toString()}`);
   console.log('⚠️  This should only appear on cache misses or first loads!');
   
-  const response = await fetchWithRetryRQ(`/api/stock?${params.toString()}`, {
+  // Use browser-aware fetch for better compatibility
+  const response = await BrowserCompatibilityManager.enhancedFetch(`/api/stock?${params.toString()}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -149,7 +169,38 @@ async function fetchStockList(options: UseStockDataOptions = {}): Promise<StockA
     console.error('❌ Empty response from stock API');
     console.error('📡 Request URL:', `/api/stock?${params.toString()}`);
     console.error('🔍 This usually indicates an issue with advertiser ID configuration or no stock data available');
-    throw new Error('NO_STOCK_DATA_AVAILABLE');
+    
+    // Retry once more after a short delay for transient issues
+    console.log('🔄 Retrying empty response after 2 seconds...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const retryResponse = await BrowserCompatibilityManager.enhancedFetch(`/api/stock?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const retryText = await retryResponse.text();
+    if (!retryText || retryText.trim() === '') {
+      throw new Error('NO_STOCK_DATA_AVAILABLE');
+    }
+    
+    // Use retry response if it has content
+    const retryResult = JSON.parse(retryText);
+    if (!retryResponse.ok) {
+      let errorMessage = `HTTP ${retryResponse.status}: ${retryResponse.statusText}`;
+      if (retryResult.error?.message) {
+        errorMessage = retryResult.error.message;
+      }
+      throw new Error(errorMessage);
+    }
+    
+    if (!retryResult.data) {
+      throw new Error('No data received from API after retry');
+    }
+    
+    return retryResult.data;
   }
 
   let result: StockAPIResponse;
@@ -232,12 +283,78 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
   
   // Early return with disabled state if user is not loaded or authenticated
   const shouldExecuteQuery = isLoaded && !!userCacheId && !options.disabled;
+  
+  // Add retry delay state to prevent rapid retries
+  const [lastRetryTime, setLastRetryTime] = React.useState<number>(0);
+  const MIN_RETRY_INTERVAL = 5000; // 5 seconds minimum between retries
+
+  // Monitor authentication state changes and browser compatibility
+  React.useEffect(() => {
+    if (userCacheId && isLoaded) {
+      const browserInfo = BrowserCompatibilityManager.getDiagnosticInfo();
+      stockDataMonitor.recordEvent(userCacheId, 'auth_change', { 
+        isAuthenticated: !!user,
+        isLoaded,
+        userId: user?.id,
+        browserInfo
+      });
+
+      // Check for browser limitations that could cause issues
+      const limitations = BrowserCompatibilityManager.checkBrowserLimitations();
+      if (limitations.hasLimitations) {
+        console.warn('⚠️ Browser limitations detected:', limitations.issues);
+        stockDataMonitor.recordEvent(userCacheId, 'fetch_error', {
+          error: 'Browser compatibility issues detected',
+          details: limitations
+        });
+      }
+    }
+  }, [user?.id, isLoaded, userCacheId]);
 
   const query = useQuery({
     queryKey: shouldExecuteQuery 
       ? stockQueryKeys.list(options, userCacheId)
       : ['stock', 'disabled'] as const, // Safe fallback key when disabled
-    queryFn: () => fetchStockList(options),
+    queryFn: async () => {
+      // Check retry interval to prevent rapid retries
+      const now = Date.now();
+      if (now - lastRetryTime < MIN_RETRY_INTERVAL) {
+        console.log('🕒 Skipping fetch due to retry interval');
+        throw new Error('Rate limited - too many recent retries');
+      }
+      
+      try {
+        // Record fetch start
+        if (userCacheId) {
+          stockDataMonitor.recordEvent(userCacheId, 'fetch_start', { options });
+        }
+        
+        const result = await fetchStockList(options, user?.id);
+        setLastRetryTime(0); // Reset on success
+        
+        // Record success
+        if (userCacheId && result) {
+          stockDataMonitor.recordEvent(userCacheId, 'fetch_success', { 
+            resultCount: result.stock?.length || 0,
+            totalResults: result.pagination?.totalResults || 0
+          });
+        }
+        
+        return result;
+      } catch (error) {
+        setLastRetryTime(now);
+        
+        // Record error
+        if (userCacheId) {
+          stockDataMonitor.recordEvent(userCacheId, 'fetch_error', { 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            options
+          });
+        }
+        
+        throw error;
+      }
+    },
     enabled: shouldExecuteQuery, // Only enable when all conditions are met
     staleTime: 24 * 60 * 60 * 1000, // 24 hours - match backend cache duration
     gcTime: 48 * 60 * 60 * 1000, // 48 hours cache retention - match MAX_CACHE_AGE_HOURS
@@ -246,6 +363,12 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
     refetchOnReconnect: true, // Refetch when network reconnects
     retry: (failureCount, error) => {
       const errorMessage = error?.message || '';
+      
+      // Don't retry rate limiting
+      if (errorMessage.includes('Rate limited')) {
+        console.log('🚫 Not retrying rate limited request');
+        return false;
+      }
       
       // Don't retry configuration errors or data integrity issues - these need manual fixing
       if (errorMessage.includes('Duplicate stock ID detected') ||
