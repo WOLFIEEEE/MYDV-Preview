@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import Link from "next/link";
 import { useStockDataQuery } from "@/hooks/useStockDataQuery";
 import type { StockItem } from "@/types/stock";
 import ChannelManagement from "@/components/listings/ChannelManagement";
+import { ListingsDebugPanel } from "@/components/shared/ListingsDebugPanel";
 
 // Define advertising channels with their properties
 const ADVERTISING_CHANNELS = [
@@ -95,9 +97,11 @@ interface AutoTraderLimit {
   available: number;
 }
 
-export default function ListingsManagement() {
+function ListingsManagementContent() {
   const { isSignedIn, isLoaded } = useUser();
   const { isDarkMode } = useTheme();
+  const searchParams = useSearchParams();
+  const isDebugMode = searchParams.get('debug') === 'true';
   const [searchTerm, setSearchTerm] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [channelStatus, setChannelStatus] = useState<ChannelStatus>({});
@@ -140,12 +144,15 @@ export default function ListingsManagement() {
   // Fetch stock data using the same approach as MyStock
   const queryOptions = useMemo(() => {
     if (!isSignedIn || !isLoaded) {
+      console.log('🚫 LISTINGS: Query disabled - user not signed in or not loaded');
       return { disabled: true };
     }
-    return { 
+    const options = { 
       pageSize: 100, // Large page size to get all data
       lifecycleState: 'FORECOURT' // Only show vehicles on forecourt (exclude sold, etc.)
     };
+    console.log('✅ LISTINGS: Query options set:', options);
+    return options;
   }, [isSignedIn, isLoaded]);
   
   const {
@@ -154,6 +161,49 @@ export default function ListingsManagement() {
     error,
     refetch
   } = useStockDataQuery(queryOptions);
+
+  // Enhanced logging for production debugging
+  useEffect(() => {
+    console.log('\n🔍 ===== LISTINGS PAGE DATA STATE =====');
+    console.log('👤 User signed in:', isSignedIn);
+    console.log('📊 Loading state:', loading);
+    console.log('❌ Error state:', error);
+    console.log('📦 Stock data received:', !!stockData);
+    console.log('📊 Stock data length:', stockData?.length || 0);
+    
+    if (stockData && stockData.length > 0) {
+      console.log('\n🚗 ===== LISTINGS: FIRST VEHICLE ANALYSIS =====');
+      const firstVehicle = stockData[0];
+      console.log('🏗️ Vehicle keys:', Object.keys(firstVehicle));
+      console.log('🆔 Stock ID:', firstVehicle.stockId);
+      console.log('🚗 Vehicle make:', getVehicleProperty(firstVehicle, 'make'));
+      console.log('🚗 Vehicle model:', getVehicleProperty(firstVehicle, 'model'));
+      console.log('📋 Registration:', getVehicleProperty(firstVehicle, 'registration'));
+      console.log('💰 Price:', getPrice(firstVehicle));
+      console.log('📊 Lifecycle state:', firstVehicle.lifecycleState || firstVehicle.metadata?.lifecycleState);
+      console.log('📢 Advert status:', firstVehicle.advertStatus);
+      console.log('🎯 Channel status for this vehicle:', channelStatus[firstVehicle.stockId]);
+      
+      // Check for missing critical data
+      const missingData = [];
+      if (!getVehicleProperty(firstVehicle, 'make')) missingData.push('make');
+      if (!getVehicleProperty(firstVehicle, 'model')) missingData.push('model');
+      if (!getVehicleProperty(firstVehicle, 'registration')) missingData.push('registration');
+      if (getPrice(firstVehicle) === 0) missingData.push('price');
+      
+      if (missingData.length > 0) {
+        console.warn('⚠️ LISTINGS: Missing critical data in first vehicle:', missingData);
+      }
+    } else if (stockData && stockData.length === 0) {
+      console.warn('⚠️ LISTINGS: Stock data is empty array - no vehicles found');
+    } else if (!stockData) {
+      console.warn('⚠️ LISTINGS: Stock data is null/undefined');
+    }
+    
+    if (error) {
+      console.error('❌ LISTINGS: Error details:', error);
+    }
+  }, [stockData, loading, error, isSignedIn, channelStatus]);
 
   // Helper function to get vehicle properties (moved before useMemo hooks)
   const getVehicleProperty = (vehicle: StockItem, property: string): string => {
@@ -168,7 +218,11 @@ export default function ListingsManagement() {
 
   // Filter and paginate stock data
   const filteredAndPaginatedData = useMemo(() => {
+    console.log('\n🔍 ===== LISTINGS: FILTERING DATA =====');
+    console.log('📊 Input stock data length:', stockData?.length || 0);
+    
     if (!stockData || stockData.length === 0) {
+      console.log('⚠️ LISTINGS: No stock data to filter');
       return { filteredStock: [], paginatedStock: [], totalPages: 0, totalItems: 0 };
     }
 
@@ -176,7 +230,10 @@ export default function ListingsManagement() {
     const filtered = stockData.filter((vehicle: StockItem) => {
       // Lifecycle status filter - only show FORECOURT vehicles (exclude sold, etc.)
       const lifecycleState = vehicle.lifecycleState || vehicle.metadata?.lifecycleState;
+      console.log(`🔍 Vehicle ${vehicle.stockId}: lifecycle state = "${lifecycleState}"`);
+      
       if (lifecycleState?.toLowerCase() !== 'forecourt') {
+        console.log(`❌ Vehicle ${vehicle.stockId}: filtered out due to lifecycle state "${lifecycleState}"`);
         return false;
       }
 
@@ -237,11 +294,22 @@ export default function ListingsManagement() {
     const endIndex = startIndex + itemsPerPage;
     const paginatedStock = filtered.slice(startIndex, endIndex);
 
+    console.log('\n📊 ===== LISTINGS: FILTERING RESULTS =====');
+    console.log('✅ Vehicles passing filters:', totalItems);
+    console.log('📄 Current page:', currentPage);
+    console.log('📄 Total pages:', totalPages);
+    console.log('📄 Items per page:', itemsPerPage);
+    console.log('📄 Showing items:', startIndex + 1, 'to', Math.min(endIndex, totalItems));
+    console.log('📄 Paginated stock length:', paginatedStock.length);
+
     return { filteredStock: filtered, paginatedStock, totalPages, totalItems };
   }, [stockData, searchTerm, filterMake, filterModel, selectedChannelFilters, channelStatus, currentPage, itemsPerPage]);
 
   // Initialize channel status from stock data
   useEffect(() => {
+    console.log('\n🎯 ===== LISTINGS: INITIALIZING CHANNEL STATUS =====');
+    console.log('📊 Stock data length:', stockData?.length || 0);
+    
     if (stockData && stockData.length > 0) {
       const initialStatus: ChannelStatus = {};
       
@@ -253,29 +321,45 @@ export default function ListingsManagement() {
         const adverts = vehicle.adverts?.retailAdverts;
         
         // AutoTrader channel
-        initialStatus[vehicleId]['autotrader'] = 
-          adverts?.autotraderAdvert?.status === 'PUBLISHED' ||
+        const autotraderStatus = adverts?.autotraderAdvert?.status === 'PUBLISHED' ||
           vehicle.advertStatus === 'PUBLISHED';
-          
+        initialStatus[vehicleId]['autotrader'] = autotraderStatus;
+        
         // Advertiser channel  
-        initialStatus[vehicleId]['advertiser'] = 
-          adverts?.advertiserAdvert?.status === 'PUBLISHED' ||
+        const advertiserStatus = adverts?.advertiserAdvert?.status === 'PUBLISHED' ||
           vehicle.advertiserAdvertStatus === 'PUBLISHED';
+        initialStatus[vehicleId]['advertiser'] = advertiserStatus;
           
         // Locator channel
-        initialStatus[vehicleId]['locator'] = 
-          adverts?.locatorAdvert?.status === 'PUBLISHED';
+        const locatorStatus = adverts?.locatorAdvert?.status === 'PUBLISHED';
+        initialStatus[vehicleId]['locator'] = locatorStatus;
           
         // Export channel (Partner Sites)
-        initialStatus[vehicleId]['export'] = 
-          adverts?.exportAdvert?.status === 'PUBLISHED';
+        const exportStatus = adverts?.exportAdvert?.status === 'PUBLISHED';
+        initialStatus[vehicleId]['export'] = exportStatus;
           
         // Profile channel
-        initialStatus[vehicleId]['profile'] = 
-          adverts?.profileAdvert?.status === 'PUBLISHED';
+        const profileStatus = adverts?.profileAdvert?.status === 'PUBLISHED';
+        initialStatus[vehicleId]['profile'] = profileStatus;
+        
+        // Log channel status for first few vehicles
+        if (stockData.indexOf(vehicle) < 3) {
+          console.log(`🎯 Vehicle ${vehicleId} channel status:`, {
+            autotrader: autotraderStatus,
+            advertiser: advertiserStatus,
+            locator: locatorStatus,
+            export: exportStatus,
+            profile: profileStatus,
+            advertStatus: vehicle.advertStatus,
+            advertiserAdvertStatus: vehicle.advertiserAdvertStatus
+          });
+        }
       });
       
+      console.log('✅ Channel status initialized for', Object.keys(initialStatus).length, 'vehicles');
       setChannelStatus(initialStatus);
+    } else {
+      console.log('⚠️ No stock data available for channel status initialization');
     }
   }, [stockData]);
 
@@ -658,6 +742,18 @@ export default function ListingsManagement() {
       <Header />
       
       <main className="w-full px-6 py-8 pt-24">
+
+        {/* Debug Panel - Only show when debug=true parameter is present */}
+        {isDebugMode && (
+          <ListingsDebugPanel
+            stockData={stockData}
+            loading={loading}
+            error={error}
+            isSignedIn={isSignedIn}
+            isLoaded={isLoaded}
+            channelStatus={channelStatus}
+          />
+        )}
 
         {/* Modern Header Section */}
         <div className="mb-12">
@@ -1569,5 +1665,17 @@ export default function ListingsManagement() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ListingsManagement() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <ListingsManagementContent />
+    </Suspense>
   );
 }

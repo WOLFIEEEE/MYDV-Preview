@@ -215,6 +215,33 @@ async function fetchStockListInternal(options: UseStockDataOptions = {}): Promis
   console.log('\n📦 ===== REACT QUERY: RECEIVED API RESPONSE =====');
   console.log('✅ Response success:', result.success);
   console.log('📊 Stock items count:', result.data?.stock?.length || 0);
+  console.log('📄 Pagination:', result.data?.pagination);
+  console.log('🗄️ Cache status:', result.data?.cache);
+  
+  // Log first item analysis for debugging
+  if (result.data?.stock && result.data.stock.length > 0) {
+    console.log('\n🚗 ===== REACT QUERY: FIRST ITEM ANALYSIS =====');
+    const firstItem = result.data.stock[0];
+    console.log('🆔 Stock ID:', firstItem.stockId);
+    console.log('🚗 Make:', firstItem.make);
+    console.log('🚗 Model:', firstItem.model);
+    console.log('📋 Registration:', firstItem.registration);
+    console.log('📊 Lifecycle state:', firstItem.lifecycleState);
+    console.log('💰 Price:', firstItem.forecourtPrice || firstItem.totalPrice || firstItem.adverts?.retailAdverts?.forecourtPrice?.amountGBP || firstItem.adverts?.retailAdverts?.totalPrice?.amountGBP);
+    console.log('📢 Advert status:', firstItem.advertStatus);
+    console.log('🏗️ Top-level keys:', Object.keys(firstItem));
+    
+    // Check for missing critical data
+    const missingData = [];
+    if (!firstItem.make) missingData.push('make');
+    if (!firstItem.model) missingData.push('model');
+    if (!firstItem.registration) missingData.push('registration');
+    if (!firstItem.forecourtPrice && !firstItem.totalPrice && !firstItem.adverts?.retailAdverts?.forecourtPrice?.amountGBP && !firstItem.adverts?.retailAdverts?.totalPrice?.amountGBP) missingData.push('price');
+    
+    if (missingData.length > 0) {
+      console.warn('⚠️ REACT QUERY: Missing critical data in first item:', missingData);
+    }
+  }
 
   if (!response.ok || !result.success) {
     console.log('❌ REACT QUERY: Fetch failed:', result.error?.message || 'Unknown error');

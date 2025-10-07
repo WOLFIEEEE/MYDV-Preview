@@ -527,19 +527,19 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
       <Card className={`${
         isDarkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-white border-slate-200'
       } shadow-xl`}>
-      <CardHeader className="pb-6 pt-8">
+      <CardHeader className="pb-4 sm:pb-6 pt-4 sm:pt-8">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
-              <Car className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-600 to-orange-700 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <Car className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div>
-              <CardTitle className={`text-2xl font-bold ${
+            <div className="flex-1 min-w-0">
+              <CardTitle className={`text-lg sm:text-xl md:text-2xl font-bold ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>
+              } leading-tight`}>
                 {isEditMode ? 'Edit Test Drive Entry' : 'Test Drive Entry Management'}
               </CardTitle>
-              <p className={`text-sm mt-1 ${
+              <p className={`text-xs sm:text-sm mt-1 ${
                 isDarkMode ? 'text-white' : 'text-slate-600'
               }`}>
                 {isEditMode ? 'Update test drive appointment details' : 'Schedule and manage customer test drives with ID verification'}
@@ -553,7 +553,7 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
               type="button"
               variant="ghost"
               onClick={onClose}
-              className={`p-2 ${
+              className={`p-2 flex-shrink-0 ${
                 isDarkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
               }`}
             >
@@ -563,21 +563,21 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
         </div>
       </CardHeader>
 
-      <CardContent className="p-8">
-        <form onSubmit={handleSubmit} className="space-y-8">
+      <CardContent className="p-4 sm:p-6 md:p-8">
+        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
           
           {/* Vehicle Information Section */}
-          <div className={`p-6 rounded-xl ${
+          <div className={`p-4 sm:p-6 rounded-xl ${
             isDarkMode ? 'bg-slate-700/30' : 'bg-slate-50/50'
           }`}>
-            <h3 className={`text-lg font-bold mb-6 ${
+            <h3 className={`text-base sm:text-lg font-bold mb-4 sm:mb-6 ${
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}>
-              <Car className="inline h-5 w-5 mr-2" />
+              <Car className="inline h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Vehicle Information
             </h3>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
               <div>
                 <label className={labelClass}>
                   Vehicle Registration *
@@ -586,30 +586,29 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
                   type="text"
                   value={formData.vehicleRegistration}
                   onChange={(e) => handleInputChange('vehicleRegistration', e.target.value.toUpperCase())}
-                  className={`${inputBaseClass} ${errors.vehicleRegistration ? 'border-red-500' : ''}`}
+                  className={`${inputBaseClass} text-base ${errors.vehicleRegistration ? 'border-red-500' : ''}`}
                   placeholder="e.g., AB12 CDE"
                 />
                 {errors.vehicleRegistration && (
                   <p className="text-red-500 text-xs mt-1">{errors.vehicleRegistration}</p>
                 )}
               </div>
-
             </div>
           </div>
 
 
           {/* Address Information Section */}
-          <div className={`p-6 rounded-xl ${
+          <div className={`p-4 sm:p-6 rounded-xl ${
             isDarkMode ? 'bg-slate-700/30' : 'bg-slate-50/50'
           }`}>
-            <h3 className={`text-lg font-bold mb-6 ${
+            <h3 className={`text-base sm:text-lg font-bold mb-4 sm:mb-6 ${
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}>
-              <MapPin className="inline h-5 w-5 mr-2" />
+              <MapPin className="inline h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Address Information
             </h3>
             
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Address Same as ID Dropdown */}
               <div>
                 <label className={labelClass}>
@@ -618,7 +617,7 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
                 <select
                   value={formData.addressSameAsId}
                   onChange={(e) => handleInputChange('addressSameAsId', e.target.value)}
-                  className={`${inputBaseClass} ${errors.addressSameAsId ? 'border-red-500' : ''}`}
+                  className={`${inputBaseClass} text-base ${errors.addressSameAsId ? 'border-red-500' : ''}`}
                 >
                   <option value="">Please select</option>
                   <option value="yes">Yes - Address is same as on ID</option>
@@ -674,17 +673,17 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
           </div>
 
           {/* ID Upload Section */}
-          <div className={`p-6 rounded-xl ${
+          <div className={`p-4 sm:p-6 rounded-xl ${
             isDarkMode ? 'bg-slate-700/30' : 'bg-slate-50/50'
           }`}>
-            <h3 className={`text-lg font-bold mb-6 ${
+            <h3 className={`text-base sm:text-lg font-bold mb-4 sm:mb-6 ${
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}>
-              <CreditCard className="inline h-5 w-5 mr-2" />
+              <CreditCard className="inline h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Driving License Verification
             </h3>
             
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <IDUploadComponent
                 onFileSelect={(file: File | null) => handleInputChange('drivingLicenseFile', file)}
                 onFileUpload={(fileUrl: string | null) => handleInputChange('drivingLicenseFileUrl', fileUrl)}
@@ -696,21 +695,21 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
 
 
           {/* Form Actions */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+              className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-semibold py-3 sm:py-3 px-6 sm:px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 text-base"
             >
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 animate-spin rounded-full border-2 border-transparent border-t-white mr-2" />
-                  {isEditMode ? 'Updating Test Drive Entry...' : 'Saving Test Drive Entry...'}
+                  <span className="text-sm sm:text-base">{isEditMode ? 'Updating Test Drive Entry...' : 'Saving Test Drive Entry...'}</span>
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  {isEditMode ? 'Update Test Drive Entry' : 'Save Test Drive Entry'}
+                  <span className="text-sm sm:text-base">{isEditMode ? 'Update Test Drive Entry' : 'Save Test Drive Entry'}</span>
                 </>
               )}
             </Button>
@@ -720,14 +719,14 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
               variant="outline"
               onClick={isEditMode ? onClose : handleReset}
               disabled={isSubmitting}
-              className={`px-8 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 ${
+              className={`px-6 sm:px-8 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105 text-base ${
                 isDarkMode
                   ? 'border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 text-slate-100 hover:border-slate-500 hover:text-white'
                   : 'border-slate-300 bg-white/50 hover:bg-slate-50 text-slate-700 hover:border-slate-400'
               }`}
             >
-              <RotateCcw className="h-5 w-5 mr-3" />
-              {isEditMode ? 'Cancel' : 'Reset Form'}
+              <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3" />
+              <span className="text-sm sm:text-base">{isEditMode ? 'Cancel' : 'Reset Form'}</span>
             </Button>
           </div>
           </form>

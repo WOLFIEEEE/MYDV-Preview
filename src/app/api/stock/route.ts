@@ -221,12 +221,38 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
       cache: stockResponse.cacheStatus,
     };
 
-    console.log('✅ Stock data retrieved successfully:', {
-      totalResults: stockResponse.totalResults,
-      page: stockResponse.page,
-      fromCache: stockResponse.cacheStatus.fromCache,
-      staleCacheUsed: stockResponse.cacheStatus.staleCacheUsed,
-    });
+    console.log('\n✅ ===== STOCK API: SUCCESS RESPONSE =====');
+    console.log('📊 Total results:', stockResponse.totalResults);
+    console.log('📄 Page:', stockResponse.page);
+    console.log('📄 Page size:', stockResponse.pageSize);
+    console.log('🗄️ From cache:', stockResponse.cacheStatus.fromCache);
+    console.log('🗄️ Stale cache used:', stockResponse.cacheStatus.staleCacheUsed);
+    console.log('📊 Stock items count:', stockResponse.results?.length || 0);
+    
+    // Log first few items for debugging
+    if (stockResponse.results && stockResponse.results.length > 0) {
+      console.log('\n🚗 ===== STOCK API: FIRST ITEM ANALYSIS =====');
+      const firstItem = stockResponse.results[0];
+      console.log('🆔 Stock ID:', firstItem.stockId);
+      console.log('🚗 Make:', firstItem.make);
+      console.log('🚗 Model:', firstItem.model);
+      console.log('📋 Registration:', firstItem.registration);
+      console.log('📊 Lifecycle state:', firstItem.lifecycleState);
+      console.log('💰 Forecourt price:', firstItem.forecourtPrice || firstItem.adverts?.retailAdverts?.forecourtPrice?.amountGBP);
+      console.log('📢 Advert status:', firstItem.advertStatus);
+      console.log('🏗️ Top-level keys:', Object.keys(firstItem));
+      
+      // Check for missing critical data
+      const missingData = [];
+      if (!firstItem.make) missingData.push('make');
+      if (!firstItem.model) missingData.push('model');
+      if (!firstItem.registration) missingData.push('registration');
+      if (!firstItem.forecourtPrice && !firstItem.adverts?.retailAdverts?.forecourtPrice?.amountGBP) missingData.push('price');
+      
+      if (missingData.length > 0) {
+        console.warn('⚠️ STOCK API: Missing critical data in first item:', missingData);
+      }
+    }
 
     const response = NextResponse.json(
       createSuccessResponse(responseData, 'stock')

@@ -298,41 +298,41 @@ export default function TestDriveManagement() {
       <div className="pt-16 pb-6">
         {/* Page Header */}
         <section className="w-full">
-          <div className="container mx-auto max-w-full px-4 lg:px-6 xl:px-8 py-6">
-            <div className="w-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 dark:from-slate-900 dark:via-slate-800 dark:to-black rounded-2xl shadow-xl border border-slate-600 dark:border-slate-700 mb-6">
-              <div className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-14 h-14 bg-white/20 dark:bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30 dark:border-white/20">
-                        <Car className="w-7 h-7 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                          Test Drive Management
-                        </h1>
-                        <p className="text-slate-200 dark:text-white text-base md:text-lg leading-relaxed">
-                          Schedule, track, and manage customer test drive appointments
-                        </p>
-                      </div>
+          <div className="container mx-auto max-w-full px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6">
+            <div className="w-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 dark:from-slate-900 dark:via-slate-800 dark:to-black rounded-xl sm:rounded-2xl shadow-xl border border-slate-600 dark:border-slate-700 mb-4 sm:mb-6">
+              <div className="p-4 sm:p-6">
+                <div className="flex flex-col gap-4">
+                  {/* Header Content */}
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/20 dark:bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30 dark:border-white/20 flex-shrink-0">
+                      <Car className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1 sm:mb-2 leading-tight">
+                        Test Drive Management
+                      </h1>
+                      <p className="text-slate-200 dark:text-white text-sm sm:text-base md:text-lg leading-relaxed">
+                        Schedule, track, and manage customer test drive appointments
+                      </p>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row gap-3 lg:flex-shrink-0">
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
                     <Button 
                       onClick={handleRefresh}
                       disabled={refreshing}
-                      className="bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/40 backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl"
+                      className="w-full sm:w-auto bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/40 backdrop-blur-sm transition-all duration-200 shadow-lg hover:shadow-xl py-2.5 sm:py-2"
                     >
                       <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                      {refreshing ? 'Refreshing...' : 'Refresh'}
+                      <span className="text-sm sm:text-base">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
                     </Button>
                     <Button 
                       onClick={handleAddTestDrive}
-                      className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
+                      className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl py-2.5 sm:py-2"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Schedule Test Drive
+                      <span className="text-sm sm:text-base">Schedule Test Drive</span>
                     </Button>
                   </div>
                 </div>
@@ -343,34 +343,37 @@ export default function TestDriveManagement() {
 
 
         {/* Main Content */}
-        <section className="py-2 px-4 lg:px-6 xl:px-8">
+        <section className="py-2 px-3 sm:px-4 lg:px-6 xl:px-8">
           <div className="container mx-auto max-w-full">
             
             {/* Filters and Search */}
-            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm mb-6">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                    <div className="relative flex-1 max-w-md">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search test drives..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`pl-10 pr-4 py-2.5 w-full rounded-lg border ${
-                          isDarkMode 
-                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' 
-                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-500'
-                        } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                      />
-                    </div>
+            <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm mb-4 sm:mb-6">
+              <CardContent className="p-4 sm:p-6">
+                <div className="space-y-4">
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search test drives..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={`pl-10 pr-4 py-3 w-full rounded-lg border text-base ${
+                        isDarkMode 
+                          ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' 
+                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-500'
+                      } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    />
+                  </div>
+                  
+                  {/* Filter Controls */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4 text-slate-400" />
+                      <Filter className="h-4 w-4 text-slate-400 flex-shrink-0" />
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className={`px-3 py-2.5 rounded-lg border ${
+                        className={`flex-1 px-3 py-3 rounded-lg border text-base ${
                           isDarkMode 
                             ? 'bg-slate-700 border-slate-600 text-white' 
                             : 'bg-slate-50 border-slate-300 text-slate-900'
@@ -384,11 +387,11 @@ export default function TestDriveManagement() {
                       </select>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-slate-400" />
+                      <Calendar className="h-4 w-4 text-slate-400 flex-shrink-0" />
                       <select
                         value={dateFilter}
                         onChange={(e) => setDateFilter(e.target.value)}
-                        className={`px-3 py-2.5 rounded-lg border ${
+                        className={`flex-1 px-3 py-3 rounded-lg border text-base ${
                           isDarkMode 
                             ? 'bg-slate-700 border-slate-600 text-white' 
                             : 'bg-slate-50 border-slate-300 text-slate-900'
@@ -402,7 +405,6 @@ export default function TestDriveManagement() {
                       </select>
                     </div>
                   </div>
-                  
                 </div>
               </CardContent>
             </Card>
@@ -419,7 +421,7 @@ export default function TestDriveManagement() {
               </Card>
             )}
 
-            {/* Test Drive Table */}
+            {/* Test Drive Records */}
             <Card className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
               <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-4">
                 <div className="flex items-center justify-between">
@@ -453,138 +455,231 @@ export default function TestDriveManagement() {
                     </div>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className={`${isDarkMode ? 'bg-slate-700' : 'bg-slate-50'} border-b border-slate-200 dark:border-slate-700`}>
-                        <tr>
-                          <th className="px-6 py-4 text-left">
-                            <button
-                              onClick={() => handleSort('vehicleRegistration')}
-                              className={`flex items-center gap-2 text-sm font-medium ${
-                                isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'
-                              }`}
-                            >
-                              Vehicle Registration
-                              {sortField === 'vehicleRegistration' && (
-                                sortDirection === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
-                              )}
-                            </button>
-                          </th>
-                          <th className="px-6 py-4 text-left">
-                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Address Information
-                            </span>
-                          </th>
-                          <th className="px-6 py-4 text-left">
-                            <button
-                              onClick={() => handleSort('status')}
-                              className={`flex items-center gap-2 text-sm font-medium ${
-                                isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'
-                              }`}
-                            >
-                              Status
-                              {sortField === 'status' && (
-                                sortDirection === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
-                              )}
-                            </button>
-                          </th>
-                          <th className="px-6 py-4 text-left">
-                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Created
-                            </span>
-                          </th>
-                          <th className="px-6 py-4 text-right">
-                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Actions
-                            </span>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {filteredAndSortedTestDrives.map((testDrive) => {
-                          const statusBadge = getStatusBadge(testDrive.status);
-                          const StatusIcon = statusBadge.icon;
-                          
-                          return (
-                            <tr key={testDrive.id} className={`${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors`}>
-                              <td className="px-6 py-4">
+                  <div className="space-y-0">
+                    {/* Desktop Table View */}
+                    <div className="hidden lg:block overflow-x-auto">
+                      <table className="w-full">
+                        <thead className={`${isDarkMode ? 'bg-slate-700' : 'bg-slate-50'} border-b border-slate-200 dark:border-slate-700`}>
+                          <tr>
+                            <th className="px-6 py-4 text-left">
+                              <button
+                                onClick={() => handleSort('vehicleRegistration')}
+                                className={`flex items-center gap-2 text-sm font-medium ${
+                                  isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'
+                                }`}
+                              >
+                                Vehicle Registration
+                                {sortField === 'vehicleRegistration' && (
+                                  sortDirection === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
+                                )}
+                              </button>
+                            </th>
+                            <th className="px-6 py-4 text-left">
+                              <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                Address Information
+                              </span>
+                            </th>
+                            <th className="px-6 py-4 text-left">
+                              <button
+                                onClick={() => handleSort('status')}
+                                className={`flex items-center gap-2 text-sm font-medium ${
+                                  isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'
+                                }`}
+                              >
+                                Status
+                                {sortField === 'status' && (
+                                  sortDirection === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
+                                )}
+                              </button>
+                            </th>
+                            <th className="px-6 py-4 text-left">
+                              <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                Created
+                              </span>
+                            </th>
+                            <th className="px-6 py-4 text-right">
+                              <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                Actions
+                              </span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                          {filteredAndSortedTestDrives.map((testDrive) => {
+                            const statusBadge = getStatusBadge(testDrive.status);
+                            const StatusIcon = statusBadge.icon;
+                            
+                            return (
+                              <tr key={testDrive.id} className={`${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors`}>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <Car className="w-4 h-4 text-slate-400" />
+                                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                      {testDrive.vehicleRegistration}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="space-y-1">
+                                    {testDrive.addressSameAsId === 'yes' ? (
+                                      <div className="flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-slate-400" />
+                                        <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                          Same as ID
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {testDrive.addressLine1 && (
+                                          <div className="flex items-center gap-2">
+                                            <MapPin className="w-4 h-4 text-slate-400" />
+                                            <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                              {[testDrive.addressLine1, testDrive.city, testDrive.postcode].filter(Boolean).join(', ')}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className={`inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.color}`}>
+                                    <StatusIcon className="w-3 h-3" />
+                                    {testDrive.status.charAt(0).toUpperCase() + testDrive.status.slice(1).replace('-', ' ')}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-slate-400" />
+                                    <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                      {new Date(testDrive.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleViewTestDrive(testDrive)}
+                                      className={`${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} min-h-[36px] min-w-[36px] touch-manipulation`}
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditTestDrive(testDrive)}
+                                      className={`${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} min-h-[36px] min-w-[36px] touch-manipulation`}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteTestDrive(testDrive.id)}
+                                      className={`text-red-600 hover:text-red-700 ${isDarkMode ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} min-h-[36px] min-w-[36px] touch-manipulation`}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="lg:hidden">
+                      {filteredAndSortedTestDrives.map((testDrive) => {
+                        const statusBadge = getStatusBadge(testDrive.status);
+                        const StatusIcon = statusBadge.icon;
+                        
+                        return (
+                          <div key={testDrive.id} className={`border-b border-slate-200 dark:border-slate-700 p-4 ${isDarkMode ? 'hover:bg-slate-700/30' : 'hover:bg-slate-50'} transition-colors`}>
+                            <div className="space-y-3">
+                              {/* Header Row */}
+                              <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                   <Car className="w-4 h-4 text-slate-400" />
-                                  <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                  <span className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                                     {testDrive.vehicleRegistration}
                                   </span>
                                 </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="space-y-1">
-                                  {testDrive.addressSameAsId === 'yes' ? (
-                                    <div className="flex items-center gap-2">
-                                      <MapPin className="w-4 h-4 text-slate-400" />
-                                      <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
-                                        Same as ID
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-1">
-                                      {testDrive.addressLine1 && (
-                                        <div className="flex items-center gap-2">
-                                          <MapPin className="w-4 h-4 text-slate-400" />
-                                          <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
-                                            {[testDrive.addressLine1, testDrive.city, testDrive.postcode].filter(Boolean).join(', ')}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className={`inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.color}`}>
+                                <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium ${statusBadge.color}`}>
                                   <StatusIcon className="w-3 h-3" />
                                   {testDrive.status.charAt(0).toUpperCase() + testDrive.status.slice(1).replace('-', ' ')}
                                 </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-slate-400" />
-                                  <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
-                                    {new Date(testDrive.createdAt).toLocaleDateString()}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewTestDrive(testDrive)}
-                                    className={`${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditTestDrive(testDrive)}
-                                    className={`${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteTestDrive(testDrive.id)}
-                                    className={`text-red-600 hover:text-red-700 ${isDarkMode ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                              </div>
+
+                              {/* Address Information */}
+                              <div className="space-y-1">
+                                {testDrive.addressSameAsId === 'yes' ? (
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-slate-400" />
+                                    <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                      Same as ID
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {testDrive.addressLine1 && (
+                                      <div className="flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-slate-400" />
+                                        <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                          {[testDrive.addressLine1, testDrive.city, testDrive.postcode].filter(Boolean).join(', ')}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Created Date */}
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-slate-400" />
+                                <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                  Created: {new Date(testDrive.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+
+                              {/* Action Buttons */}
+                              <div className="flex items-center justify-end gap-2 pt-3">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleViewTestDrive(testDrive)}
+                                  className={`${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} px-3 py-2.5 min-h-[44px] touch-manipulation`}
+                                >
+                                  <Eye className="w-4 h-4 mr-1.5" />
+                                  <span className="text-xs font-medium">View</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditTestDrive(testDrive)}
+                                  className={`${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} px-3 py-2.5 min-h-[44px] touch-manipulation`}
+                                >
+                                  <Edit className="w-4 h-4 mr-1.5" />
+                                  <span className="text-xs font-medium">Edit</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteTestDrive(testDrive.id)}
+                                  className={`text-red-600 hover:text-red-700 ${isDarkMode ? 'hover:bg-red-900/20' : 'hover:bg-red-50'} px-3 py-2.5 min-h-[44px] touch-manipulation`}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1.5" />
+                                  <span className="text-xs font-medium">Delete</span>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -595,10 +690,10 @@ export default function TestDriveManagement() {
       
       {/* Test Drive Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className={`w-full max-w-7xl my-8 rounded-2xl shadow-2xl ${
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center p-0 sm:p-4 overflow-y-auto">
+          <div className={`w-full h-full sm:h-auto sm:w-full sm:max-w-7xl sm:my-8 sm:rounded-2xl shadow-2xl ${
             isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-          } border`}>
+          } border-0 sm:border`}>
             <TestDriveEntryForm
               onSuccess={handleFormClose}
               editTestDrive={selectedTestDrive}
