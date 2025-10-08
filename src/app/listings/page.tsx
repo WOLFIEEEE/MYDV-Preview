@@ -242,11 +242,29 @@ function ListingsManagementContent() {
   }, []);
 
   const getPrice = useCallback((vehicle: StockItem) => {
-    return vehicle.adverts?.retailAdverts?.forecourtPrice?.amountGBP || 
-           vehicle.adverts?.retailAdverts?.totalPrice?.amountGBP ||
-           vehicle.forecourtPrice || 
-           vehicle.totalPrice || 
-           0;
+    // Helper function to extract numeric value from price object or number
+    const extractPrice = (priceValue: number | { amountGBP?: number } | null | undefined): number => {
+      if (typeof priceValue === 'number') {
+        return priceValue;
+      }
+      if (priceValue && typeof priceValue === 'object' && priceValue.amountGBP) {
+        return typeof priceValue.amountGBP === 'number' ? priceValue.amountGBP : 0;
+      }
+      return 0;
+    };
+
+    // Try multiple price sources in order of preference
+    const forecourtPrice = extractPrice(vehicle.adverts?.retailAdverts?.forecourtPrice) || 
+                          extractPrice(vehicle.adverts?.forecourtPrice) ||
+                          extractPrice(vehicle.forecourtPrice);
+    
+    const totalPrice = extractPrice(vehicle.adverts?.retailAdverts?.totalPrice) ||
+                      extractPrice(vehicle.totalPrice);
+    
+    const suppliedPrice = extractPrice(vehicle.adverts?.retailAdverts?.suppliedPrice) ||
+                         extractPrice(vehicle.suppliedPrice);
+
+    return forecourtPrice || totalPrice || suppliedPrice || 0;
   }, []);
 
   const getVehicleImage = useCallback((vehicle: StockItem) => {
