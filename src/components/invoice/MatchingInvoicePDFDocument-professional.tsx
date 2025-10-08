@@ -1,3 +1,19 @@
+/**
+ * Professional Matching Invoice PDF Document
+ * 
+ * Features:
+ * - Multi-page invoice layout with professional styling
+ * - Background image support on all pages (watermark-style)
+ * - Configurable background image opacity and source
+ * - Uses company logo as background by default
+ * - Century Gothic font family throughout
+ * 
+ * Background Image Configuration:
+ * - Set GLOBAL_FORMAT_CONFIG.layout.backgroundImage.enabled to true/false
+ * - Adjust opacity with GLOBAL_FORMAT_CONFIG.layout.backgroundImage.opacity
+ * - Customize default image with GLOBAL_FORMAT_CONFIG.layout.backgroundImage.defaultPath
+ */
+
 import React from 'react';
 import {
   Document,
@@ -80,6 +96,16 @@ const GLOBAL_FORMAT_CONFIG = {
     qrCode: {
       width: 60,
       height: 60,
+    },
+    backgroundImage: {
+      enabled: true,       // Enable/disable background image
+      opacity: 0.05,       // Background image opacity (very light)
+      position: 'absolute', // Position type
+      width: '100%',       // Full width
+      height: '100%',      // Full height
+      zIndex: -1,          // Behind all content
+      defaultPath: '/companylogo.png', // Default background image path
+      useCompanyLogo: true, // Use company logo as background if no custom path
     }
   },
 
@@ -336,6 +362,20 @@ const styles = StyleSheet.create({
     fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family,
     lineHeight: GLOBAL_FORMAT_CONFIG.layout.lineHeight.normal,
     color: GLOBAL_FORMAT_CONFIG.colors.primary,
+    position: 'relative', // Enable positioning for background image
+    zIndex: 1, // Ensure content appears above background
+  },
+  
+  // Background image style
+  backgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    opacity: GLOBAL_FORMAT_CONFIG.layout.backgroundImage.opacity,
+    zIndex: -1,
+    objectFit: 'contain',
   },
   
   // Page break control - keep small sections together
@@ -778,6 +818,35 @@ interface Props {
   invoiceData: ComprehensiveInvoiceData;
 }
 
+/**
+ * Get background image source for PDF pages
+ * 
+ * Determines which background image to use based on configuration.
+ * 
+ * @param customSrc - Optional custom background image path
+ * @param companyLogo - Company logo path from invoice data
+ * @returns Image source URL or null if disabled
+ */
+const getBackgroundImageSrc = (customSrc?: string, companyLogo?: string): string | null => {
+  // Only return image if background image is enabled
+  if (!GLOBAL_FORMAT_CONFIG.layout.backgroundImage.enabled) {
+    return null;
+  }
+
+  // Determine which image to use
+  let imageSrc = customSrc;
+  
+  if (!imageSrc && GLOBAL_FORMAT_CONFIG.layout.backgroundImage.useCompanyLogo && companyLogo) {
+    imageSrc = companyLogo;
+  }
+  
+  if (!imageSrc) {
+    imageSrc = GLOBAL_FORMAT_CONFIG.layout.backgroundImage.defaultPath;
+  }
+
+  return imageSrc || null;
+};
+
 export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: Props) {
   // Helper functions - using global calculation configuration
   const formatCurrency = GLOBAL_CALCULATION_CONFIG.calculations.formatCurrency;
@@ -785,6 +854,29 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-GB');
+  };
+
+  // Get background image source
+  const backgroundImageSrc = getBackgroundImageSrc(undefined, invoiceData.companyInfo.logo);
+  
+  // Create page wrapper component with background
+  const PageWithBackground = ({ children, style }: { children: React.ReactNode; style?: any }) => {
+    const pageStyle = Array.isArray(style) ? style : [style];
+    
+    return (
+      <Page size="A4" style={pageStyle}>
+        {backgroundImageSrc && (
+          <Image
+            style={styles.backgroundImage}
+            src={backgroundImageSrc}
+            fixed
+          />
+        )}
+        <View style={{ position: 'relative', flex: 1 }}>
+          {children}
+        </View>
+      </Page>
+    );
   };
 
   // Helper function to check conditions from JSON template (REMOVED - not used in static layout)
@@ -1469,7 +1561,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
   return (
     <Document>
       {/* Page 1: Invoice Core Section */}
-      <Page size="A4" style={[styles.page, styles.avoidBreak]}>
+      <PageWithBackground style={[styles.page, styles.avoidBreak]}>
+          
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: GLOBAL_FORMAT_CONFIG.spacing.headerGap }}>
             {/* Left Side - Logo and Company Info */}
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -2537,12 +2630,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
           
           {/* Payment Information, Thank You & QR Code - 3 Column Layout */}
          
-
-      </Page>
+      </PageWithBackground>
 
       {/* Page 2: Trade Disclaimer (for Trade Sales) */}
         {shouldShowSection('trade-disclaimer') && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Top information text */}
             <View style={{ marginBottom: 15 }}>
@@ -2640,12 +2732,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             
 
           </View>
-        </Page>
+        </PageWithBackground>
         )}
 
       {/* Page 2/3: Vehicle Checklist (for Retail Sales) */}
         {shouldShowSection('checklist') && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Top information text */}
             <View style={{ marginBottom: 15 }}>
@@ -2873,12 +2965,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
             </View>
           </View>
-        </Page>
+        </PageWithBackground>
       )}
 
       {/* Page 3/4: Terms and Conditions */}
         {shouldShowSection('standard-terms') && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Grey banner header */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
@@ -2896,12 +2988,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               )}
             </View>
           </View>
-        </Page>
+        </PageWithBackground>
       )}
 
       {/* Page 4/5: In-House Warranty */}
         {shouldShowSection('in-house-warranty') && invoiceData.saleType !== 'Trade' && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
             <View style={styles.avoidBreak}>
             {/* Grey banner header */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
@@ -2951,12 +3043,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 )}
                 </View>
                 </View>
-        </Page>
+        </PageWithBackground>
       )}
 
       {/* Page 5/6: External Warranty */}
         {shouldShowSection('external-warranty') && invoiceData.saleType !== 'Trade' && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Grey banner header */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
@@ -2975,8 +3067,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 </View>
               )}
             </View>
-        </View>
-      </Page>
+          </View>
+      </PageWithBackground>
       )}
     </Document>
   );
