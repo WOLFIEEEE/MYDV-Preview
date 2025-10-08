@@ -1619,9 +1619,9 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
   };
 
   return (
-    <div className={`h-full flex flex-col ${className}`} style={{ isolation: 'isolate' }}>
+    <div className={`safari-preview-wrapper ${className}`} style={{ isolation: 'isolate' }}>
       {/* Preview Controls */}
-      <div className="flex items-center justify-between p-4 border-b bg-slate-50 dark:bg-slate-800">
+      <div className="flex items-center justify-between p-4 border-b bg-slate-50 dark:bg-slate-800 flex-shrink-0">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <Button
@@ -1683,7 +1683,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
       </div>
 
       {/* PDF Preview Area */}
-      <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900 p-4">
+      <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900 p-4 min-h-0">
         <div className="min-h-full flex justify-center items-start">
           <div className="invoice-pdf-preview-wrapper w-full max-w-4xl min-h-[1000px]" style={{ 
             isolation: 'isolate',

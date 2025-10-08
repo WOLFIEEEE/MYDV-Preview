@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     // Create filename
     const filename = `${invoiceData.invoiceNumber}_${invoiceData.vehicle.registration}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    // Return PDF as response
+    // Return PDF as response with Safari-compatible headers
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
@@ -84,7 +84,14 @@ export async function POST(request: NextRequest) {
         'Content-Length': pdfBuffer.length.toString(),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
-        'Expires': '0'
+        'Expires': '0',
+        // Safari-specific headers
+        'Accept-Ranges': 'bytes',
+        'X-Content-Type-Options': 'nosniff',
+        // CORS headers for blob URL support
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
       }
     });
 
