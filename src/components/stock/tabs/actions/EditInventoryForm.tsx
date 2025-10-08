@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   Sparkles,
   Banknote,
-  Calculator
+  Calculator,
+  Building2
 } from "lucide-react";
 
 interface EditInventoryFormProps {
@@ -34,6 +35,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
     registration: stockData?.vehicle?.registration || '',
     dateOfPurchase: '',
     costOfPurchase: '',
+    purchaseFrom: '',
     fundingAmount: '',
     fundingSourceId: '',
     businessAmount: ''
@@ -59,6 +61,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
               registration: data.registration || stockData?.vehicle?.registration || '',
               dateOfPurchase: data.dateOfPurchase ? new Date(data.dateOfPurchase).toISOString().split('T')[0] : '',
               costOfPurchase: data.costOfPurchase || '',
+              purchaseFrom: data.purchaseFrom || '',
               fundingAmount: data.fundingAmount || '',
               fundingSourceId: data.fundingSourceId || '',
               businessAmount: data.businessAmount || ''
@@ -117,6 +120,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
         registration: formData.registration,
         dateOfPurchase: formData.dateOfPurchase,
         costOfPurchase: formData.costOfPurchase,
+        purchaseFrom: formData.purchaseFrom,
         fundingAmount: formData.fundingAmount,
         fundingSourceId: formData.fundingSourceId,
         businessAmount: formData.businessAmount
@@ -172,6 +176,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
       registration: stockData?.vehicle?.registration || '',
       dateOfPurchase: '',
       costOfPurchase: '',
+      purchaseFrom: '',
       fundingAmount: '',
       fundingSourceId: '',
       businessAmount: ''
@@ -344,7 +349,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                   placeholder="Enter purchase cost"
                 />
                 <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${
-                  isDarkMode ? 'text-white' : 'text-slate-500'
+                  isDarkMode ? 'text-slate-200' : 'text-slate-500'
                 }`}>
                   £
                 </div>
@@ -356,6 +361,41 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                     : ''
                 }`} />
               </div>
+            </div>
+
+            {/* Purchase From */}
+            <div className="relative">
+              <label className={labelClass}>
+                <Building2 className="inline h-4 w-4 mr-2" />
+                Purchase From
+              </label>
+              <div className="relative group">
+                <input
+                  type="text"
+                  value={formData.purchaseFrom}
+                  onChange={(e) => handleInputChange('purchaseFrom', e.target.value)}
+                  onFocus={() => setFocusedField('purchaseFrom')}
+                  onBlur={() => setFocusedField(null)}
+                  className={`${inputBaseClass} ${
+                    focusedField === 'purchaseFrom' 
+                      ? 'ring-2 ring-blue-500/20 border-blue-500 scale-[1.02]' 
+                      : ''
+                  }`}
+                  placeholder="Enter seller/dealer name"
+                />
+                <div className={`absolute inset-0 rounded-xl pointer-events-none transition-all duration-200 ${
+                  focusedField === 'purchaseFrom' 
+                    ? isDarkMode 
+                      ? 'shadow-lg shadow-blue-500/20' 
+                      : 'shadow-lg shadow-blue-500/10'
+                    : ''
+                }`} />
+              </div>
+              <p className={`text-xs mt-1 ${
+                isDarkMode ? 'text-slate-300' : 'text-slate-500'
+              }`}>
+                Name of the seller, dealer, or auction house
+              </p>
             </div>
 
             {/* Funding Amount */}
@@ -380,7 +420,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                   placeholder="Enter funding amount"
                 />
                 <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${
-                  isDarkMode ? 'text-white' : 'text-slate-500'
+                  isDarkMode ? 'text-slate-200' : 'text-slate-500'
                 }`}>
                   £
                 </div>
@@ -393,7 +433,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                 }`} />
               </div>
               <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-white' : 'text-slate-500'
+                isDarkMode ? 'text-slate-300' : 'text-slate-500'
               }`}>
                 Amount funded from external financing source
               </p>
@@ -433,7 +473,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                 }`} />
               </div>
               <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-white' : 'text-slate-500'
+                isDarkMode ? 'text-slate-300' : 'text-slate-500'
               }`}>
                 Select the source of funding for this purchase
               </p>
@@ -458,18 +498,18 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                   placeholder="Calculated automatically"
                 />
                 <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${
-                  isDarkMode ? 'text-white' : 'text-slate-500'
+                  isDarkMode ? 'text-slate-300' : 'text-slate-500'
                 }`}>
                   £
                 </div>
                 <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center ${
-                  isDarkMode ? 'text-white' : 'text-slate-400'
+                  isDarkMode ? 'text-slate-300' : 'text-slate-400'
                 }`}>
                   🔒
                 </div>
               </div>
               <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-white' : 'text-slate-500'
+                isDarkMode ? 'text-slate-300' : 'text-slate-500'
               }`}>
                 Automatically calculated: Cost of Purchase - Funding Amount
               </p>

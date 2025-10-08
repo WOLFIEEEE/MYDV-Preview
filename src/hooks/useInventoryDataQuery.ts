@@ -37,6 +37,7 @@ export interface InventoryItem {
   // Additional useful data
   make: string;
   model: string;
+  derivative?: string; // Add derivative field for variant export
   yearOfManufacture?: number;
   fuelType?: string;
   bodyType?: string;

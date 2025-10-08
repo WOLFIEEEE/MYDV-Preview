@@ -103,6 +103,7 @@ export async function GET() {
         registration: stockCache.registration,
         make: stockCache.make,
         model: stockCache.model,
+        derivative: stockCache.derivative, // Add derivative field for variant export
         yearOfManufacture: stockCache.yearOfManufacture,
         fuelType: stockCache.fuelType,
         bodyType: stockCache.bodyType,
@@ -386,6 +387,7 @@ export async function GET() {
         // Additional useful data
         make: row.make || 'Unknown',
         model: row.model || '',
+        derivative: row.derivative || '', // Add derivative field for variant export
         yearOfManufacture: row.yearOfManufacture,
         fuelType: row.fuelType,
         bodyType: row.bodyType,
