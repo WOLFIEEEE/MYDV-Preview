@@ -26,6 +26,14 @@ interface VehicleDetailsProps {
     enginePowerBHP?: number;
     co2Emissions: string;
     fuelEconomyCombinedMPG?: number;
+    // Additional fields from vehicle API
+    ownershipCondition?: string;
+    engineCapacityCC?: number;
+    startStop?: boolean;
+    gears?: number;
+    drivetrain?: string;
+    cylinders?: number;
+    driveType?: string;
   };
 }
 
@@ -38,24 +46,24 @@ export default function VehicleDetails({ vehicleData }: VehicleDetailsProps) {
     { label: "Registration", value: vehicleData.registration, isLicensePlate: true },
     { label: "Year of Manufacture", value: vehicleData.year },
     { label: "Mileage", value: `${vehicleData.mileage} miles` },
-    { label: "Vehicle Type", value: vehicleData.vehicleType || "Car" },
-    { label: "Body Type", value: vehicleData.bodyType || "SUV" },
+    { label: "Vehicle Type", value: vehicleData.vehicleType || "-" },
+    { label: "Body Type", value: vehicleData.bodyType || "-" },
     { label: "Colour", value: vehicleData.color },
-    { label: "Ownership Condition", value: "Used" },
-    { label: "VIN", value: vehicleData.vin || "WAUZZZ4M6RD016057", mono: true },
+    { label: "Ownership Condition", value: vehicleData.ownershipCondition || "-" },
+    { label: "VIN", value: vehicleData.vin || "-", mono: true },
     { label: "Engine Size in Litres", value: vehicleData.engineSize },
-    { label: "Engine Capacity", value: "3996 cc" },
+    { label: "Engine Capacity", value: vehicleData.engineCapacityCC ? `${vehicleData.engineCapacityCC} cc` : "-" },
     { label: "Fuel Type", value: vehicleData.fuelType },
-    { label: "Start Stop", value: "Yes" },
-    { label: "Transmission Type", value: vehicleData.transmissionType || "Automatic" },
-    { label: "Gears", value: "8" },
-    { label: "Drivetrain", value: "Four Wheel Drive" },
-    { label: "Seats", value: vehicleData.seats?.toString() || "7" },
-    { label: "Doors", value: vehicleData.doors?.toString() || "5" },
-    { label: "Cylinders", value: "8" },
-    { label: "Emission Class", value: vehicleData.emissionClass || "Euro 6" },
-    { label: "Owners", value: vehicleData.owners?.toString() || "2" },
-    { label: "Drive Type", value: "4X4" },
+    { label: "Start Stop", value: vehicleData.startStop !== undefined ? (vehicleData.startStop ? "Yes" : "No") : "-" },
+    { label: "Transmission Type", value: vehicleData.transmissionType || "-" },
+    { label: "Gears", value: vehicleData.gears?.toString() || "-" },
+    { label: "Drivetrain", value: vehicleData.drivetrain || "-" },
+    { label: "Seats", value: vehicleData.seats?.toString() || "-" },
+    { label: "Doors", value: vehicleData.doors?.toString() || "-" },
+    { label: "Cylinders", value: vehicleData.cylinders?.toString() || "-" },
+    { label: "Emission Class", value: vehicleData.emissionClass || "-" },
+    { label: "Owners", value: vehicleData.owners?.toString() || "-" },
+    { label: "Drive Type", value: vehicleData.driveType || "-" },
     { label: "Engine Power (BHP)", value: vehicleData.enginePowerBHP?.toString() || "-" },
     { label: "CO2 Emissions", value: vehicleData.co2Emissions || "-" },
     { label: "Fuel Economy (MPG)", value: vehicleData.fuelEconomyCombinedMPG?.toString() || "-" }

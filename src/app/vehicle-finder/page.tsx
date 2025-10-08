@@ -47,6 +47,14 @@ interface VehicleInfo {
   owners?: number;
   vin?: string;
   emissionClass?: string;
+  // Additional fields for VehicleDetails component
+  ownershipCondition?: string;
+  engineCapacityCC?: number;
+  startStop?: boolean;
+  gears?: number;
+  drivetrain?: string;
+  cylinders?: number;
+  driveType?: string;
   features?: Array<{
     name: string;
     genericName?: string;
@@ -231,6 +239,14 @@ export default function VehicleFinder() {
           owners: vehicle.owners,
           vin: vehicle.vin,
           emissionClass: vehicle.emissionClass,
+          // Additional fields for VehicleDetails component
+          ownershipCondition: vehicle.ownershipCondition,
+          engineCapacityCC: vehicle.engineCapacityCC,
+          startStop: vehicle.startStop,
+          gears: vehicle.gears,
+          drivetrain: vehicle.drivetrain,
+          cylinders: vehicle.cylinders,
+          driveType: vehicle.driveType,
           // Features data for VehicleFeatures component
           features: vehicle.features || [],
           // Valuation data from AutoTrader API (extracted from data.data.valuations)
