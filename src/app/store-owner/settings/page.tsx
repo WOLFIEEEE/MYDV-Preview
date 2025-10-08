@@ -429,15 +429,27 @@ export default function StoreOwnerSettings() {
   };
 
   // Stock Image management functions
-  const loadStockImages = async () => {
+  const loadStockImages = async (bustCache = false) => {
     setIsLoadingStockImages(true);
     try {
-      const response = await fetch('/api/stock-images');
+      // Add cache-busting parameter when needed
+      const url = bustCache 
+        ? `/api/stock-images?_t=${Date.now()}` 
+        : '/api/stock-images';
+      
+      const response = await fetch(url, {
+        // Force no cache on the request
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await response.json();
       
       if (data.success) {
         setStockImages(data.stockImages || []);
-        console.log('📸 Loaded stock images:', data.stockImages?.length || 0);
+        console.log(`📸 Loaded stock images at ${new Date().toISOString()}:`, data.stockImages?.length || 0);
       } else {
         console.error('❌ Failed to load stock images:', data.message);
         setStockImages([]);
@@ -474,17 +486,30 @@ export default function StoreOwnerSettings() {
 
       if (data.success) {
         console.log('✅ Stock images uploaded successfully');
-        await loadStockImages(); // Reload stock images
+        
+        // Clear form and close modal first
         setShowAddStockImageModal(false);
         setSelectedStockImageFiles([]);
         setNewStockImageName('');
         setNewStockImageDescription('');
         setStockImageType('fallback');
+        setStockImageFileSelectionMessage('');
+        
+        // Then reload stock images with cache busting
+        await loadStockImages(true);
+        
+        // Show success message if there were partial failures
+        if (data.errors && data.errors.length > 0) {
+          console.warn('⚠️ Some images failed to upload:', data.errors);
+          alert(`Successfully uploaded ${data.count} image(s). Some files failed: ${data.errors.join(', ')}`);
+        }
       } else {
         console.error('❌ Stock image upload failed:', data.message);
+        alert(`Upload failed: ${data.message}${data.errors ? '\n' + data.errors.join('\n') : ''}`);
       }
     } catch (error) {
       console.error('❌ Error uploading stock images:', error);
+      alert('Upload failed: Network error or server unavailable. Please try again.');
     } finally {
       setIsUploadingStockImage(false);
       setStockImageUploadProgress(0);
@@ -492,6 +517,15 @@ export default function StoreOwnerSettings() {
   };
 
   const deleteStockImage = async (stockImageId: string) => {
+    // Show confirmation dialog
+    if (!confirm('Are you sure you want to delete this stock image? This action cannot be undone.')) {
+      return;
+    }
+
+    // Optimistically remove from UI
+    const originalStockImages = [...stockImages];
+    setStockImages(prev => prev.filter(img => img.id !== stockImageId));
+
     try {
       console.log('🗑️ Attempting to delete stock image with ID:', stockImageId);
       
@@ -503,12 +537,21 @@ export default function StoreOwnerSettings() {
 
       if (data.success) {
         console.log('✅ Stock image deleted successfully:', stockImageId);
-        await loadStockImages(); // Reload stock images
+        // Small delay to ensure database transaction is committed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // Force reload with cache busting to ensure fresh data
+        await loadStockImages(true);
       } else {
         console.error('❌ Stock image deletion failed:', data.message);
+        // Revert optimistic update
+        setStockImages(originalStockImages);
+        alert(`Delete failed: ${data.message}`);
       }
     } catch (error) {
       console.error('❌ Error deleting stock image:', error);
+      // Revert optimistic update
+      setStockImages(originalStockImages);
+      alert('Delete failed: Network error or server unavailable. Please try again.');
     }
   };
 
@@ -565,9 +608,40 @@ export default function StoreOwnerSettings() {
   const handleStockImageFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length > 0) {
-      setSelectedStockImageFiles(files);
-      setStockImageFileSelectionMessage(`${files.length} file(s) selected`);
+      // Validate files
+      const validFiles = [];
+      const errors = [];
+      
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+          errors.push(`${file.name}: Not an image file`);
+          continue;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          errors.push(`${file.name}: File too large (max 10MB)`);
+          continue;
+        }
+        validFiles.push(file);
+      }
+      
+      setSelectedStockImageFiles(validFiles);
+      
+      if (validFiles.length > 0) {
+        setStockImageFileSelectionMessage(`${validFiles.length} valid file(s) selected`);
+      }
+      
+      if (errors.length > 0) {
+        setStockImageFileSelectionMessage(
+          `${validFiles.length} valid file(s) selected. Errors: ${errors.join(', ')}`
+        );
+      }
+    } else {
+      setSelectedStockImageFiles([]);
+      setStockImageFileSelectionMessage('');
     }
+    
+    // Reset the input to allow selecting the same files again
+    event.target.value = '';
   };
 
   // Handle keyboard events for modal

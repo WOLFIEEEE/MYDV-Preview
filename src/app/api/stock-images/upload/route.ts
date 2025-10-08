@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { uploadFileToStorage, generateStorageFileName } from '@/lib/storage';
 import { createStockImage, createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized' 
       }, { status: 401 });
     }
 
-    // Get or create dealer record
+    // Get or create dealer record using enhanced resolution
+    let dealerId: string;
+    const dealerResult = await getDealerIdForUser(user);
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      dealerId = dealerResult.dealerId;
+      console.log(`✅ Enhanced dealer resolution for upload: ${dealerId}`);
+    } else {
+      console.log(`⚠️ Enhanced dealer resolution failed, falling back to createOrGetDealer`);
+      // Fallback to traditional dealer resolution
+      const dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+      dealerId = dealer.id;
+      console.log(`🏢 Fallback dealer resolution for upload: ${dealerId}`);
+    }
     const formData = await request.formData();
     const name = formData.get('name') as string;
     const description = formData.get('description') as string || '';
@@ -29,8 +43,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get dealer information
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
     
     // Extract files from form data
     const files: File[] = [];
@@ -49,10 +61,14 @@ export async function POST(request: NextRequest) {
 
     const uploadedStockImages = [];
     const errors = [];
+    const total = files.length;
 
     // Process each file
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const progress = Math.round(((i + 1) / total) * 100);
+      
+      console.log(`📷 Processing file ${i + 1}/${total}: ${file.name} (${progress}%)`);
 
       try {
         // Validate file
@@ -67,10 +83,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate storage filename
-        const storageFileName = generateStorageFileName(file.name, 'stock', dealer.id);
+        const storageFileName = generateStorageFileName(file.name, 'stock', dealerId);
         
         // Upload to Supabase Storage
-        const uploadResult = await uploadFileToStorage(file, storageFileName);
+        const uploadResult = await uploadFileToStorage(file, storageFileName, 'templates');
         
         if (!uploadResult.success || !uploadResult.publicUrl) {
           errors.push(`${file.name}: Upload failed - ${uploadResult.error}`);
@@ -80,7 +96,7 @@ export async function POST(request: NextRequest) {
         // Save to database
         const stockImageName = files.length > 1 ? `${name} (${i + 1})` : name;
         const stockImageResult = await createStockImage({
-          dealerId: dealer.id,
+          dealerId: dealerId,
           name: stockImageName,
           description: description,
           fileName: file.name,

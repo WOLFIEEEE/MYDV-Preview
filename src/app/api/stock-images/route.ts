@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { getStockImagesByDealer, createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // Force dynamic rendering - prevent static optimization
 export const dynamic = 'force-dynamic';
@@ -9,8 +10,8 @@ export const revalidate = 0;
 // Stock images API endpoint
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized',
@@ -24,11 +25,23 @@ export async function GET(request: NextRequest) {
     const imageType = searchParams.get('imageType');
     const defaultOnly = searchParams.get('defaultOnly') === 'true';
 
-    // Get dealer information
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Get dealer information using enhanced resolution
+    let dealerId: string;
+    const dealerResult = await getDealerIdForUser(user);
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      dealerId = dealerResult.dealerId;
+      console.log(`✅ Enhanced dealer resolution for GET: ${dealerId}`);
+    } else {
+      console.log(`⚠️ Enhanced dealer resolution failed, falling back to createOrGetDealer`);
+      // Fallback to traditional dealer resolution
+      const dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+      dealerId = dealer.id;
+      console.log(`🏢 Fallback dealer resolution for GET: ${dealerId}`);
+    }
     
     // Get stock images from database
-    const stockImages = await getStockImagesByDealer(dealer.id);
+    const stockImages = await getStockImagesByDealer(dealerId);
 
     // Apply filters if specified
     let filteredStockImages = stockImages;
@@ -69,7 +82,7 @@ export async function GET(request: NextRequest) {
       defaultOnly && 'default images only'
     ].filter(Boolean).join(', ');
 
-    console.log(`📸 Found ${formattedStockImages.length} stock images for dealer: ${dealer.id}${filterDescription ? ` (${filterDescription})` : ''}`);
+    console.log(`📸 Found ${formattedStockImages.length} stock images for dealer: ${dealerId}${filterDescription ? ` (${filterDescription})` : ''}`);
 
     const response = NextResponse.json({
       success: true,
@@ -83,10 +96,11 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // CRITICAL SECURITY FIX: Use private caching to prevent cross-user data leakage
-    // Stock images are user-specific and must NOT be cached publicly at CDN/proxy level
-    // Using 'private' allows browser caching but prevents CDN from serving to other users
-    response.headers.set('Cache-Control', 'private, max-age=300, must-revalidate'); // 5 minute browser cache only
+    // CRITICAL: No caching for stock images to ensure immediate updates after add/delete operations
+    // Stock images are user-specific and must be fresh to reflect real-time changes
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     response.headers.set('CDN-Cache-Control', 'no-store');
     response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
 
