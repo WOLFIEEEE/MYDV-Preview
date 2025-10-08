@@ -264,8 +264,22 @@ function MyStockContent() {
     };
   }, [isDragging]);
 
-  // Only fetch data if user is signed in
-  const shouldFetchData = isLoaded && isSignedIn;
+  // Only fetch data if user is signed in AND user object is fully loaded
+  // RACE CONDITION FIX: Also check user?.id to ensure Clerk is FULLY initialized
+  // This prevents API calls before the user object is ready
+  const shouldFetchData = isLoaded && isSignedIn && !!user?.id;
+  
+  // Debug: Log auth state changes to detect race conditions
+  useEffect(() => {
+    console.log('🔐 Auth State Change:', {
+      isLoaded,
+      isSignedIn,
+      hasUserId: !!user?.id,
+      userId: user?.id?.substring(0, 12) + '...',
+      shouldFetch: shouldFetchData,
+      timestamp: Date.now()
+    });
+  }, [isLoaded, isSignedIn, user?.id, shouldFetchData]);
   
   // Stable query options to prevent unnecessary refetches
   const queryOptions = useMemo(() => {
