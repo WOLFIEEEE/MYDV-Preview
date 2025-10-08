@@ -64,17 +64,21 @@ async function fetchStockListOptimized(options: UseStockDataOptions = {}): Promi
     },
   });
 
-  // Enhanced error handling
+  // Enhanced error handling for non-OK responses (4xx, 5xx)
   if (!response.ok) {
+    console.error(`❌ HTTP ${response.status} error from stock API`);
     const errorText = await response.text();
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
     
     try {
       const errorData = JSON.parse(errorText);
-      errorMessage = errorData.error?.message || errorData.message || errorMessage;
-    } catch {
+      // Extract the error message from the standardized error response
+      errorMessage = errorData.error?.details || errorData.error?.message || errorData.message || errorMessage;
+      console.error('📋 Error details:', errorData);
+    } catch (parseError) {
       // Use the raw text if JSON parsing fails
       errorMessage = errorText || errorMessage;
+      console.error('⚠️ Could not parse error response as JSON');
     }
     
     throw new Error(errorMessage);
@@ -82,7 +86,7 @@ async function fetchStockListOptimized(options: UseStockDataOptions = {}): Promi
 
   const responseText = await response.text();
   if (!responseText || responseText.trim() === '') {
-    console.error('❌ Empty response from optimized stock API');
+    console.error('❌ Empty response from optimized stock API (200 OK but no body)');
     
     // Retry once more after a short delay for transient issues
     console.log('🔄 Retrying empty response after 1 second...');

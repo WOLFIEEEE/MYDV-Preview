@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -22,15 +23,47 @@ interface StockDataErrorProps {
 
 export default function StockDataError({ error, onRetry, isRetrying = false }: StockDataErrorProps) {
   const { isDarkMode } = useTheme();
+  const router = useRouter();
 
   // Determine error type and appropriate message
   const getErrorInfo = (errorMessage: string) => {
+    // NEW: Handle dealer not found error (can come from different sources)
+    if (errorMessage.includes('DEALER_NOT_FOUND') || 
+        errorMessage.includes('Registration Incomplete') ||
+        errorMessage.includes('dealer account registration is not complete')) {
+      return {
+        type: 'dealer_not_found',
+        title: 'Registration Incomplete',
+        message: 'Your dealer account is not fully set up.',
+        details: 'Please complete your dealer registration to access your stock data. If you recently registered, please wait a moment and try refreshing. Contact support if this issue persists.',
+        icon: AlertTriangle,
+        color: 'orange',
+        showContactAdmin: true
+      };
+    }
+
+    // NEW: Handle advertiser ID required error
+    if (errorMessage.includes('ADVERTISER_ID_REQUIRED') || 
+        errorMessage.includes('Advertiser ID Required') ||
+        errorMessage.includes('configure your advertiser ID')) {
+      return {
+        type: 'advertiser_id_required',
+        title: 'Advertiser ID Required',
+        message: 'Please configure your AutoTrader Advertiser ID to access your stock.',
+        details: 'Go to Settings and enter your AutoTrader Advertiser ID. You can find this in your AutoTrader account settings.',
+        icon: Settings,
+        color: 'blue',
+        showContactAdmin: false
+      };
+    }
+
+    // IMPROVED: More specific no data message
     if (errorMessage.includes('NO_STOCK_DATA_AVAILABLE') || errorMessage.includes('Empty response')) {
       return {
         type: 'no_data',
         title: 'No Stock Data Available',
-        message: 'There is currently no stock data available for your account.',
-        details: 'This could be due to: 1) Incorrect Advertiser ID configuration, 2) No vehicles in your stock feed, 3) Temporary synchronization issue. Please try refreshing first.',
+        message: 'Unable to load stock data at this time.',
+        details: 'This could be a temporary issue. Please try refreshing. If the problem persists, verify your Advertiser ID configuration in Settings.',
         icon: Database,
         color: 'blue',
         showContactAdmin: true
@@ -165,7 +198,19 @@ export default function StockDataError({ error, onRetry, isRetrying = false }: S
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              {onRetry && (
+              {/* Show "Go to Settings" button for advertiser ID required error */}
+              {errorInfo.type === 'advertiser_id_required' && (
+                <Button 
+                  onClick={() => router.push('/store-owner/store-config')}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Go to Settings
+                </Button>
+              )}
+
+              {/* Show retry button for most errors */}
+              {onRetry && errorInfo.type !== 'advertiser_id_required' && (
                 <Button 
                   onClick={onRetry}
                   disabled={isRetrying}

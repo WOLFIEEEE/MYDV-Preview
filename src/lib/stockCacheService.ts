@@ -372,43 +372,37 @@ export class StockCacheService {
     // Resolve Clerk user ID to dealer UUID
     const dealerId = await this.resolveDealerUuid(clerkUserId);
     if (!dealerId) {
-      console.log(`⚠️  Dealer record not found for Clerk user ID: ${clerkUserId}`);
-      console.log('This might indicate the user needs to complete their dealer registration.');
+      console.log(`❌ DEALER_NOT_FOUND: No dealer record for Clerk user ID: ${clerkUserId}`);
+      console.log('🔍 Possible causes: 1) Registration incomplete, 2) Not a team member, 3) Database issue');
       
-      // Double-check with a small delay to handle potential race conditions
-      console.log('🔄 Double-checking dealer resolution after 1 second...');
+      // Double-check with a small delay to handle potential race conditions during registration
+      console.log('🔄 Retrying dealer resolution after 1 second (handles race conditions)...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const retryDealerId = await this.resolveDealerUuid(clerkUserId);
       if (!retryDealerId) {
         console.log(`❌ Dealer record still not found after retry for: ${clerkUserId}`);
         
-        // LAST RESORT: Try to find ANY cached data for this clerk user ID directly
+        // EMERGENCY FALLBACK: Try to find ANY cached data for this clerk user ID
         console.log('🆘 Emergency fallback: Searching for any cached data by Clerk user ID...');
         try {
           const emergencyData = await this.getAnyCachedDataForClerkUser(clerkUserId, { ...options, page, pageSize });
           if (emergencyData && emergencyData.results.length > 0) {
             console.log('✅ Emergency fallback successful - found cached data for user!');
+            console.warn('⚠️ WARNING: Using cached data without proper dealer record. User should complete registration.');
             return emergencyData;
           }
         } catch (emergencyError) {
           console.error('❌ Emergency fallback failed:', emergencyError);
         }
         
-        // Return empty results only if absolutely no data exists
-        return {
-          results: [],
-          totalResults: 0,
-          totalPages: 0,
-          page: page,
-          pageSize: pageSize,
-          hasNextPage: false,
-          cacheStatus: {
-            fromCache: false,
-            lastRefresh: null,
-            staleCacheUsed: false,
-          },
-        };
+        // NO DATA FOUND - Throw proper error instead of returning empty results
+        console.error('🚨 CRITICAL: No dealer record and no cached data - cannot proceed');
+        throw new Error(
+          'DEALER_NOT_FOUND: Your account registration is incomplete. ' +
+          'Please complete your dealer registration or contact support if you believe this is an error. ' +
+          `(User ID: ${clerkUserId.substring(0, 8)}...)`
+        );
       }
       
       console.log('✅ Dealer found on retry:', retryDealerId);

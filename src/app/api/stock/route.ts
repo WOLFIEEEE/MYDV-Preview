@@ -47,10 +47,12 @@ export async function GET(request: NextRequest) {
       Object.fromEntries(searchParams.entries())
     );
 
+    // TEMPORARILY DISABLE CACHING to fix empty response issue
+    // The SafeOptimizationWrapper was caching error responses
     return await SafeOptimizationWrapper.wrapWithSafeOptimizations(
       () => executeOriginalStockLogic(request, user),
       {
-        enableCaching: true,
+        enableCaching: false, // DISABLED: Was causing empty response issues
         cacheKey,
         cacheTTL: 300000, // 5 minutes
         enablePerformanceMonitoring: true,
@@ -60,7 +62,26 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('❌ Stock API error:', error);
+    console.error('❌ Stock API error (outer catch):', error);
+    
+    // Check if this is one of our known errors
+    if (error instanceof Error) {
+      if (error.message.includes('DEALER_NOT_FOUND')) {
+        console.error('🚨 DEALER_NOT_FOUND error caught in outer handler');
+        return NextResponse.json(
+          createErrorResponse({
+            type: ErrorType.NOT_FOUND,
+            message: 'Registration Incomplete',
+            details: 'Your dealer account registration is not complete. Please complete your registration or contact support.',
+            httpStatus: 404,
+            timestamp: new Date().toISOString(),
+            endpoint: 'stock'
+          }),
+          { status: 404 }
+        );
+      }
+    }
+    
     const internalError = createInternalErrorResponse(error, 'stock');
     return NextResponse.json(
       createErrorResponse(internalError),
@@ -71,7 +92,9 @@ export async function GET(request: NextRequest) {
 
 // ORIGINAL LOGIC: Extracted into separate function - NO CHANGES to functionality
 async function executeOriginalStockLogic(request: NextRequest, user: any) {
+  const requestStartTime = Date.now();
   console.log('✅ User authenticated:', user.id);
+  console.log('⏱️ Request received at:', requestStartTime, 'User ready:', !!user?.id);
 
   try {
     // Get store configuration (works for both store owners and team members)
@@ -98,31 +121,40 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     console.log('✅ Store config found, using store owner email:', configResult.storeOwnerEmail);
     
     // Use standardized advertiser ID resolution
-    const advertiserId = getAdvertiserId(userStoreConfig);
+    let advertiserId = getAdvertiserId(userStoreConfig);
     logAdvertiserIdResolution(userStoreConfig, 'stock/route');
 
     if (!advertiserId) {
-      console.log('⚠️ No advertisement ID found for user:', user.id);
-      console.log('🔍 Will attempt to use cached data if available...');
+      console.log('❌ ADVERTISER_ID_NOT_CONFIGURED: No advertisement ID found for user:', user.id);
+      console.log('🔍 Checking if user has cached data from previous sessions...');
       
-      // Try to get cached data even without advertiser ID
-      // Use a placeholder advertiser ID for cache lookup
-      const cachedDataCheck = await StockCacheService.getStockData({
-        dealerId: user.id,
-        advertiserId: 'UNKNOWN', // Placeholder - emergency fallback will ignore this
-        page: 1,
-        pageSize: 10,
-      }).catch(() => null);
+      // Try to get cached data even without advertiser ID (emergency fallback)
+      let cachedDataCheck = null;
+      try {
+        cachedDataCheck = await StockCacheService.getStockData({
+          dealerId: user.id,
+          advertiserId: 'UNKNOWN', // Placeholder - will trigger emergency fallback
+          page: 1,
+          pageSize: 10,
+        });
+      } catch (cacheError) {
+        console.log('⚠️ Cache check failed:', cacheError instanceof Error ? cacheError.message : 'Unknown error');
+        // Continue to show proper error below
+      }
       
       if (cachedDataCheck && cachedDataCheck.results.length > 0) {
-        console.log('✅ Found cached data despite missing advertiser ID - returning cached data');
-        // Continue with cached data - set advertiserId to UNKNOWN
+        console.log('✅ Found cached data despite missing advertiser ID');
+        console.warn('⚠️ WARNING: User should configure advertiser ID to fetch fresh data');
+        // Continue with cached data - set advertiserId to UNKNOWN but add warning
+        advertiserId = 'UNKNOWN';
       } else {
-        // Only fail if we truly have no data
+        // No cached data and no advertiser ID - user must configure
+        console.error('🚨 CRITICAL: No advertiser ID and no cached data - user must configure');
         const configError = {
           type: ErrorType.NOT_FOUND,
-          message: 'Advertisement ID not configured',
-          details: 'No advertisement ID found in store configuration and no cached data available. Please configure your advertiser ID in settings.',
+          message: 'Advertiser ID Required',
+          details: 'Please configure your AutoTrader Advertiser ID in Settings to access your stock data. ' +
+                   'Your Advertiser ID can be found in your AutoTrader account settings.',
           httpStatus: 404,
           timestamp: new Date().toISOString(),
           endpoint: 'stock'
@@ -135,6 +167,14 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     }
 
     console.log('✅ Resolved advertisement ID:', advertiserId || 'USING_CACHED_DATA');
+
+    // Debug: Log request details
+    console.log('📋 API Request Details:', {
+      userId: user.id,
+      advertiserId: advertiserId,
+      hasStoreConfig: !!userStoreConfig,
+      timestamp: new Date().toISOString()
+    });
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -228,6 +268,8 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     console.log('🗄️ From cache:', stockResponse.cacheStatus.fromCache);
     console.log('🗄️ Stale cache used:', stockResponse.cacheStatus.staleCacheUsed);
     console.log('📊 Stock items count:', stockResponse.results?.length || 0);
+    console.log('🔍 Response data keys:', Object.keys(responseData));
+    console.log('🔍 Response data sample:', JSON.stringify(responseData).substring(0, 200));
     
     // Log first few items for debugging
     if (stockResponse.results && stockResponse.results.length > 0) {
@@ -254,9 +296,15 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
       }
     }
 
-    const response = NextResponse.json(
-      createSuccessResponse(responseData, 'stock')
-    );
+    // Create the JSON response
+    const successResponse = createSuccessResponse(responseData, 'stock');
+    console.log('📤 About to send response:', {
+      hasData: !!successResponse,
+      keys: Object.keys(successResponse),
+      dataLength: JSON.stringify(successResponse).length
+    });
+    
+    const response = NextResponse.json(successResponse);
 
     // CRITICAL SECURITY FIX: Use private caching to prevent cross-user data leakage
     // Stock data is user-specific and must NOT be cached publicly at CDN/proxy level
@@ -282,6 +330,24 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     let errorResponse;
     
     if (error instanceof Error) {
+      // Handle DEALER_NOT_FOUND error (NEW - from our fixes)
+      if (error.message.includes('DEALER_NOT_FOUND')) {
+        console.error('🚨 DEALER_NOT_FOUND error caught in API route');
+        errorResponse = {
+          type: ErrorType.NOT_FOUND,
+          message: 'Registration Incomplete',
+          details: 'Your dealer account registration is not complete. Please complete your registration or contact support if you recently registered. ' +
+                   'If you are a team member, please ask your store owner to add you.',
+          httpStatus: 404,
+          timestamp: new Date().toISOString(),
+          endpoint: 'stock'
+        };
+        return NextResponse.json(
+          createErrorResponse(errorResponse),
+          { status: 404 }
+        );
+      }
+
       // Handle database errors - don't retry these
       if (error.message.includes('Database query execution failed') ||
           error.message.includes('Database insert failed') ||

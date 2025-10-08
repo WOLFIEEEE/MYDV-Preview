@@ -24,7 +24,7 @@ import LicensePlate from "@/components/ui/license-plate";
 import Link from "next/link";
 
 export default function StockDetailView() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
   const params = useParams();
   const router = useRouter();
   const stockId = params.stockId as string;
@@ -32,12 +32,13 @@ export default function StockDetailView() {
   const [showDocumentModal, setShowDocumentModal] = useState(false);
 
   // Use React Query for caching stock detail data
+  // RACE CONDITION FIX: Check user?.id to ensure Clerk is fully initialized
   const { 
     data: stockData, 
     loading, 
     error, 
     refetch,
-  } = useStockDetailQuery(stockId, isLoaded && isSignedIn);
+  } = useStockDetailQuery(stockId, isLoaded && isSignedIn && !!user?.id);
 
   useEffect(() => {
     if (!isLoaded) return;
