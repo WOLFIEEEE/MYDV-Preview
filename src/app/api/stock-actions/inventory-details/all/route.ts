@@ -37,6 +37,7 @@ export async function GET() {
         registration: inventoryDetails.registration,
         dateOfPurchase: inventoryDetails.dateOfPurchase,
         costOfPurchase: inventoryDetails.costOfPurchase,
+        purchaseFrom: inventoryDetails.purchaseFrom,
         fundingAmount: inventoryDetails.fundingAmount,
         businessAmount: inventoryDetails.businessAmount,
         fundingSourceId: inventoryDetails.fundingSourceId,

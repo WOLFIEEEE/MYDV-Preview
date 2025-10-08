@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
       registration,
       dateOfPurchase,
       costOfPurchase,
+      purchaseFrom,
       fundingAmount,
       fundingSourceId,
       businessAmount
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
       registration,
       dateOfPurchase: dateOfPurchase ? new Date(dateOfPurchase) : null,
       costOfPurchase: costOfPurchase ? costOfPurchase.toString() : null,
+      purchaseFrom: purchaseFrom || null,
       fundingAmount: fundingAmount ? fundingAmount.toString() : null,
       fundingSourceId: fundingSourceId || null,
       businessAmount: businessAmount ? businessAmount.toString() : null,

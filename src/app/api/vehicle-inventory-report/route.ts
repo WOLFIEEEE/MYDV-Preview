@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     // For each stock item, fetch related data and calculate margins
     const inventoryReport = await Promise.all(
-      stockItems.map(async (stock) => {
+      stockItems.map(async (stock, index) => {
         const stockId = stock.stockId;
 
         // Fetch inventory details (purchase info)
@@ -205,6 +205,16 @@ export async function GET(request: NextRequest) {
         };
 
         return {
+          // ID field as first column
+          id: index + 1, // Sequential ID starting from 1
+          
+          // Vehicle identification fields
+          make: stock.make || '',
+          model: stock.model || '',
+          variant: stock.derivative || '', // Using derivative field (UI displays as Variant)
+          yearOfManufacture: stock.yearOfManufacture || '',
+          
+          // Existing fields
           vehicleRegistration: stock.registration || '',
           status: stock.lifecycleState || 'Listed',
           dateOfPurchase: inventory?.dateOfPurchase ? new Date(inventory.dateOfPurchase).toLocaleDateString('en-GB') : '',
@@ -212,6 +222,7 @@ export async function GET(request: NextRequest) {
           quarterPurchase: inventory?.dateOfPurchase ? getQuarter(inventory.dateOfPurchase) : '',
           vatablePurchase: isVatablePurchase,
           costOfPurchase: purchasePrice,
+          purchaseFrom: inventory?.purchaseFrom || '', // New field
           listPrice: salePrice,
           depositAmount: sale?.depositAmount ? parseFloat(sale.depositAmount) : 0,
           depositDate: sale?.depositPaid && sale?.createdAt ? new Date(sale.createdAt).toLocaleDateString('en-GB') : '',

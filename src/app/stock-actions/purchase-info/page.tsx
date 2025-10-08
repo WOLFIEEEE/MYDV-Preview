@@ -17,6 +17,7 @@ interface InventoryDetail {
   registration: string;
   dateOfPurchase: string;
   costOfPurchase: string;
+  purchaseFrom: string;
   fundingAmount: string;
   businessAmount: string;
   fundingSourceName: string;
@@ -122,10 +123,11 @@ export default function PurchaseInfoPage() {
       ...vehicle,
       purchaseData,
       hasPurchaseData: !!purchaseData,
-      dateOfPurchase: purchaseData?.dateOfPurchase || '',
-      costOfPurchase: purchaseData?.costOfPurchase || '0',
-      fundingAmount: purchaseData?.fundingAmount || '0',
-      businessAmount: purchaseData?.businessAmount || '0',
+        dateOfPurchase: purchaseData?.dateOfPurchase || '',
+        costOfPurchase: purchaseData?.costOfPurchase || '0',
+        purchaseFrom: purchaseData?.purchaseFrom || '', // Add purchaseFrom field
+        fundingAmount: purchaseData?.fundingAmount || '0',
+        businessAmount: purchaseData?.businessAmount || '0',
       fundingSourceName: purchaseData?.fundingSourceName || '',
       lastUpdated: purchaseData?.updatedAt || null,
     };
@@ -242,19 +244,37 @@ export default function PurchaseInfoPage() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Stock ID', 'Registration', 'Purchase Date', 'Purchase Cost', 'Funding Amount', 'Business Amount', 'Funding Source', 'Last Updated'];
+    // Headers matching the required column order with ID as first column
+    const headers = [
+      'ID', 'Purchase date', 'VRM', 'Make', 'Model', 'Variant', 'Year', 'Status', 
+      'Purchased from', 'Purchase price', 
+      // Keep existing funded columns
+      'Funding Amount', 'Business Amount', 'Funding Source'
+    ];
+    
     const csvContent = [
       headers.join(','),
-      ...filteredAndSortedData.map(item => [
-        item.stockId,
-        item.registration,
-        formatDate(item.dateOfPurchase),
-        item.costOfPurchase,
-        item.fundingAmount || '0.00',
-        item.businessAmount || '0.00',
-        item.fundingSourceName || 'N/A',
-        item.lastUpdated ? formatDate(item.lastUpdated) : 'N/A'
-      ].join(','))
+      ...filteredAndSortedData.map((item, index) => {
+        // Find matching inventory item to get vehicle details
+        const inventoryItem = inventoryData?.find(inv => inv.stockId === item.stockId);
+        
+        return [
+          (index + 1).toString(), // Sequential ID starting from 1
+          formatDate(item.dateOfPurchase),
+          item.registration || '',
+          inventoryItem?.make || '',
+          inventoryItem?.model || '',
+          inventoryItem?.derivative || '', // Using derivative field (displays as Variant in UI)
+          inventoryItem?.yearOfManufacture || '',
+          inventoryItem?.lifecycleState || 'Listed',
+          item.purchaseFrom || '', // Use purchaseFrom from merged data
+          item.costOfPurchase || '0.00',
+          // Keep existing funded columns
+          item.fundingAmount || '0.00',
+          item.businessAmount || '0.00',
+          item.fundingSourceName || 'N/A'
+        ].map(cell => `"${cell}"`).join(',')
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });

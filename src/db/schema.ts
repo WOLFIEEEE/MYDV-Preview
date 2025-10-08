@@ -884,6 +884,7 @@ export const inventoryDetails = pgTable('inventory_details', {
   registration: varchar('registration', { length: 50 }), // Vehicle registration (read-only)
   dateOfPurchase: timestamp('date_of_purchase'),
   costOfPurchase: decimal('cost_of_purchase', { precision: 10, scale: 2 }), // Purchase cost
+  purchaseFrom: varchar('purchase_from', { length: 255 }), // Who/where the vehicle was purchased from
   
   // Funding Fields
   fundingAmount: decimal('funding_amount', { precision: 10, scale: 2 }), // Amount funded from external source

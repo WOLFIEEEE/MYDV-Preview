@@ -400,10 +400,13 @@ export default function VehicleInventoryPage() {
       return;
     }
 
+    // Headers matching the required column order
     const headers = [
-      'Vehicle Registration', 'Status', 'Date of Purchase', 'Month of Purchase', 'Quarter (purchase)',
-      'Vatable Purchase?', 'Cost of Purchase', 'List Price', 'Deposit Amount', 'Deposit Date',
-      'Email Address', 'Contact Number', 'First Name', 'Last Name', 'Date of Collection / Delivery',
+      'ID', 'Purchase date', 'VRM', 'Make', 'Model', 'Variant', 'Year', 'Status', 
+      'Purchased from', 'Purchase price',
+      // Keep existing comprehensive columns
+      'Month of Purchase', 'Quarter (purchase)', 'Vatable Purchase?', 'List Price',
+      'Deposit Amount', 'Deposit Date', 'Email Address', 'Contact Number', 'First Name', 'Last Name', 'Date of Collection / Delivery',
       'Warranty Price Post Discount', 'Date of Sale', 'Month of Sale', 'Quarter (sale)',
       'Amount Paid by Finance', 'Amount Paid by BACS / Card', 'Amount Paid in Cash',
       'Amount Paid in Part Exchange', 'Amount Paid in Total', 'Days in Stock', 'Transport In',
@@ -417,10 +420,17 @@ export default function VehicleInventoryPage() {
 
     const formatCurrency = (value: number) => `£${value.toFixed(2)}`;
 
-    const rows = filteredData.map(item => [
-      item.vehicleRegistration, item.status, item.dateOfPurchase, item.monthOfPurchase,
-      item.quarterPurchase, item.vatablePurchase, formatCurrency(item.costOfPurchase),
-      formatCurrency(item.listPrice), formatCurrency(item.depositAmount), item.depositDate,
+    const rows = filteredData.map((item, index) => [
+      // ID field as first column
+      (index + 1).toString(), // Sequential ID starting from 1
+      // Required order columns
+      item.dateOfPurchase, item.vehicleRegistration, item.make || '', item.model || '',
+      item.variant || '', item.yearOfManufacture || '', item.status,
+      item.purchaseFrom || '', formatCurrency(item.costOfPurchase),
+      // Keep existing comprehensive data
+      item.monthOfPurchase,
+      item.quarterPurchase, item.vatablePurchase, formatCurrency(item.listPrice),
+      formatCurrency(item.depositAmount), item.depositDate,
       item.emailAddress, item.contactNumber, item.firstName, item.lastName,
       item.dateOfCollectionDelivery, formatCurrency(item.warrantyPricePostDiscount),
       item.dateOfSale, item.monthOfSale, item.quarterSale,

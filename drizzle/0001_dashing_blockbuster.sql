@@ -1,0 +1,1 @@
+ALTER TABLE "inventory_details" ADD COLUMN "purchase_from" varchar(255);
