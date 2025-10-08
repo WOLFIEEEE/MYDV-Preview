@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { deleteFileFromStorage } from '@/lib/storage';
 import { deleteStockImage, getStockImageById, createOrGetDealer, updateStockImage } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
+import { db } from '@/lib/db';
+import { stockImages, dealers } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ stockImageId: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized' 
@@ -25,12 +29,58 @@ export async function DELETE(
       }, { status: 400 });
     }
 
-    // Get dealer information
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    console.log(`🗑️ Starting delete process for stock image: ${stockImageId}`);
+    console.log(`👤 User ID: ${user.id}`);
+    console.log(`📧 User Email: ${user.emailAddresses[0]?.emailAddress}`);
+
+    // Try enhanced dealer ID resolution first (supports team members)
+    let dealerId: string;
+    const dealerResult = await getDealerIdForUser(user);
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      dealerId = dealerResult.dealerId;
+      console.log(`✅ Enhanced dealer resolution successful: ${dealerId}`);
+    } else {
+      console.log(`⚠️ Enhanced dealer resolution failed, falling back to createOrGetDealer`);
+      // Fallback to traditional dealer resolution
+      const dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+      dealerId = dealer.id;
+      console.log(`🏢 Fallback dealer resolution: ${dealerId}`);
+    }
     
     // Get stock image details first
-    const stockImage = await getStockImageById(stockImageId, dealer.id);
+    const stockImage = await getStockImageById(stockImageId, dealerId);
     if (!stockImage) {
+      console.error(`❌ Stock image not found: ${stockImageId} for dealer: ${dealerId}`);
+      
+      // Debug: Let's check if the stock image exists for any dealer
+      console.log('🔍 Debugging: Checking if stock image exists at all...');
+      try {
+        const debugQuery = await db
+          .select()
+          .from(stockImages)
+          .where(eq(stockImages.id, stockImageId))
+          .limit(1);
+        
+        if (debugQuery.length > 0) {
+          console.log(`🔍 Found stock image with different dealer ID: ${debugQuery[0].dealerId}`);
+          console.log(`🔍 Current dealer ID: ${dealerId}`);
+          console.log(`🔍 Stock image belongs to different dealer - authorization failed`);
+          
+          // Let's also check all dealers for this user
+          console.log('🔍 Checking all possible dealer records for this user...');
+          const allDealers = await db
+            .select()
+            .from(dealers)
+            .where(eq(dealers.clerkUserId, user.id));
+          console.log(`🔍 Found ${allDealers.length} dealer records for user:`, allDealers.map(d => d.id));
+        } else {
+          console.log(`🔍 Stock image ${stockImageId} does not exist in database at all`);
+        }
+      } catch (debugError) {
+        console.error('❌ Debug query failed:', debugError);
+      }
+      
       return NextResponse.json({
         success: false,
         message: 'Stock image not found or not authorized to delete'
@@ -38,17 +88,21 @@ export async function DELETE(
     }
 
     console.log(`🗑️ Deleting stock image: ${stockImage.name} (${stockImageId})`);
+    console.log(`📁 Storage file: ${stockImage.supabaseFileName}`);
 
     // Delete from Supabase Storage
-    const storageResult = await deleteFileFromStorage(stockImage.supabaseFileName);
+    const storageResult = await deleteFileFromStorage(stockImage.supabaseFileName, 'templates');
     if (!storageResult.success) {
       console.warn(`⚠️ Failed to delete file from storage: ${storageResult.error}`);
       // Continue with database deletion even if storage fails
+    } else {
+      console.log(`✅ Successfully deleted file from storage: ${stockImage.supabaseFileName}`);
     }
 
     // Delete from database
-    const dbResult = await deleteStockImage(stockImageId, dealer.id);
+    const dbResult = await deleteStockImage(stockImageId, dealerId);
     if (!dbResult.success) {
+      console.error(`❌ Database deletion failed: ${dbResult.error}`);
       return NextResponse.json({
         success: false,
         message: dbResult.error || 'Failed to delete stock image from database'
@@ -78,8 +132,8 @@ export async function PATCH(
   { params }: { params: Promise<{ stockImageId: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized' 
@@ -105,11 +159,20 @@ export async function PATCH(
       }, { status: 400 });
     }
 
-    // Get dealer information
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Try enhanced dealer ID resolution first (supports team members)
+    let dealerId: string;
+    const dealerResult = await getDealerIdForUser(user);
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      dealerId = dealerResult.dealerId;
+    } else {
+      // Fallback to traditional dealer resolution
+      const dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+      dealerId = dealer.id;
+    }
     
     // Verify stock image exists and belongs to dealer
-    const stockImage = await getStockImageById(stockImageId, dealer.id);
+    const stockImage = await getStockImageById(stockImageId, dealerId);
     if (!stockImage) {
       return NextResponse.json({
         success: false,
@@ -120,7 +183,7 @@ export async function PATCH(
     console.log(`🔄 Updating stock image type: ${stockImage.name} -> ${imageType}`);
 
     // Update the stock image
-    const updateResult = await updateStockImage(stockImageId, dealer.id, { imageType });
+    const updateResult = await updateStockImage(stockImageId, dealerId, { imageType });
     if (!updateResult.success) {
       return NextResponse.json({
         success: false,
