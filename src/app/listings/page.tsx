@@ -92,7 +92,7 @@ interface RowEditState {
 }
 
 function ListingsManagementContent() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
   const { isDarkMode } = useTheme();
   const searchParams = useSearchParams();
   const isDebugMode = searchParams.get('debug') === 'true';
@@ -133,12 +133,14 @@ function ListingsManagementContent() {
   };
 
   // Fetch stock data - ensure query enables when auth completes
+  // RACE CONDITION FIX: Also check user?.id to ensure Clerk is FULLY initialized
   const queryOptions = useMemo(() => {
-    const shouldFetch = isLoaded && isSignedIn;
+    const shouldFetch = isLoaded && isSignedIn && !!user?.id;
     
     console.log('\n🔍 ===== LISTINGS: QUERY OPTIONS =====');
     console.log('👤 isLoaded:', isLoaded);
     console.log('👤 isSignedIn:', isSignedIn);
+    console.log('👤 hasUserId:', !!user?.id);
     console.log('✅ shouldFetch:', shouldFetch);
     console.log('⏰ Time:', new Date().toISOString());
     
@@ -160,7 +162,7 @@ function ListingsManagementContent() {
     console.log('⚠️ If no results, check console logs to see available lifecycle states');
     
     return options;
-  }, [isSignedIn, isLoaded]);
+  }, [isSignedIn, isLoaded, user?.id]); // Added user?.id dependency
   
   const {
     data: stockData,

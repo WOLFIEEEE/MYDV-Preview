@@ -45,7 +45,7 @@ import { getAdvertiserId } from "@/lib/stockEditingApi";
 import type { EditTabType } from "@/types/stock";
 
 export default function EditStockPage() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
   const params = useParams();
   const router = useRouter();
   const stockId = params.stockId as string;
@@ -74,12 +74,13 @@ export default function EditStockPage() {
   });
 
   // Use React Query for caching stock detail data
+  // RACE CONDITION FIX: Check user?.id to ensure Clerk is fully initialized
   const { 
     data: stockData, 
     loading, 
     error, 
     refetch 
-  } = useStockDetailQuery(stockId, isLoaded && isSignedIn);
+  } = useStockDetailQuery(stockId, isLoaded && isSignedIn && !!user?.id);
 
   useEffect(() => {
     if (!isLoaded) return;
