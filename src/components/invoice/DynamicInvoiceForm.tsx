@@ -886,9 +886,9 @@ export default function DynamicInvoiceForm({
   // }, [updateNestedData]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="safari-form-container">
       {/* Tab Navigation */}
-      <div className="border-b px-4 py-2">
+      <div className="border-b px-4 py-2 flex-shrink-0">
         <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
           <TabsList className="bg-muted text-muted-foreground rounded-lg p-2 h-auto w-full flex flex-col gap-1">
             {/* First Row - First 6 tabs */}
@@ -935,7 +935,7 @@ export default function DynamicInvoiceForm({
       </div>
 
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         <Tabs value={activeTab} onValueChange={onTabChange}>
           {/* Basic Information */}
           <TabsContent value="basic" className="space-y-6">

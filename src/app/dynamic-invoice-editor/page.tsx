@@ -747,22 +747,41 @@ function DynamicInvoiceEditorContent() {
         }
       }
       
-      // Test sessionStorage availability
+      // Test sessionStorage availability (Safari private mode fix)
       console.log(`🧪 [EDITOR] Testing sessionStorage availability...`);
+      let sessionStorageAvailable = false;
       try {
         const testKey = `editor_test_${Date.now()}`;
         sessionStorage.setItem(testKey, 'test');
         const testRetrieve = sessionStorage.getItem(testKey);
         sessionStorage.removeItem(testKey);
-        console.log(`✅ [EDITOR] SessionStorage test passed:`, testRetrieve === 'test');
+        sessionStorageAvailable = testRetrieve === 'test';
+        console.log(`✅ [EDITOR] SessionStorage test passed:`, sessionStorageAvailable);
       } catch (storageError) {
-        console.error(`❌ [EDITOR] SessionStorage test failed:`, storageError);
+        console.error(`❌ [EDITOR] SessionStorage test failed (Safari private mode?):`, storageError);
+        console.log(`⚠️ [EDITOR] Will use fallback storage methods`);
       }
       
-      // MULTI-STORAGE RETRIEVAL: Check all storage methods
-      const sessionData = sessionStorage.getItem('invoiceFormData');
-      const localData = localStorage.getItem('invoiceFormData');
+      // MULTI-STORAGE RETRIEVAL: Check all storage methods with error handling
+      let sessionData = null;
+      let localData = null;
       const windowData = window.invoiceFormDataBackup;
+      
+      // Try sessionStorage (Safari private mode can block this)
+      if (sessionStorageAvailable) {
+        try {
+          sessionData = sessionStorage.getItem('invoiceFormData');
+        } catch (e) {
+          console.warn(`⚠️ [EDITOR] SessionStorage read failed:`, e);
+        }
+      }
+      
+      // Try localStorage (Safari private mode can block this too)
+      try {
+        localData = localStorage.getItem('invoiceFormData');
+      } catch (e) {
+        console.warn(`⚠️ [EDITOR] LocalStorage read failed:`, e);
+      }
       
       console.log(`🔍 [EDITOR] MULTI-STORAGE check:`, {
         sessionStorage: !!sessionData,
@@ -873,10 +892,22 @@ function DynamicInvoiceEditorContent() {
         setInvoiceData(invoiceData);
         console.log(`✅ [EDITOR] Invoice data loaded from ${dataSource} successfully`);
         
-        // Clear all stored data after successful use
-        sessionStorage.removeItem('invoiceFormData');
-        localStorage.removeItem('invoiceFormData');
-        delete window.invoiceFormDataBackup;
+        // Clear all stored data after successful use (with Safari error handling)
+        try {
+          sessionStorage.removeItem('invoiceFormData');
+        } catch (e) {
+          console.warn(`⚠️ [EDITOR] Could not clear sessionStorage:`, e);
+        }
+        try {
+          localStorage.removeItem('invoiceFormData');
+        } catch (e) {
+          console.warn(`⚠️ [EDITOR] Could not clear localStorage:`, e);
+        }
+        try {
+          delete window.invoiceFormDataBackup;
+        } catch (e) {
+          console.warn(`⚠️ [EDITOR] Could not clear window backup:`, e);
+        }
         console.log(`🧹 [EDITOR] All storage methods cleared after successful load`);
         
         // Mark that we need to auto-save this form data
@@ -1090,27 +1121,187 @@ function DynamicInvoiceEditorContent() {
       });
 
       if (response.ok) {
+        // Safari-compatible blob handling
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
+        
+        // Ensure blob has correct MIME type (Safari requires this)
+        const pdfBlob = new Blob([blob], { type: 'application/pdf' });
         
         // Create filename: VehicleReg-FirstName-LastName
         const filename = `${invoiceData.vehicle.registration}_${invoiceData.customer.firstName}_${invoiceData.customer.lastName}.pdf`;
         
-        // Download the PDF
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Detect Safari browser
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         
-        // Clean up the URL
-        URL.revokeObjectURL(url);
+        if (isSafari) {
+          // Safari-specific download method
+          console.log('🍎 Safari detected - using Safari-compatible download method');
+          
+          try {
+            // Method 1: Try direct blob download with delayed cleanup
+            // This method should NOT be blocked by popup blockers since it uses download attribute
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.style.display = 'none';
+            a.id = 'safari-pdf-download-link'; // Add ID for potential manual use
+            document.body.appendChild(a);
+            
+            // Safari needs the element to stay in DOM briefly
+            setTimeout(() => {
+              try {
+                a.click();
+                console.log('✅ Safari download initiated successfully');
+                
+                // Clean up after Safari has time to process (3 seconds)
+                setTimeout(() => {
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  console.log('🧹 Safari: Blob URL cleaned up after download');
+                }, 3000);
+                
+              } catch (clickError) {
+                console.error('❌ Safari download click failed:', clickError);
+                throw clickError; // Pass to outer catch for fallback
+              }
+            }, 100);
+            
+          } catch (safariError) {
+            console.warn('⚠️ Safari primary download method failed, trying fallback:', safariError);
+            
+            // Method 2: Fallback - try window.open (may be blocked by popup blocker)
+            try {
+              const url = URL.createObjectURL(pdfBlob);
+              const newWindow = window.open(url, '_blank');
+              
+              // Check if popup was blocked (window.open returns null when blocked)
+              if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                console.error('❌ Safari popup blocker detected');
+                
+                // Create a user-friendly download link as alternative
+                const downloadLinkUrl = URL.createObjectURL(pdfBlob);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = downloadLinkUrl;
+                downloadLink.download = filename;
+                downloadLink.textContent = 'Click here to download your PDF';
+                downloadLink.style.cssText = 'color: #2563eb; text-decoration: underline; font-size: 14px; cursor: pointer;';
+                
+                // Show better popup blocker message with clickable link
+                const message = document.createElement('div');
+                message.style.cssText = `
+                  position: fixed;
+                  top: 50%;
+                  left: 50%;
+                  transform: translate(-50%, -50%);
+                  background: white;
+                  padding: 24px;
+                  border-radius: 12px;
+                  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+                  z-index: 10000;
+                  max-width: 400px;
+                  text-align: center;
+                `;
+                
+                message.innerHTML = `
+                  <div style="margin-bottom: 16px;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="margin: 0 auto;">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                  </div>
+                  <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #1f2937;">
+                    Pop-up Blocker Detected
+                  </h3>
+                  <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
+                    Safari's pop-up blocker prevented the automatic download. 
+                    Please click the link below to download your PDF:
+                  </p>
+                  <div id="safari-download-link-container" style="margin: 16px 0;"></div>
+                  <button id="safari-close-message" style="
+                    background: #e5e7eb;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    color: #374151;
+                    margin-top: 12px;
+                  ">Close</button>
+                  <p style="margin: 12px 0 0 0; color: #9ca3af; font-size: 12px;">
+                    Tip: Allow pop-ups for this site in Safari settings to enable automatic downloads
+                  </p>
+                `;
+                
+                document.body.appendChild(message);
+                document.getElementById('safari-download-link-container')?.appendChild(downloadLink);
+                
+                // Close button handler
+                document.getElementById('safari-close-message')?.addEventListener('click', () => {
+                  document.body.removeChild(message);
+                  // Clean up after longer delay to allow user to download
+                  setTimeout(() => {
+                    URL.revokeObjectURL(downloadLinkUrl);
+                  }, 30000); // 30 seconds
+                });
+                
+                // Also show backdrop
+                const backdrop = document.createElement('div');
+                backdrop.style.cssText = `
+                  position: fixed;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: rgba(0, 0, 0, 0.5);
+                  z-index: 9999;
+                `;
+                backdrop.addEventListener('click', () => {
+                  if (message.parentNode) document.body.removeChild(message);
+                  document.body.removeChild(backdrop);
+                });
+                document.body.insertBefore(backdrop, message);
+                
+              } else {
+                // Popup opened successfully
+                console.log('✅ Safari fallback: PDF opened in new tab');
+                // Clean up after longer delay for new window
+                setTimeout(() => {
+                  URL.revokeObjectURL(url);
+                }, 5000);
+              }
+              
+            } catch (popupError) {
+              console.error('❌ Safari fallback method also failed:', popupError);
+              alert('❌ Unable to download PDF in Safari.\n\nPlease try:\n1. Refresh the page\n2. Allow pop-ups for this site\n3. Use a different browser (Chrome/Firefox)\n\nError: ' + popupError);
+            }
+          }
+          
+        } else {
+          // Standard download for Chrome, Firefox, Edge
+          console.log('🌐 Standard browser - using regular download method');
+          const url = URL.createObjectURL(pdfBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          
+          // Standard browsers can clean up immediately
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 100);
+        }
         
         console.log('✅ PDF generated successfully with enhanced matching');
         
         // Show success message with details
-        alert(`✅ PDF Generated Successfully!\n\nFilename: ${filename}\n\nThe PDF has been generated to exactly match the live preview with all pages properly formatted.`);
+        setTimeout(() => {
+          alert(`✅ PDF Generated Successfully!\n\nFilename: ${filename}\n\nThe PDF has been generated to exactly match the live preview with all pages properly formatted.`);
+        }, isSafari ? 500 : 100);
+        
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
@@ -1327,23 +1518,23 @@ function DynamicInvoiceEditorContent() {
             </div>
           </div>
 
-          {/* Main Content Area */}
+          {/* Main Content Area - Safari Compatible Layout */}
           <div className={`grid gap-6 ${
             viewMode === 'split' ? 'grid-cols-1 xl:grid-cols-2' :
             viewMode === 'preview' ? 'grid-cols-1' :
             'grid-cols-1'
-          }`} style={{ minHeight: '600px', height: 'auto' }}>
+          }`}>
             {/* Form Editor */}
             {(viewMode === 'form' || viewMode === 'split') && (
               <div className={`${viewMode === 'form' ? 'xl:col-span-2' : ''}`}>
-                <Card className="h-[900px] flex flex-col">
+                <Card className="safari-card-fix">
                   <CardHeader className="pb-4 flex-shrink-0">
                     <CardTitle className="flex items-center">
                       <Edit3 className="h-5 w-5 mr-2" />
                       Invoice Editor
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0 flex-1 overflow-y-auto">
+                  <CardContent className="p-0 safari-scroll-container">
                     {invoiceData && (
                       <DynamicInvoiceFormWrapper
                         invoiceData={invoiceData}
@@ -1360,18 +1551,18 @@ function DynamicInvoiceEditorContent() {
             {/* PDF Preview */}
             {(viewMode === 'preview' || viewMode === 'split') && (
               <div className={`${viewMode === 'preview' ? 'xl:col-span-2' : ''}`}>
-                <Card className="h-[900px] flex flex-col">
+                <Card className="safari-card-fix">
                   <CardHeader className="pb-4 flex-shrink-0">
                     <CardTitle className="flex items-center">
                       <Eye className="h-5 w-5 mr-2" />
                       Live Preview
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-0 flex-1 overflow-y-auto">
+                  <CardContent className="p-0 safari-scroll-container">
                     {invoiceData && (
                       <InvoicePDFPreviewWrapper
                         invoiceData={invoiceData}
-                        className="h-full"
+                        className="safari-preview-content"
                       />
                     )}
                   </CardContent>
