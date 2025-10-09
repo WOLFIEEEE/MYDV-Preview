@@ -657,7 +657,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       focusedField === 'salePrice' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                     }`}
                     placeholder="0.00"
-                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
@@ -889,7 +889,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('requiredAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -914,7 +914,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('depositAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -934,7 +934,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('cashAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -951,7 +951,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('bacsAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -968,7 +968,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('financeAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -985,7 +985,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('partExAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -1002,7 +1002,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('cardAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -1157,7 +1157,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                           focusedField === 'deliveryPrice' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                         }`}
                         placeholder="0.00"
-                        min="0"
+                        step="0.01"
                       />
                     </div>
                   </div>

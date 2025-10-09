@@ -336,7 +336,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
               <div className="relative group">
                 <input
                   type="number"
-                  min="0"
+                  step="0.01"
                   value={formData.costOfPurchase}
                   onChange={(e) => handleInputChange('costOfPurchase', e.target.value)}
                   onFocus={() => setFocusedField('costOfPurchase')}
@@ -407,7 +407,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
               <div className="relative group">
                 <input
                   type="number"
-                  min="0"
+                  step="0.01"
                   value={formData.fundingAmount}
                   onChange={(e) => handleInputChange('fundingAmount', e.target.value)}
                   onFocus={() => setFocusedField('fundingAmount')}
