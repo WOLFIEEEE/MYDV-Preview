@@ -25,27 +25,52 @@ export async function autoCreateCustomerFromSaleDetails(
   saleDetailsData: SaleDetailsData
 ): Promise<string | null> {
   try {
-    // Validate required fields
-    if (!saleDetailsData.firstName || !saleDetailsData.lastName || !saleDetailsData.emailAddress) {
-      console.log('⚠️ Auto-create customer: Missing required fields (firstName, lastName, emailAddress)');
+    // Validate required fields (email is now optional)
+    if (!saleDetailsData.firstName || !saleDetailsData.lastName) {
+      console.log('⚠️ Auto-create customer: Missing required fields (firstName, lastName)');
       return null;
     }
 
-    // Check if customer already exists with this email for this dealer
-    const existingCustomer = await db
-      .select({ id: customers.id })
-      .from(customers)
-      .where(
-        and(
-          eq(customers.dealerId, dealerId),
-          eq(customers.email, saleDetailsData.emailAddress)
+    // Check if customer already exists - first try by email if available, then by name combination
+    let existingCustomer = [];
+    
+    if (saleDetailsData.emailAddress) {
+      existingCustomer = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(
+          and(
+            eq(customers.dealerId, dealerId),
+            eq(customers.email, saleDetailsData.emailAddress)
+          )
         )
-      )
-      .limit(1);
-
-    if (existingCustomer.length > 0) {
-      console.log('✅ Auto-create customer: Customer already exists with email:', saleDetailsData.emailAddress);
-      return existingCustomer[0].id;
+        .limit(1);
+      
+      if (existingCustomer.length > 0) {
+        console.log('✅ Auto-create customer: Customer already exists with email:', saleDetailsData.emailAddress);
+        return existingCustomer[0].id;
+      }
+    }
+    
+    // If no email match or no email provided, check by name and phone combination
+    if (saleDetailsData.contactNumber) {
+      existingCustomer = await db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(
+          and(
+            eq(customers.dealerId, dealerId),
+            eq(customers.firstName, saleDetailsData.firstName),
+            eq(customers.lastName, saleDetailsData.lastName),
+            eq(customers.phone, saleDetailsData.contactNumber)
+          )
+        )
+        .limit(1);
+      
+      if (existingCustomer.length > 0) {
+        console.log('✅ Auto-create customer: Customer already exists with name and phone:', `${saleDetailsData.firstName} ${saleDetailsData.lastName}`);
+        return existingCustomer[0].id;
+      }
     }
 
     // Create new customer from sales details
@@ -56,7 +81,7 @@ export async function autoCreateCustomerFromSaleDetails(
         dealerId,
         firstName: saleDetailsData.firstName,
         lastName: saleDetailsData.lastName,
-        email: saleDetailsData.emailAddress,
+        email: saleDetailsData.emailAddress || null,
         phone: saleDetailsData.contactNumber || null,
         addressLine1: saleDetailsData.addressFirstLine || null,
         postcode: saleDetailsData.addressPostCode || null,
