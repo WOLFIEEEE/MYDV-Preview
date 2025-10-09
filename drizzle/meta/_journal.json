@@ -15,6 +15,13 @@
       "when": 1759947067684,
       "tag": "0001_dashing_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760003393015,
+      "tag": "0002_small_exodus",
+      "breakpoints": true
     }
   ]
 }

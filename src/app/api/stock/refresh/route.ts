@@ -10,6 +10,7 @@ import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 import { getAdvertiserId, logAdvertiserIdResolution } from '@/lib/advertiserIdResolver';
 import { StockCacheService } from '@/lib/stockCacheService';
 import type { StockQueryOptions } from '@/lib/stockCacheService';
+import { OptimizedRefreshService } from '@/lib/optimizedRefreshService';
 import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -102,9 +103,9 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Forcing fresh data fetch from AutoTrader...');
     console.log('📋 Refresh options:', options);
 
-    // Force refresh by calling the public force refresh method
-    // This bypasses all cache checks and fetches fresh data from AutoTrader
-    const stockResponse = await StockCacheService.forceRefreshStockData(options);
+    // Use optimized background refresh for better performance
+    const refreshResult = await OptimizedRefreshService.startBackgroundRefresh(options);
+    const stockResponse = refreshResult.immediate;
 
     console.log('✅ Stock data refreshed successfully from AutoTrader:', {
       totalResults: stockResponse.totalResults,

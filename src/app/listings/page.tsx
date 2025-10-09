@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
-  RefreshCw, 
   Search, 
   Settings,
   Eye,
@@ -31,6 +30,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useStockDataQuery } from "@/hooks/useStockDataQuery";
 import type { StockItem } from "@/types/stock";
+import { crossPageSyncService, type SyncEvent } from "@/lib/crossPageSyncService";
 import ChannelManagement from "@/components/listings/ChannelManagement";
 import { ListingsDebugPanel } from "@/components/shared/ListingsDebugPanel";
 import { useAutoTraderLimitsWithCapped } from "@/hooks/useAutoTraderLimits";
@@ -97,7 +97,8 @@ function ListingsManagementContent() {
   const searchParams = useSearchParams();
   const isDebugMode = searchParams.get('debug') === 'true';
   const [searchTerm, setSearchTerm] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Auto-sync state - shows when data is being synchronized from other pages
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
 
   const [isChannelManagementOpen, setIsChannelManagementOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<RowEditState | null>(null);
@@ -559,18 +560,43 @@ function ListingsManagementContent() {
     setCurrentPage(1);
   }, [searchTerm, filterMake, filterModel]);
 
+  // Set up cross-page sync listener to automatically refresh when stock data updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const listenerId = `listings-${user.id}`;
+    
+    const handleSyncEvent = (event: SyncEvent) => {
+      console.log('📡 Listings page received sync event:', event);
+      
+      if (event.type === 'stock_refresh' || event.type === 'cache_invalidation') {
+        console.log('🔄 Listings page: Auto-refreshing due to stock data update');
+        setIsAutoSyncing(true);
+        
+        // The cache has already been invalidated by the sync service
+        // React Query will automatically refetch when the component re-renders
+        
+        // Clear sync indicator after a delay
+        setTimeout(() => {
+          setIsAutoSyncing(false);
+        }, 3000);
+      }
+    };
+
+    crossPageSyncService.addSyncListener(listenerId, handleSyncEvent);
+    console.log('📡 Listings page: Sync listener registered');
+
+    return () => {
+      crossPageSyncService.removeSyncListener(listenerId);
+      console.log('📡 Listings page: Sync listener removed');
+    };
+  }, [user?.id]);
 
 
 
 
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await refetch();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [refetch]);
+
+  // Removed handleRefresh - refresh is now handled automatically when stock data updates
 
   // Row editing functions
   const handleRowEdit = useCallback((vehicle: StockItem) => {
@@ -821,18 +847,17 @@ function ListingsManagementContent() {
                 <Settings className="h-4 w-4" />
                 Manage Channels
               </Button>
-              <Button
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+              {/* Auto-sync indicator */}
+              {isAutoSyncing && (
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
                   isDarkMode 
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                } shadow-lg hover:shadow-xl`}
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+                    ? 'bg-green-600/20 border border-green-500/30 text-green-400' 
+                    : 'bg-green-50 border border-green-200 text-green-700'
+                } shadow-lg`}>
+                  <div className="h-3 w-3 animate-spin border-2 border-green-500 border-t-transparent rounded-full"></div>
+                  <span className="text-sm font-medium">Auto-syncing data...</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1204,7 +1229,7 @@ function ListingsManagementContent() {
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Error Loading Listings</h3>
             <p className="text-gray-600 mb-4">Failed to load vehicle listings. Please try again.</p>
-            <Button onClick={handleRefresh}>Retry</Button>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
           </Card>
                  ) : (
            <Card className={`${isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white/50 border-gray-200/50'} backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden`}>
@@ -1617,7 +1642,7 @@ function ListingsManagementContent() {
             {updateStatus.loading && (
               <div className="text-center">
                 <div className="mb-6">
-                  <RefreshCw className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
+                  <div className="h-12 w-12 animate-spin border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
                 </div>
                 <h3 className="text-xl font-semibold mb-2">{updateStatus.message}</h3>
                 <p className={`text-sm ${

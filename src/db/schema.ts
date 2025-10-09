@@ -75,7 +75,7 @@ export const customers = pgTable('customers', {
   // Personal Information
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
   dateOfBirth: timestamp('date_of_birth'),
   

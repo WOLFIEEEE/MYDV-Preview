@@ -86,9 +86,9 @@ export class InvoiceSyncService {
 
     const customer = this.invoiceData.customer;
 
-    // Validate required customer fields
-    if (!customer.firstName || !customer.lastName || !customer.contact?.email) {
-      this.warnings.push('Missing required customer fields (firstName, lastName, email)');
+    // Validate required customer fields (email is now optional)
+    if (!customer.firstName || !customer.lastName) {
+      this.warnings.push('Missing required customer fields (firstName, lastName)');
       return undefined;
     }
 

@@ -157,31 +157,33 @@ export async function POST(request: NextRequest) {
       enquiryType,
     } = body;
 
-    // Validate required fields
-    if (!firstName || !lastName || !email) {
+    // Validate required fields (email is now optional)
+    if (!firstName || !lastName) {
       return NextResponse.json(
-        { error: 'First name, last name, and email are required' },
+        { error: 'First name and last name are required' },
         { status: 400 }
       );
     }
 
-    // Check if customer with this email already exists for this dealer
-    const existingCustomer = await db
-      .select()
-      .from(customers)
-      .where(
-        and(
-          eq(customers.dealerId, dealerId),
-          eq(customers.email, email)
+    // Check if customer with this email already exists for this dealer (only if email is provided)
+    if (email) {
+      const existingCustomer = await db
+        .select()
+        .from(customers)
+        .where(
+          and(
+            eq(customers.dealerId, dealerId),
+            eq(customers.email, email)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (existingCustomer.length > 0) {
-      return NextResponse.json(
-        { error: 'Customer with this email already exists' },
-        { status: 409 }
-      );
+      if (existingCustomer.length > 0) {
+        return NextResponse.json(
+          { error: 'Customer with this email already exists' },
+          { status: 409 }
+        );
+      }
     }
 
     // Create the customer

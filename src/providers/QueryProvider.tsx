@@ -2,7 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { crossPageSyncService } from '@/lib/crossPageSyncService';
 
 export default function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -37,6 +38,16 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
         },
       })
   );
+
+  // Initialize cross-page sync service
+  useEffect(() => {
+    crossPageSyncService.initialize(queryClient);
+    console.log('🔄 Cross-page sync service initialized with QueryClient');
+    
+    return () => {
+      crossPageSyncService.cleanup();
+    };
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>

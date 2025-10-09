@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { useStockDataQuery, usePrefetchStockDetail } from "@/hooks/useStockDataQuery";
+import { crossPageSyncService } from "@/lib/crossPageSyncService";
 import { useOptimizedStockData } from "@/hooks/useOptimizedStockData";
 import type { StockItem, ViewMode, VehicleInfo, MetadataInfo } from "@/types/stock";
 import Image from "next/image";
@@ -462,7 +463,7 @@ function MyStockContent() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    console.log('🔄 MyStock: Refresh triggered - forcing fresh AutoTrader data fetch');
+    console.log('🔄 MyStock: Starting optimized refresh - immediate UI update with background sync');
     
     try {
       // Step 1: Force refresh from AutoTrader API and update cache
@@ -488,15 +489,13 @@ function MyStockContent() {
         forceRefresh: refreshData.data?.cache?.forceRefresh
       });
 
-      // Step 2: Invalidate React Query cache to force refetch from updated database
-      console.log('🗑️ Invalidating React Query cache...');
-      invalidateStockCache();
+      // Step 2: Trigger cross-page synchronization
+      console.log('🔄 Triggering cross-page sync to update all stock-related pages...');
+      if (user?.id) {
+        await crossPageSyncService.triggerStockRefresh(user.id, 'mystock-refresh');
+      }
       
-      // Step 3: Force refetch to get the fresh data from updated cache
-      console.log('🔄 Refetching data from updated cache...');
-      await refetch();
-      
-      console.log('✅ Refresh completed successfully');
+      console.log('✅ Refresh completed successfully - all pages will update automatically');
       
     } catch (error) {
       console.error('❌ Error during refresh:', error);

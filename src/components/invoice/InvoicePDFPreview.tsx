@@ -160,13 +160,13 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
       { 
         id: 6, 
         title: 'External Warranty', 
-        description: 'External warranty information (Evolution Warranties)',
+        description: `External warranty information (${invoiceData.warranty.name || ''})`,
         visible: !invoiceData.warranty.inHouse && invoiceData.warranty.level !== 'None Selected'
       }
     ];
 
     return pages.filter(page => page.visible);
-  }, [invoiceData.saleType, invoiceData.invoiceType, invoiceData.warranty.inHouse, invoiceData.warranty.level]);
+  }, [invoiceData.saleType, invoiceData.invoiceType, invoiceData.warranty.inHouse, invoiceData.warranty.level, invoiceData.warranty.name]);
 
   const totalPages = visiblePages.length;
 
@@ -1579,7 +1579,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     
     return (
       <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
-        <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>EXTERNAL WARRANTY — EVOLUTION WARRANTIES</h2>
+        <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>EXTERNAL WARRANTY{invoiceData.warranty.name ? ` — ${invoiceData.warranty.name.toUpperCase()}` : ''}</h2>
         <div style={{ fontSize: '7px', lineHeight: '1.4' }}>
           {invoiceData.terms.thirdPartyTerms ? (
             <div>{renderHTMLContentForPreview(invoiceData.terms.thirdPartyTerms, 10)}</div>
@@ -1594,7 +1594,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           )}
           
           <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '7px', color: '#000' }}>
-            <p>Evolution Warranties Ltd | Registered in England | Company Registration: [Number]</p>
+            <p>{invoiceData.warranty.name ? `${invoiceData.warranty.name} Ltd` : 'Evolution Warranties Ltd'} | Registered in England | Company Registration: [Number]</p>
             <p>Last Updated: {formatDate(new Date().toISOString())}</p>
           </div>
         </div>
