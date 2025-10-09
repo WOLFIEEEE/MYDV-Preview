@@ -2835,10 +2835,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               
               <View style={{ flexDirection: 'row', marginBottom: 4 }}>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'right', paddingRight: 8, fontSize: 8 }]}>
-                  SERVICE HISTORY RECORD PRESENT:
+                  SERVICE BOOK:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.serviceHistoryRecord ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.serviceHistoryRecord || 'Not Available'}
                 </Text>
               </View>
               
@@ -2865,7 +2865,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   VEHICLE INSPECTION & TEST DRIVE:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.vehicleInspectionTestDrive ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.vehicleInspectionTestDrive === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
               
@@ -2874,7 +2874,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   DEALER PRE-SALE CHECK:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.dealerPreSaleCheck ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.dealerPreSaleCheck === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
             </View>

@@ -2669,7 +2669,7 @@ export default function DynamicInvoiceForm({
                     label="Vehicle Inspection/Test Drive"
                     value={invoiceData.checklist.vehicleInspectionTestDrive || ''}
                     onChange={(value) => updateNestedData('checklist.vehicleInspectionTestDrive', value)}
-                    options={['Completed', 'Not Completed', 'Inspection Only', 'Test Drive Only']}
+                    options={['Yes', 'No']}
                     placeholder="Select inspection status"
                   />
                   
@@ -2677,7 +2677,7 @@ export default function DynamicInvoiceForm({
                     label="Dealer Pre-Sale Check"
                     value={invoiceData.checklist.dealerPreSaleCheck || ''}
                     onChange={(value) => updateNestedData('checklist.dealerPreSaleCheck', value)}
-                    options={['Completed', 'Not Completed', 'Partial', 'Not Required']}
+                    options={['Yes', 'No']}
                     placeholder="Select pre-sale check status"
                   />
                   

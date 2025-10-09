@@ -701,9 +701,9 @@ export async function GET(request: NextRequest) {
         userManual: checklistData?.userManual || 'Not Present',
         serviceHistoryRecord: checklistData?.serviceBook || 'Unknown',
         wheelLockingNut: checklistData?.wheelLockingNut || 'Not Present',
-        cambeltChainConfirmation: checklistData?.cambeltChainConfirmation || 'Not Confirmed',
-        vehicleInspectionTestDrive: (checklistData?.metadata as any)?.vehicleInspectionTestDrive || 'Not Completed',
-        dealerPreSaleCheck: (checklistData?.metadata as any)?.dealerPreSaleCheck || 'Not Completed',
+        cambeltChainConfirmation: checklistData?.cambeltChainConfirmation || 'No',
+        vehicleInspectionTestDrive: (checklistData?.metadata as any)?.vehicleInspectionTestDrive || 'No',
+        dealerPreSaleCheck: (checklistData?.metadata as any)?.dealerPreSaleCheck || 'No',
         // Map fuel type from stock cache first, then other sources
         fuelType: stockData?.fuelType || (checklistData?.metadata as any)?.fuelType || 'Petrol',
         // Additional checklist fields from metadata

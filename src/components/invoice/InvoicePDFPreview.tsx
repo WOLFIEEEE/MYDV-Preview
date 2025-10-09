@@ -1347,7 +1347,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 CAMBELT/CHAIN CONFIRMATION:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.cambeltChainConfirmation ? 'YES' : 'NO'}
+                {invoiceData.checklist?.cambeltChainConfirmation === 'Yes' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1371,10 +1371,10 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             
             <div style={{ display: 'flex', marginBottom: '4px' }}>
               <div style={{ flex: '1', textAlign: 'right', paddingRight: '8px', fontSize: '7px' }}>
-                SERVICE HISTORY RECORD PRESENT:
+                SERVICE BOOK:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.serviceHistoryRecord ? 'YES' : 'NO'}
+                {invoiceData.checklist?.serviceHistoryRecord || 'Not Available'}
               </div>
             </div>
             
@@ -1383,7 +1383,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 USER MANUAL:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.userManual ? 'YES' : 'NO'}
+                {invoiceData.checklist?.userManual === 'Present' || invoiceData.checklist?.userManual === 'Digital Copy Available' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1392,7 +1392,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 WHEEL LOCKING NUT:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.wheelLockingNut ? 'YES' : 'NO'}
+                {invoiceData.checklist?.wheelLockingNut === 'Present' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1401,7 +1401,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 VEHICLE INSPECTION & TEST DRIVE:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.vehicleInspectionTestDrive ? 'YES' : 'NO'}
+                {invoiceData.checklist?.vehicleInspectionTestDrive === 'Yes' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1410,7 +1410,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 DEALER PRE-SALE CHECK:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.dealerPreSaleCheck ? 'YES' : 'NO'}
+                {invoiceData.checklist?.dealerPreSaleCheck === 'Yes' ? 'YES' : 'NO'}
               </div>
             </div>
           </div>

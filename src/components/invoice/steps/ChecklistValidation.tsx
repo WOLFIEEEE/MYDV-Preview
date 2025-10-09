@@ -495,10 +495,8 @@ export default function ChecklistValidation({ formData, updateFormData, errors }
               }`}
             >
               <option value="">-</option>
-              <option value="Completed">Completed</option>
-              <option value="Not Completed">Not Completed</option>
-              <option value="Partial">Partial</option>
-              <option value="Not Required">Not Required</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
             </select>
             <p className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
               Pre-sale inspection status
@@ -523,10 +521,8 @@ export default function ChecklistValidation({ formData, updateFormData, errors }
             }`}
           >
             <option value="">-</option>
-            <option value="Completed">Completed</option>
-            <option value="Not Completed">Not Completed</option>
-            <option value="Inspection Only">Inspection Only</option>
-            <option value="Test Drive Only">Test Drive Only</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
           </select>
           <p className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
             Customer inspection and test drive status

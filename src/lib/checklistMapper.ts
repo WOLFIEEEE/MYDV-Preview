@@ -132,13 +132,13 @@ export function generateChecklistSummary(checklistData: Partial<ChecklistData>):
  * Default checklist values for new invoices
  */
 export const DEFAULT_CHECKLIST_VALUES: Partial<ChecklistData> = {
-  cambeltChainConfirmation: 'Not Confirmed',
+  cambeltChainConfirmation: 'No',
   fuelTypeChecklist: 'Petrol',
   numberOfKeys: '2',
   serviceHistoryRecord: 'Unknown',
   userManual: 'Not Present',
   serviceHistory: 'Not Available',
   wheelLockingNut: 'Not Present',
-  dealerPreSaleCheck: 'Not Completed',
-  vehicleInspectionTestDrive: 'Not Completed'
+  dealerPreSaleCheck: 'No',
+  vehicleInspectionTestDrive: 'No'
 }
