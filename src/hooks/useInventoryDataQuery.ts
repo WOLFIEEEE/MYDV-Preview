@@ -44,6 +44,9 @@ export interface InventoryItem {
   lifecycleState?: string;
   forecourtPriceGBP: number;
   dateOnForecourt?: string;
+  
+  // Published status data from stock cache
+  advertsData?: any; // Contains the published status information
 }
 
 export interface InventoryAPIResponse {

@@ -111,6 +111,7 @@ export async function GET() {
         forecourtPriceGBP: stockCache.forecourtPriceGBP,
         odometerReadingMiles: stockCache.odometerReadingMiles,
         metadataRaw: stockCache.metadataRaw,
+        advertsData: stockCache.advertsData, // Add advertsData for published status
         
         // Costs data (prioritize current dealer, fallback to default)
         costsGrandTotal: vehicleCosts.grandTotal,
@@ -394,6 +395,9 @@ export async function GET() {
         lifecycleState: row.lifecycleState,
         forecourtPriceGBP: Number(row.forecourtPriceGBP) || 0,
         dateOnForecourt: (row.metadataRaw as Record<string, unknown>)?.dateOnForecourt,
+        
+        // CRITICAL FIX: Include advertsData for published status filtering
+        advertsData: row.advertsData,
       };
     });
 
