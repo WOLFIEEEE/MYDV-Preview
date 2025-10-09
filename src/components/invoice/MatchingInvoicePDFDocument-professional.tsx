@@ -88,6 +88,7 @@ const GLOBAL_FORMAT_CONFIG = {
     logo: {
       height: 80,
       width: 'auto',
+      maxWidth: 120, // Limit maximum width to prevent layout issues with wide logos
     },
     signature: {
       width: 150,
@@ -416,6 +417,7 @@ const styles = StyleSheet.create({
   companyLogo: {
     height: GLOBAL_FORMAT_CONFIG.layout.logo.height,
     width: GLOBAL_FORMAT_CONFIG.layout.logo.width,
+    maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
     marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2,
     objectFit: 'contain',
     alignSelf: 'center',
@@ -1568,9 +1570,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
               {/* Logo */}
                 {invoiceData.companyInfo.logo && (
-                <View style={{ marginRight: GLOBAL_FORMAT_CONFIG.spacing.largeGap + 5 }}>
+                <View style={{ 
+                  marginRight: GLOBAL_FORMAT_CONFIG.spacing.largeGap + 5,
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth + 10, // Add some padding
+                  flexShrink: 0 // Prevent shrinking
+                }}>
                     <Image
-                    style={{ height: GLOBAL_FORMAT_CONFIG.layout.logo.height, width: GLOBAL_FORMAT_CONFIG.layout.logo.width, objectFit: 'contain' }}
+                    style={{ 
+                      height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
+                      width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                      maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
+                      objectFit: 'contain' 
+                    }}
                       src={invoiceData.companyInfo.logo}
                     />
                   </View>
@@ -2649,6 +2660,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 style={{ 
                   height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
                   width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
                   objectFit: 'contain' 
                 }}
                 src={invoiceData.companyInfo.logo}
@@ -2752,6 +2764,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 style={{ 
                   height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
                   width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
                   objectFit: 'contain' 
                 }}
                 src={invoiceData.companyInfo.logo}
