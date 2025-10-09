@@ -157,6 +157,7 @@ const convertFormDataToInvoiceDataWithDB = async (formData: InvoiceFormData): Pr
         vatNumber: companySettings.vatNumber || '',
         registrationNumber: companySettings.registrationNumber || '',
         logo: companySettings.companyLogo || '',
+        qrCode: companySettings.qrCode || '', // QR code from company settings
       };
     }
     
@@ -239,6 +240,7 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
       vatNumber: '',
       registrationNumber: '',
       logo: '',
+      qrCode: '', // QR code field
     },
     
     // Customer Information from form - Fixed mapping
@@ -669,7 +671,46 @@ function DynamicInvoiceEditorContent() {
           if (response.ok) {
             const result = await response.json();
             console.log(`✅ [EDITOR] Saved invoice loaded successfully`);
-            setInvoiceData(result.invoice);
+            
+            // Merge current company settings (including QR code) with saved invoice data
+            const dealerId = await getDealerId();
+            let mergedInvoiceData = result.invoice;
+            
+            if (dealerId) {
+              console.log('🔄 [EDITOR] Merging current company settings with saved invoice...');
+              const companySettings = await fetchCompanySettings(dealerId);
+              
+              if (companySettings) {
+                // Merge company settings while preserving existing invoice data
+                mergedInvoiceData = {
+                  ...result.invoice,
+                  companyInfo: {
+                    ...result.invoice.companyInfo,
+                    // Update with current company settings, but preserve any custom values from the invoice
+                    name: companySettings.companyName || result.invoice.companyInfo?.name || 'Your Company Name',
+                    address: {
+                      street: companySettings.address?.street || result.invoice.companyInfo?.address?.street || '',
+                      city: companySettings.address?.city || result.invoice.companyInfo?.address?.city || '',
+                      county: companySettings.address?.county || result.invoice.companyInfo?.address?.county || '',
+                      postCode: companySettings.address?.postCode || result.invoice.companyInfo?.address?.postCode || '',
+                      country: companySettings.address?.country || result.invoice.companyInfo?.address?.country || 'United Kingdom',
+                    },
+                    contact: {
+                      phone: companySettings.contact?.phone || result.invoice.companyInfo?.contact?.phone || '',
+                      email: companySettings.contact?.email || result.invoice.companyInfo?.contact?.email || '',
+                      website: companySettings.contact?.website || result.invoice.companyInfo?.contact?.website || '',
+                    },
+                    vatNumber: companySettings.vatNumber || result.invoice.companyInfo?.vatNumber || '',
+                    registrationNumber: companySettings.registrationNumber || result.invoice.companyInfo?.registrationNumber || '',
+                    logo: companySettings.companyLogo || result.invoice.companyInfo?.logo || '',
+                    qrCode: companySettings.qrCode || result.invoice.companyInfo?.qrCode || '', // Always use current QR code
+                  }
+                };
+                console.log('✅ [EDITOR] Company settings merged successfully, QR code:', !!mergedInvoiceData.companyInfo.qrCode);
+              }
+            }
+            
+            setInvoiceData(mergedInvoiceData);
             
             // Update stockId if available from metadata
             if (result.metadata?.stockId) {

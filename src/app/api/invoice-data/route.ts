@@ -40,6 +40,7 @@ export interface ComprehensiveInvoiceData {
     vatNumber: string;
     registrationNumber?: string;
     logo?: string;
+    qrCode?: string; // QR code image URL/path for invoice footer
   };
   
   // Customer Information (from saleDetails)

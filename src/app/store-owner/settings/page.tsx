@@ -30,7 +30,8 @@ import {
   Car,
   PoundSterling,
   FileText,
-  Receipt
+  Receipt,
+  QrCode
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Header from "@/components/shared/Header";
@@ -142,6 +143,7 @@ export default function StoreOwnerSettings() {
   const [companySettings, setCompanySettings] = useState({
     companyName: '',
     companyLogo: '',
+    qrCode: '', // Add QR code field
     businessType: '',
     establishedYear: '',
     registrationNumber: '',
@@ -165,6 +167,8 @@ export default function StoreOwnerSettings() {
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
+  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+  const [qrCodePreview, setQrCodePreview] = useState<string>('');
   const [isSavingCompanySettings, setIsSavingCompanySettings] = useState(false);
   // Templates state
   const [templates, setTemplates] = useState<Array<{
@@ -979,6 +983,44 @@ export default function StoreOwnerSettings() {
     }
   };
 
+  const handleQrCodeUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select a valid image file (PNG, JPG, GIF, etc.)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+
+      setQrCodeFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64String = e.target?.result as string;
+        setQrCodePreview(base64String);
+        setCompanySettings(prev => ({
+          ...prev,
+          qrCode: base64String
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleQrCodeRemove = () => {
+    setQrCodeFile(null);
+    setQrCodePreview('');
+    setCompanySettings(prev => ({
+      ...prev,
+      qrCode: ''
+    }));
+  };
+
   const handleCompanySettingsChange = (field: string, value: string | number | boolean) => {
     setCompanySettings(prev => {
       if (field.includes('.')) {
@@ -1056,7 +1098,8 @@ export default function StoreOwnerSettings() {
             contact: companySettings.contact,
             description: companySettings.description,
             mission: companySettings.mission,
-            vision: companySettings.vision
+            vision: companySettings.vision,
+            qrCode: companySettings.qrCode // Include QR code data
           }
         })
       });
@@ -1087,6 +1130,9 @@ export default function StoreOwnerSettings() {
           setCompanySettings(result.data);
           if (result.data.companyLogo) {
             setLogoPreview(result.data.companyLogo);
+          }
+          if (result.data.qrCode) {
+            setQrCodePreview(result.data.qrCode);
           }
         }
       }
@@ -2080,6 +2126,83 @@ export default function StoreOwnerSettings() {
                               <p className="text-xs text-slate-500 dark:text-white mt-2">
                                 Recommended: 200x200px, PNG or JPG, max 2MB
                               </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* QR Code for Invoice Footer */}
+                        <div>
+                          <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                            QR Code for Invoice Footer
+                          </label>
+                          <div className="flex items-center gap-6">
+                            <div className="w-24 h-24 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-700">
+                              {qrCodePreview || companySettings.qrCode ? (
+                                <Image
+                                  src={qrCodePreview || companySettings.qrCode}
+                                  alt="QR Code"
+                                  width={96}
+                                  height={96}
+                                  className="w-full h-full object-contain rounded-xl"
+                                />
+                              ) : (
+                                <QrCode className="w-8 h-8 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              {qrCodePreview || companySettings.qrCode ? (
+                                <div className="space-y-2">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleQrCodeUpload}
+                                      className="hidden"
+                                      id="qr-code-upload"
+                                    />
+                                    <label
+                                      htmlFor="qr-code-upload"
+                                      className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
+                                    >
+                                      <Upload className="w-4 h-4 mr-2" />
+                                      Replace QR Code
+                                    </label>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleQrCodeRemove}
+                                      className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Remove
+                                    </Button>
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-white">
+                                    QR code uploaded successfully. This will appear in invoice footers.
+                                  </p>
+                                </div>
+                              ) : (
+                                <div>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleQrCodeUpload}
+                                    className="hidden"
+                                    id="qr-code-upload"
+                                  />
+                                  <label
+                                    htmlFor="qr-code-upload"
+                                    className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
+                                  >
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Upload QR Code
+                                  </label>
+                                  <p className="text-xs text-slate-500 dark:text-white mt-2">
+                                    Upload a QR code to display in invoice footers. PNG or JPG, max 5MB
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>

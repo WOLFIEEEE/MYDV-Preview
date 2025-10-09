@@ -28,11 +28,14 @@ import {
   Plus,
   Minus,
   Trash2,
-  PenTool
+  PenTool,
+  Upload,
+  QrCode
 } from "lucide-react";
 import { ComprehensiveInvoiceData } from "@/app/api/invoice-data/route";
 import { useTheme } from "@/contexts/ThemeContext";
 import { PREDEFINED_FINANCE_COMPANIES } from '@/lib/financeCompanies';
+import Image from 'next/image';
 
 interface DynamicInvoiceFormProps {
   invoiceData: ComprehensiveInvoiceData;
@@ -188,6 +191,125 @@ const FormSelect = React.memo(({
 ));
 
 FormSelect.displayName = 'FormSelect';
+
+// Memoized QR Code Upload component
+const QRCodeUpload = React.memo(({ 
+  label, 
+  value, 
+  onChange, 
+  icon: Icon,
+  disabled = false
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon?: React.ComponentType<{ className?: string }>;
+  disabled?: boolean;
+}) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, GIF, etc.)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    try {
+      // Convert to base64 for storage
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string;
+        onChange(base64String);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading QR code:', error);
+      alert('Error uploading QR code. Please try again.');
+    }
+  };
+
+  const handleRemove = () => {
+    onChange('');
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium flex items-center">
+        {Icon && <Icon className="h-4 w-4 mr-2" />}
+        {label}
+      </Label>
+      
+      {value ? (
+        <div className="space-y-2">
+          {/* Preview */}
+          <div className="flex items-center space-x-4 p-3 border rounded-lg bg-slate-50 dark:bg-slate-800">
+            <div className="flex-shrink-0">
+              <Image 
+                src={value} 
+                alt="QR Code Preview" 
+                width={64}
+                height={64}
+                className="object-contain border rounded"
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">QR Code Uploaded</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                This QR code will appear in the invoice footer
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRemove}
+              disabled={disabled}
+              className="text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center w-full">
+            <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 ${disabled ? 'opacity-50 cursor-not-allowed' : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'}`}>
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className="w-8 h-8 mb-4 text-slate-500 dark:text-slate-400" />
+                <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold">Click to upload</span> QR code image
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  PNG, JPG, GIF up to 5MB
+                </p>
+              </div>
+              <input 
+                type="file" 
+                className="hidden" 
+                onChange={handleFileChange}
+                accept="image/*"
+                disabled={disabled}
+              />
+            </label>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Upload a QR code image to display in the invoice footer. This could be a QR code linking to your website, payment page, or contact information.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+QRCodeUpload.displayName = 'QRCodeUpload';
 
 export default function DynamicInvoiceForm({ 
   invoiceData, 
@@ -1003,6 +1125,63 @@ export default function DynamicInvoiceForm({
                     onChange={(value) => updateNestedData('sale.monthOfSale', value)}
                     disabled
                     placeholder="Auto-calculated from sale date"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Company Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Building className="h-5 w-5 mr-2" />
+                  Company Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Company Name"
+                    value={invoiceData.companyInfo.name}
+                    onChange={(value) => updateNestedData('companyInfo.name', value)}
+                    icon={Building}
+                    placeholder="Your Company Name"
+                  />
+                  
+                  <FormInput
+                    label="VAT Number"
+                    value={invoiceData.companyInfo.vatNumber}
+                    onChange={(value) => updateNestedData('companyInfo.vatNumber', value)}
+                    icon={Hash}
+                    placeholder="123456789"
+                  />
+                  
+                  <FormInput
+                    label="Phone"
+                    value={invoiceData.companyInfo.contact.phone}
+                    onChange={(value) => updateNestedData('companyInfo.contact.phone', value)}
+                    icon={Phone}
+                    placeholder="+44 123 456 7890"
+                  />
+                  
+                  <FormInput
+                    label="Email"
+                    value={invoiceData.companyInfo.contact.email}
+                    onChange={(value) => updateNestedData('companyInfo.contact.email', value)}
+                    icon={Mail}
+                    type="email"
+                    placeholder="info@company.com"
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-4">
+                  <QRCodeUpload
+                    label="QR Code for Invoice Footer"
+                    value={invoiceData.companyInfo.qrCode || ''}
+                    onChange={(value) => updateNestedData('companyInfo.qrCode', value)}
+                    icon={QrCode}
                   />
                 </div>
               </CardContent>
@@ -3013,10 +3192,12 @@ export default function DynamicInvoiceForm({
                   {invoiceData.signature?.customerSignature ? (
                     <div className="space-y-2">
                       <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-800">
-                        <img 
+                        <Image 
                           src={invoiceData.signature.customerSignature} 
                           alt="Customer Signature" 
-                          className="max-h-20 mx-auto"
+                          width={200}
+                          height={80}
+                          className="max-h-20 mx-auto object-contain"
                         />
                       </div>
                       <Button
