@@ -1,0 +1,188 @@
+/* Invoice PDF Preview - Light Theme Enforcement */
+/* This CSS ensures the PDF preview always displays with proper light theme colors */
+/* regardless of the application's dark/light mode setting */
+
+.invoice-pdf-light-theme {
+  /* Force white background for the PDF container */
+  background-color: #ffffff !important;
+  
+  /* Ensure proper text color inheritance */
+  color: #374151 !important;
+}
+
+.invoice-pdf-light-theme *,
+.invoice-pdf-light-theme *::before,
+.invoice-pdf-light-theme *::after {
+  /* Force all text to be dark gray for readability */
+  color: #374151 !important;
+  
+  /* Prevent background color inheritance issues */
+  background-color: inherit;
+}
+
+/* Specific overrides for common text color classes */
+.invoice-pdf-light-theme .text-black {
+  color: #000000 !important;
+}
+
+.invoice-pdf-light-theme .text-gray-700 {
+  color: #374151 !important;
+}
+
+.invoice-pdf-light-theme .text-gray-600 {
+  color: #4b5563 !important;
+}
+
+.invoice-pdf-light-theme .text-slate-600 {
+  color: #475569 !important;
+}
+
+.invoice-pdf-light-theme .text-slate-700 {
+  color: #334155 !important;
+}
+
+/* Ensure white backgrounds are maintained */
+.invoice-pdf-light-theme .bg-white {
+  background-color: #ffffff !important;
+}
+
+.invoice-pdf-light-theme .bg-gray-50 {
+  background-color: #f9fafb !important;
+}
+
+.invoice-pdf-light-theme .bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+
+/* Dark mode specific overrides */
+.dark .invoice-pdf-light-theme,
+.dark .invoice-pdf-light-theme * {
+  /* Override any dark mode text colors */
+  color: #374151 !important;
+}
+
+.dark .invoice-pdf-light-theme {
+  /* Ensure white background even in dark mode */
+  background-color: #ffffff !important;
+}
+
+.dark .invoice-pdf-light-theme .bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Prevent dark mode from affecting PDF content */
+.dark .invoice-pdf-light-theme .text-white {
+  color: #374151 !important;
+}
+
+.dark .invoice-pdf-light-theme .text-slate-100 {
+  color: #374151 !important;
+}
+
+.dark .invoice-pdf-light-theme .text-slate-200 {
+  color: #374151 !important;
+}
+
+/* Ensure borders and dividers are visible */
+.invoice-pdf-light-theme .border {
+  border-color: #d1d5db !important;
+}
+
+.invoice-pdf-light-theme .border-gray-300 {
+  border-color: #d1d5db !important;
+}
+
+.invoice-pdf-light-theme .border-slate-300 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Table styling overrides */
+.invoice-pdf-light-theme table {
+  color: #374151 !important;
+}
+
+.invoice-pdf-light-theme th {
+  color: #374151 !important;
+  background-color: #f3f4f6 !important;
+}
+
+.invoice-pdf-light-theme td {
+  color: #374151 !important;
+}
+
+/* Form elements if any */
+.invoice-pdf-light-theme input,
+.invoice-pdf-light-theme textarea,
+.invoice-pdf-light-theme select {
+  color: #374151 !important;
+  background-color: #ffffff !important;
+}
+
+/* Links */
+.invoice-pdf-light-theme a {
+  color: #2563eb !important;
+}
+
+/* Headings */
+.invoice-pdf-light-theme h1,
+.invoice-pdf-light-theme h2,
+.invoice-pdf-light-theme h3,
+.invoice-pdf-light-theme h4,
+.invoice-pdf-light-theme h5,
+.invoice-pdf-light-theme h6 {
+  color: #374151 !important;
+}
+
+/* Strong and bold text */
+.invoice-pdf-light-theme strong,
+.invoice-pdf-light-theme b {
+  color: #374151 !important;
+}
+
+/* Italic text */
+.invoice-pdf-light-theme em,
+.invoice-pdf-light-theme i {
+  color: #374151 !important;
+}
+
+/* Code elements */
+.invoice-pdf-light-theme code,
+.invoice-pdf-light-theme pre {
+  color: #374151 !important;
+  background-color: #f3f4f6 !important;
+}
+
+/* Lists */
+.invoice-pdf-light-theme ul,
+.invoice-pdf-light-theme ol,
+.invoice-pdf-light-theme li {
+  color: #374151 !important;
+}
+
+/* Ensure proper contrast for any colored elements */
+.invoice-pdf-light-theme .text-blue-600 {
+  color: #2563eb !important;
+}
+
+.invoice-pdf-light-theme .text-green-600 {
+  color: #059669 !important;
+}
+
+.invoice-pdf-light-theme .text-red-600 {
+  color: #dc2626 !important;
+}
+
+.invoice-pdf-light-theme .text-yellow-600 {
+  color: #d97706 !important;
+}
+
+/* Prevent any CSS transitions or animations from affecting colors */
+.invoice-pdf-light-theme * {
+  transition: none !important;
+}
+
+/* Ensure proper isolation from parent styles */
+.invoice-pdf-light-theme {
+  isolation: isolate;
+  contain: style layout;
+}

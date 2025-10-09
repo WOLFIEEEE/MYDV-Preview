@@ -113,14 +113,14 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
     id: 'dealerPreSaleCheck',
     label: 'Dealer Pre-Sale Full Vehicle Health Check',
     value: '',
-    options: ['Completed', 'Not Completed', 'Partial'],
+    options: ['Yes', 'No'],
     type: 'select'
   },
   {
     id: 'vehicleInspectionTestDrive',
     label: 'Vehicle Inspection / Test Drive',
     value: '',
-    options: ['Completed', 'Not Completed', 'Customer Declined'],
+    options: ['Yes', 'No'],
     type: 'select'
   }
 ]

@@ -742,7 +742,7 @@ const EnhancedInvoicePDFDocument: React.FC<EnhancedInvoicePDFDocumentProps> = ({
       {/* Delivery/Collection & Deposits */}
       <View style={styles.contentSection}>
         <Text style={styles.sectionTitle}>
-          {invoiceData.delivery.type === 'Delivery' ? 'DELIVER TO: CUSTOMER DETAILS' : 'CUSTOMER DETAILS'}
+          {invoiceData.delivery.type === 'delivery' ? 'DELIVER TO: CUSTOMER DETAILS' : 'CUSTOMER DETAILS'}
         </Text>
         
         {/* Deposit Information */}
@@ -753,7 +753,7 @@ const EnhancedInvoicePDFDocument: React.FC<EnhancedInvoicePDFDocumentProps> = ({
               <View>
                 <Text>DEPOSIT DUE: {formatCurrency(invoiceData.pricing.compulsorySaleDepositFinance || 0)}</Text>
                 <Text>DATE OF {invoiceData.delivery.type.toUpperCase()}: {formatDate(invoiceData.delivery.date || '')}</Text>
-                {invoiceData.delivery.type === 'Delivery' && (
+                {invoiceData.delivery.type === 'delivery' && (
                   <Text>COST OF DELIVERY: {formatCurrency(invoiceData.delivery.cost || 0)}</Text>
                 )}
               </View>
@@ -761,7 +761,7 @@ const EnhancedInvoicePDFDocument: React.FC<EnhancedInvoicePDFDocumentProps> = ({
               <View>
                 <Text>DEPOSIT AMOUNT PAID: {formatCurrency(invoiceData.pricing.amountPaidDepositFinance || 0)}</Text>
                 <Text>DATE OF {invoiceData.delivery.type.toUpperCase()}: {formatDate(invoiceData.delivery.date || '')}</Text>
-                {invoiceData.delivery.type === 'Delivery' && (
+                {invoiceData.delivery.type === 'delivery' && (
                   <Text>COST OF DELIVERY: {formatCurrency(invoiceData.delivery.cost || 0)}</Text>
                 )}
               </View>

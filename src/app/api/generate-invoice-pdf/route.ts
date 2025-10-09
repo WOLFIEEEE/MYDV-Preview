@@ -230,7 +230,7 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): Comp
     
     // Delivery Information
     delivery: {
-      type: 'Collection' as const,
+      type: 'collection' as const,
       cost: 0,
       postDiscountCost: 0,
     },
@@ -247,11 +247,11 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): Comp
       mileage: previewData.vehicle?.mileage?.toString() || previewData.vehicle?.odometerReadingMiles?.toString() || '',
       numberOfKeys: '2',
       userManual: 'Present',
-      serviceHistoryRecord: 'Available',
+      serviceHistoryRecord: 'Full Service History',
       wheelLockingNut: 'Present',
-      cambeltChainConfirmation: 'Confirmed',
-      vehicleInspectionTestDrive: 'Completed',
-      dealerPreSaleCheck: 'Completed',
+      cambeltChainConfirmation: 'Yes',
+      vehicleInspectionTestDrive: 'Yes',
+      dealerPreSaleCheck: 'Yes',
       fuelType: previewData.vehicle?.fuelType || 'Petrol',
       completionPercentage: 100,
       isComplete: true,

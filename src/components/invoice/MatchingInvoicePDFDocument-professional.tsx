@@ -88,6 +88,7 @@ const GLOBAL_FORMAT_CONFIG = {
     logo: {
       height: 80,
       width: 'auto',
+      maxWidth: 120, // Limit maximum width to prevent layout issues with wide logos
     },
     signature: {
       width: 150,
@@ -416,6 +417,7 @@ const styles = StyleSheet.create({
   companyLogo: {
     height: GLOBAL_FORMAT_CONFIG.layout.logo.height,
     width: GLOBAL_FORMAT_CONFIG.layout.logo.width,
+    maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
     marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2,
     objectFit: 'contain',
     alignSelf: 'center',
@@ -1568,9 +1570,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
               {/* Logo */}
                 {invoiceData.companyInfo.logo && (
-                <View style={{ marginRight: GLOBAL_FORMAT_CONFIG.spacing.largeGap + 5 }}>
+                <View style={{ 
+                  marginRight: GLOBAL_FORMAT_CONFIG.spacing.largeGap + 5,
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth + 10, // Add some padding
+                  flexShrink: 0 // Prevent shrinking
+                }}>
                     <Image
-                    style={{ height: GLOBAL_FORMAT_CONFIG.layout.logo.height, width: GLOBAL_FORMAT_CONFIG.layout.logo.width, objectFit: 'contain' }}
+                    style={{ 
+                      height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
+                      width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                      maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
+                      objectFit: 'contain' 
+                    }}
                       src={invoiceData.companyInfo.logo}
                     />
                   </View>
@@ -2014,7 +2025,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
              )}
              
              {/* Delivery Cost */}
-             {invoiceData.delivery?.type === 'Delivery' && ((invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.delivery?.discount ?? 0) > 0) && (
+              {invoiceData.delivery?.type === 'delivery' && ((invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.delivery?.discount ?? 0) > 0) && (
                <View style={{ 
                  flexDirection: 'row', 
                  paddingVertical: 5,
@@ -2649,6 +2660,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 style={{ 
                   height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
                   width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
                   objectFit: 'contain' 
                 }}
                 src={invoiceData.companyInfo.logo}
@@ -2680,7 +2692,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <Text style={[styles.checklistItem, { textAlign: 'left', fontSize: 10, marginBottom: 0 }]}>
-                  {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                  {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
                 </Text>
                 <Text style={[styles.checklistItem, { textAlign: 'right', fontSize: 10, marginBottom: 0 }]}>
                   {formatDate(invoiceData.delivery.date || '')}
@@ -2752,6 +2764,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 style={{ 
                   height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
                   width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
                   objectFit: 'contain' 
                 }}
                 src={invoiceData.companyInfo.logo}
@@ -2783,7 +2796,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[styles.checklistItem, { textAlign: 'left' }]}>
-                  {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                  {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
                 </Text>
                 <Text style={[styles.checklistItem, { textAlign: 'right' }]}>
                   {formatDate(invoiceData.delivery.date || '')}
@@ -2835,10 +2848,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               
               <View style={{ flexDirection: 'row', marginBottom: 4 }}>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'right', paddingRight: 8, fontSize: 8 }]}>
-                  SERVICE HISTORY RECORD PRESENT:
+                  SERVICE BOOK:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.serviceHistoryRecord ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.serviceHistoryRecord || 'Not Available'}
                 </Text>
               </View>
               
@@ -2865,7 +2878,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   VEHICLE INSPECTION & TEST DRIVE:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.vehicleInspectionTestDrive ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.vehicleInspectionTestDrive === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
               
@@ -2874,7 +2887,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   DEALER PRE-SALE CHECK:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.dealerPreSaleCheck ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.dealerPreSaleCheck === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
             </View>

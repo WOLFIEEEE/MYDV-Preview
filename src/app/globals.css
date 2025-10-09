@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../styles/invoice-pdf-preview.css";
 
 /* Custom scrollbar styles */
 .custom-scrollbar {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { savedInvoices } from '@/db/schema';
+import { savedInvoices, dealers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { syncInvoiceData } from '@/lib/invoiceSyncService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,15 @@ export async function POST(request: NextRequest) {
         error: 'Missing required fields' 
       }, { status: 400 });
     }
+
+    // Get dealer ID for sync service
+    const dealerResult = await db
+      .select({ id: dealers.id })
+      .from(dealers)
+      .where(eq(dealers.clerkUserId, user.id))
+      .limit(1);
+
+    const dealerId = dealerResult.length > 0 ? dealerResult[0].id : null;
 
     // Extract key fields for quick search/filtering with null checks
     const customerName = invoiceData.customer 
@@ -81,6 +91,9 @@ export async function POST(request: NextRequest) {
       )
       .limit(1);
 
+    let invoiceId: string;
+    let isUpdate = false;
+
     if (existingInvoice.length > 0) {
       // Update existing invoice
       await db.update(savedInvoices)
@@ -99,12 +112,8 @@ export async function POST(request: NextRequest) {
         .where(eq(savedInvoices.id, existingInvoice[0].id));
 
       console.log('✅ Invoice updated:', invoiceNumber);
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Invoice updated successfully',
-        invoiceId: existingInvoice[0].id
-      });
+      invoiceId = existingInvoice[0].id;
+      isUpdate = true;
     } else {
       // Create new invoice
       const [newInvoice] = await db.insert(savedInvoices)
@@ -125,13 +134,40 @@ export async function POST(request: NextRequest) {
         .returning();
 
       console.log('✅ Invoice saved:', invoiceNumber);
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Invoice saved successfully',
-        invoiceId: newInvoice.id
-      });
+      invoiceId = newInvoice.id;
+      isUpdate = false;
     }
+
+    // Sync with CRM and Sales Details (non-blocking)
+    if (dealerId) {
+      console.log('🔄 Starting post-invoice sync...');
+      try {
+        const syncResult = await syncInvoiceData(dealerId, stockId, updatedInvoiceData);
+        
+        if (syncResult.success) {
+          console.log('✅ Invoice sync completed successfully:', {
+            customerId: syncResult.customerId,
+            saleDetailsId: syncResult.saleDetailsId
+          });
+        } else {
+          console.log('⚠️ Invoice sync completed with issues:', {
+            errors: syncResult.errors,
+            warnings: syncResult.warnings
+          });
+        }
+      } catch (syncError) {
+        // Don't fail the invoice save if sync fails
+        console.error('❌ Invoice sync failed (non-blocking):', syncError);
+      }
+    } else {
+      console.log('⚠️ No dealer ID found, skipping invoice sync');
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: isUpdate ? 'Invoice updated successfully' : 'Invoice saved successfully',
+      invoiceId: invoiceId
+    });
   } catch (error) {
     console.error('❌ Error saving invoice:', error);
     return NextResponse.json({
