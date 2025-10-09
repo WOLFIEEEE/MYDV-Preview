@@ -82,6 +82,7 @@ interface KanbanBoardData {
 
 interface KanbanBoardProps {
   boardId: string;
+  boardName?: string;
 }
 
 interface TeamMember {
@@ -92,7 +93,7 @@ interface TeamMember {
   type: 'owner' | 'team_member';
 }
 
-export default function KanbanBoard({ boardId }: KanbanBoardProps) {
+export default function KanbanBoard({ boardId, boardName }: KanbanBoardProps) {
   const { isDarkMode } = useTheme();
   const { user } = useUser();
   const queryClient = useQueryClient();
@@ -110,6 +111,9 @@ export default function KanbanBoard({ boardId }: KanbanBoardProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showOnlyMyTasks, setShowOnlyMyTasks] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+
+  // Check if this is a dealership tasks board (columns should be non-editable)
+  const isDealershipTasksBoard = boardName === 'Dealership Tasks';
 
   // React Query hooks
   const { 
@@ -672,97 +676,99 @@ export default function KanbanBoard({ boardId }: KanbanBoardProps) {
                       </Badge>
                     )}
                   </div>
-                  <DropdownMenu 
-                    modal={false}
-                    open={openDropdownId === column.id}
-                    onOpenChange={(open) => {
-                      setOpenDropdownId(open ? column.id : null);
-                    }}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        aria-label={`Column options for ${column.name}`}
-                        aria-expanded={openDropdownId === column.id}
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent 
-                      align="end" 
-                      className="w-48"
-                      onCloseAutoFocus={(event) => {
-                        // Prevent focus from being lost when dropdown closes
-                        event.preventDefault();
-                      }}
-                      onEscapeKeyDown={() => {
-                        setOpenDropdownId(null);
-                      }}
-                      onPointerDownOutside={() => {
-                        setOpenDropdownId(null);
+                  {!isDealershipTasksBoard && (
+                    <DropdownMenu 
+                      modal={false}
+                      open={openDropdownId === column.id}
+                      onOpenChange={(open) => {
+                        setOpenDropdownId(open ? column.id : null);
                       }}
                     >
-                      <DropdownMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                          aria-label={`Column options for ${column.name}`}
+                          aria-expanded={openDropdownId === column.id}
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent 
+                        align="end" 
+                        className="w-48"
+                        onCloseAutoFocus={(event) => {
+                          // Prevent focus from being lost when dropdown closes
+                          event.preventDefault();
+                        }}
+                        onEscapeKeyDown={() => {
                           setOpenDropdownId(null);
-                          openAddTaskDialog(column.id, column.name);
+                        }}
+                        onPointerDownOutside={() => {
+                          setOpenDropdownId(null);
                         }}
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Task
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(null);
-                          handleEditColumn(column.id);
-                        }}
-                      >
-                        <Edit3 className="w-4 h-4 mr-2" />
-                        Edit Column
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(null);
-                          handleChangeColumnColor(column.id);
-                        }}
-                      >
-                        <Palette className="w-4 h-4 mr-2" />
-                        Change Color
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(null);
-                          handleColumnSettings(column.id);
-                        }}
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Column Settings
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenDropdownId(null);
-                          handleDeleteColumn(column.id);
-                        }}
-                        className={`transition-colors duration-300 ${
-                          isDarkMode 
-                            ? 'text-red-400 focus:text-red-400' 
-                            : 'text-red-600 focus:text-red-600'
-                        }`}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Column
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            openAddTaskDialog(column.id, column.name);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Task
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            handleEditColumn(column.id);
+                          }}
+                        >
+                          <Edit3 className="w-4 h-4 mr-2" />
+                          Edit Column
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            handleChangeColumnColor(column.id);
+                          }}
+                        >
+                          <Palette className="w-4 h-4 mr-2" />
+                          Change Color
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            handleColumnSettings(column.id);
+                          }}
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Column Settings
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            handleDeleteColumn(column.id);
+                          }}
+                          className={`transition-colors duration-300 ${
+                            isDarkMode 
+                              ? 'text-red-400 focus:text-red-400' 
+                              : 'text-red-600 focus:text-red-600'
+                          }`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Column
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </div>
 

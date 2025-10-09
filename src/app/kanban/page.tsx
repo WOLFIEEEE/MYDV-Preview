@@ -342,7 +342,7 @@ function KanbanPageContent() {
                     {selectedBoard?.name === 'Vehicle Job Cards' ? (
                       <VehicleJobCardsBoard />
                     ) : (
-                      <KanbanBoard boardId={selectedBoardId} />
+                      <KanbanBoard boardId={selectedBoardId} boardName={selectedBoard?.name} />
                     )}
                   </CardContent>
                 </Card>
