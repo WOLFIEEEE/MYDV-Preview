@@ -242,7 +242,7 @@ export interface ComprehensiveInvoiceData {
   
   // Delivery Information
   delivery: {
-    type: 'Collection' | 'Delivery';      // {Collection/Delivery:188}
+    type: 'collection' | 'delivery';      // {Collection/Delivery:188}
     date?: string;                        // {Date of Collection / Delivery:129}
     cost?: number;
     discount?: number;                    // Discount on delivery cost
@@ -676,7 +676,7 @@ export async function GET(request: NextRequest) {
       
       // Delivery Information - Enhanced mapping
       delivery: {
-        type: (saleDetailsData?.deliveryType === 'delivery') ? 'Delivery' : 'Collection',
+        type: (saleDetailsData?.deliveryType === 'delivery') ? 'delivery' : 'collection',
         date: saleDetailsData?.deliveryDate?.toISOString().split('T')[0] || '',
         cost: parseFloat((existingInvoice?.additionalData as any)?.deliveryCost?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
         discount: parseFloat((existingInvoice?.additionalData as any)?.discountOnDelivery?.toString() || '0'),
@@ -961,7 +961,7 @@ export async function POST(request: NextRequest) {
         customerAddon2Cost: invoiceData.addons?.customer?.addon2?.cost || 0,
         
         // Delivery
-        deliveryType: invoiceData.delivery?.type || 'Collection',
+        deliveryType: invoiceData.delivery?.type || 'collection',
         deliveryCost: invoiceData.delivery?.cost || 0,
         discountOnDelivery: invoiceData.delivery?.discount || 0,
         deliveryCostPostDiscount: invoiceData.delivery?.postDiscountCost || invoiceData.delivery?.cost || 0,

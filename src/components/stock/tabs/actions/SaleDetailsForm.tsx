@@ -138,6 +138,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     deliveryType: 'collection', // 'delivery' or 'collection'
     deliveryPrice: '',
     deliveryDate: '',
+    deliveryAddress: '',
     notes: '',
     documentationComplete: false,
     keyHandedOver: false,
@@ -203,6 +204,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               deliveryType: data.deliveryType || 'collection',
               deliveryPrice: data.deliveryPrice?.toString() || '',
               deliveryDate: data.deliveryDate ? new Date(data.deliveryDate).toISOString().split('T')[0] : '',
+              deliveryAddress: data.deliveryAddress || '',
               notes: data.notes || '',
               documentationComplete: data.documentationComplete || false,
               keyHandedOver: data.keyHandedOver || false,
@@ -335,6 +337,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         deliveryType: formData.deliveryType || 'collection',
         deliveryPrice: formData.deliveryPrice || null,
         deliveryDate: formData.deliveryDate || null, // Send as string or null
+        deliveryAddress: formData.deliveryAddress || null,
         documentationComplete: formData.documentationComplete || false,
         keyHandedOver: formData.keyHandedOver || false,
         customerSatisfied: formData.customerSatisfied || false,
@@ -1173,6 +1176,24 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       className={`${inputBaseClass} ${
                         focusedField === 'deliveryDate' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                       }`}
+                    />
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <label className={labelClass}>
+                      <MapPin className="inline h-4 w-4 mr-2" />
+                      Delivery Address
+                    </label>
+                    <textarea
+                      value={formData.deliveryAddress}
+                      onChange={(e) => handleInputChange('deliveryAddress', e.target.value)}
+                      onFocus={() => setFocusedField('deliveryAddress')}
+                      onBlur={() => setFocusedField(null)}
+                      className={`${inputBaseClass} ${
+                        focusedField === 'deliveryAddress' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                      }`}
+                      placeholder="Full delivery address (if different from customer address)"
+                      rows={3}
                     />
                   </div>
 

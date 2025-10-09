@@ -508,7 +508,7 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
     
     // Delivery Information from form - Fixed field mappings
     delivery: {
-      type: toString(formData.deliveryOptions) === 'Delivery' ? 'Delivery' : 'Collection',
+      type: toString(formData.deliveryOptions) === 'Delivery' ? 'delivery' : 'collection',
       date: toString(formData.dateOfCollectionDelivery),
       cost: parseFloat(toString(formData.deliveryPricePreDiscount) || toString(formData.deliveryCost) || '0'),
       discount: parseFloat(toString(formData.discountOnDeliveryPrice) || '0'),
@@ -1127,8 +1127,11 @@ function DynamicInvoiceEditorContent() {
         // Ensure blob has correct MIME type (Safari requires this)
         const pdfBlob = new Blob([blob], { type: 'application/pdf' });
         
-        // Create filename: VehicleReg-FirstName-LastName
-        const filename = `${invoiceData.vehicle.registration}_${invoiceData.customer.firstName}_${invoiceData.customer.lastName}.pdf`;
+        // Create filename: VehicleReg-FirstName-LastName with fallbacks
+        const vehicleReg = invoiceData.vehicle.registration || 'VEHICLE';
+        const firstName = invoiceData.customer.firstName || 'Customer';
+        const lastName = invoiceData.customer.lastName || 'Name';
+        const filename = `${vehicleReg}-${firstName}-${lastName}.pdf`;
         
         // Detect Safari browser
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);

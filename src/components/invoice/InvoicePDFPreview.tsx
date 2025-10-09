@@ -7,7 +7,6 @@ import {
   ChevronRight
 } from "lucide-react";
 import { ComprehensiveInvoiceData } from "@/app/api/invoice-data/route";
-import { useTheme } from "@/contexts/ThemeContext";
 
 interface InvoicePDFPreviewProps {
   invoiceData: ComprehensiveInvoiceData;
@@ -15,7 +14,6 @@ interface InvoicePDFPreviewProps {
 }
 
 export default function InvoicePDFPreview({ invoiceData, className = '' }: InvoicePDFPreviewProps) {
-  const { isDarkMode } = useTheme();
   const [currentPage, setCurrentPage] = useState(1);
 
   // Local calculation functions to match PDF
@@ -102,27 +100,29 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     
     return (
       <div 
-        className={`invoice-pdf-preview-content leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-700'}`}
+        className="invoice-pdf-preview-content leading-relaxed text-gray-700"
         style={{
           fontSize: `${fontSize}px`, // Use proper font size matching PDF
           lineHeight: '1.4', // Better line height for readability
-          fontFamily: 'Century Gothic, Arial, sans-serif'
+          fontFamily: 'Century Gothic, Arial, sans-serif',
+          color: '#374151' // Force gray-700 color regardless of theme
         }}
         dangerouslySetInnerHTML={{ __html: `
           <style>
+            .invoice-pdf-preview-content * { color: #374151 !important; } /* Force all text to be dark gray */
             .invoice-pdf-preview-content table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: ${fontSize}px; }
-            .invoice-pdf-preview-content th { background-color: #f3f4f6; padding: 8px; border: 1px solid #d1d5db; font-weight: bold; text-align: left; font-size: ${fontSize + 2}px; }
-            .invoice-pdf-preview-content td { padding: 8px; border: 1px solid #d1d5db; font-size: ${fontSize}px; }
-            .invoice-pdf-preview-content h1, .invoice-pdf-preview-content h2, .invoice-pdf-preview-content h3 { font-weight: bold; margin: 16px 0 8px 0; font-family: 'Century Gothic', Arial, sans-serif; }
+            .invoice-pdf-preview-content th { background-color: #f3f4f6; padding: 8px; border: 1px solid #d1d5db; font-weight: bold; text-align: left; font-size: ${fontSize + 2}px; color: #374151 !important; }
+            .invoice-pdf-preview-content td { padding: 8px; border: 1px solid #d1d5db; font-size: ${fontSize}px; color: #374151 !important; }
+            .invoice-pdf-preview-content h1, .invoice-pdf-preview-content h2, .invoice-pdf-preview-content h3 { font-weight: bold; margin: 16px 0 8px 0; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
             .invoice-pdf-preview-content h1 { font-size: ${fontSize + 4}px; }
             .invoice-pdf-preview-content h2 { font-size: ${fontSize + 2}px; }
             .invoice-pdf-preview-content h3 { font-size: ${fontSize}px; }
-            .invoice-pdf-preview-content p { margin-bottom: 8px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; }
+            .invoice-pdf-preview-content p { margin-bottom: 8px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
             .invoice-pdf-preview-content ul { margin-left: 16px; margin-bottom: 8px; }
-            .invoice-pdf-preview-content li { margin-bottom: 4px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; }
-            .invoice-pdf-preview-content strong, .invoice-pdf-preview-content b { font-weight: bold; }
+            .invoice-pdf-preview-content li { margin-bottom: 4px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
+            .invoice-pdf-preview-content strong, .invoice-pdf-preview-content b { font-weight: bold; color: #374151 !important; }
             .invoice-pdf-preview-content br { line-height: 1.4; }
-            .invoice-pdf-preview-content div { font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; }
+            .invoice-pdf-preview-content div { font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
           </style>
           ${htmlContent}
         ` }}
@@ -187,7 +187,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 1 - Invoice Core
   const renderPage1 = () => (
-    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ 
+    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
       fontFamily: 'Century Gothic, Arial, sans-serif', 
       fontSize: '7px', 
       lineHeight: '1.1',
@@ -1216,7 +1216,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 2 - Checklist or Trade Disclaimer
   const renderPage2 = () => (
-    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ 
+    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
       fontFamily: 'Century Gothic, Arial, sans-serif', 
       fontSize: '7px', 
       lineHeight: '1.1',
@@ -1273,7 +1273,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <div style={{ textAlign: 'left', fontSize: '10px' }}>
-                {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
               </div>
               <div style={{ textAlign: 'right', fontSize: '10px' }}>
                 {invoiceData.delivery?.date ? new Date(invoiceData.delivery.date).toLocaleDateString('en-GB') : ''}
@@ -1526,7 +1526,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 3 - Standard T&Cs (only for non-Trade)
   const renderPage3 = () => (
-    <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ isolation: 'isolate' }}>
+    <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
       <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>
         {invoiceData.companyInfo.name.toUpperCase()} STANDARD LIMITED TERMS AND CONDITIONS
       </h2>
@@ -1551,7 +1551,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     if (invoiceData.saleType === 'Trade') return null;
     
     return (
-      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ isolation: 'isolate' }}>
+      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
         <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>IN-HOUSE ENGINE & TRANSMISSION WARRANTY</h2>
         <div style={{ fontSize: '7px', lineHeight: '1.4' }}>
           {invoiceData.terms.inHouseWarrantyTerms ? (
@@ -1578,7 +1578,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     if (invoiceData.saleType === 'Trade') return null;
     
     return (
-      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ isolation: 'isolate' }}>
+      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
         <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>EXTERNAL WARRANTY — EVOLUTION WARRANTIES</h2>
         <div style={{ fontSize: '7px', lineHeight: '1.4' }}>
           {invoiceData.terms.thirdPartyTerms ? (
@@ -1620,6 +1620,43 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   return (
     <div className={`safari-preview-wrapper ${className}`} style={{ isolation: 'isolate' }}>
+      {/* Add inline styles to force light theme for PDF content */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .invoice-pdf-light-theme,
+          .invoice-pdf-light-theme * {
+            color: #374151 !important;
+          }
+          .invoice-pdf-light-theme {
+            background-color: #ffffff !important;
+          }
+          .invoice-pdf-light-theme .bg-white {
+            background-color: #ffffff !important;
+          }
+          .invoice-pdf-light-theme .text-black {
+            color: #000000 !important;
+          }
+          .invoice-pdf-light-theme .text-gray-700 {
+            color: #374151 !important;
+          }
+          .invoice-pdf-light-theme .text-gray-600 {
+            color: #4b5563 !important;
+          }
+          .invoice-pdf-light-theme .text-slate-600 {
+            color: #475569 !important;
+          }
+          /* Override any dark mode text colors specifically for PDF preview */
+          .dark .invoice-pdf-light-theme,
+          .dark .invoice-pdf-light-theme * {
+            color: #374151 !important;
+            background-color: inherit !important;
+          }
+          .dark .invoice-pdf-light-theme {
+            background-color: #ffffff !important;
+          }
+        `
+      }} />
+      
       {/* Preview Controls */}
       <div className="flex items-center justify-between p-4 border-b bg-slate-50 dark:bg-slate-800 flex-shrink-0">
         <div className="flex items-center space-x-4">

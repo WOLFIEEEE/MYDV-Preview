@@ -2014,7 +2014,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
              )}
              
              {/* Delivery Cost */}
-             {invoiceData.delivery?.type === 'Delivery' && ((invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.delivery?.discount ?? 0) > 0) && (
+              {invoiceData.delivery?.type === 'delivery' && ((invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.delivery?.discount ?? 0) > 0) && (
                <View style={{ 
                  flexDirection: 'row', 
                  paddingVertical: 5,
@@ -2680,7 +2680,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <Text style={[styles.checklistItem, { textAlign: 'left', fontSize: 10, marginBottom: 0 }]}>
-                  {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                  {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
                 </Text>
                 <Text style={[styles.checklistItem, { textAlign: 'right', fontSize: 10, marginBottom: 0 }]}>
                   {formatDate(invoiceData.delivery.date || '')}
@@ -2783,7 +2783,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[styles.checklistItem, { textAlign: 'left' }]}>
-                  {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                  {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
                 </Text>
                 <Text style={[styles.checklistItem, { textAlign: 'right' }]}>
                   {formatDate(invoiceData.delivery.date || '')}

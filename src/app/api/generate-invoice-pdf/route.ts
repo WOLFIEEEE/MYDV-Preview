@@ -230,7 +230,7 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): Comp
     
     // Delivery Information
     delivery: {
-      type: 'Collection' as const,
+      type: 'collection' as const,
       cost: 0,
       postDiscountCost: 0,
     },

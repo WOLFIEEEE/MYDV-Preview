@@ -2097,7 +2097,7 @@ export default function DynamicInvoiceForm({
                   label="Delivery Type"
                   value={invoiceData.delivery.type}
                   onChange={(value) => updateNestedData('delivery.type', value)}
-                  options={['Collection', 'Delivery']}
+                  options={['collection', 'delivery']}
                   icon={Truck}
                   required
                 />
@@ -2113,7 +2113,7 @@ export default function DynamicInvoiceForm({
                 </div>
 
                 {/* Delivery Pricing Section - Only show for Delivery type */}
-                {invoiceData.delivery.type === 'Delivery' && (
+                {invoiceData.delivery.type === 'delivery' && (
                   <div className="space-y-4">
                     <h4 className="font-medium">Delivery Pricing</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2145,7 +2145,7 @@ export default function DynamicInvoiceForm({
                   </div>
                 )}
                 
-                {invoiceData.delivery.type === 'Delivery' && (
+                {invoiceData.delivery.type === 'delivery' && (
                   <div className="space-y-2">
                     <Label>Delivery Address</Label>
                     <Textarea
