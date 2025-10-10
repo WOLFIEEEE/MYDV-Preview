@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       ...(formData.saleDate && { saleDate: new Date(formData.saleDate) }),
       ...(formData.deliveryDate && formData.deliveryDate !== '' && { deliveryDate: new Date(formData.deliveryDate) }),
       ...(formData.depositDate && formData.depositDate !== '' && { depositDate: new Date(formData.depositDate) }),
+      ...(formData.completionDate && formData.completionDate !== '' && { completionDate: new Date(formData.completionDate) }),
       // Ensure numeric fields are properly typed (only if they exist)
       ...(formData.warrantyMonths && { warrantyMonths: parseInt(formData.warrantyMonths) }),
       ...(formData.salePrice && { salePrice: parseFloat(formData.salePrice) }),
