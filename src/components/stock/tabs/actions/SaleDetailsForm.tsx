@@ -405,6 +405,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         batteryTest: formData.batteryTest || false,
         testDriver: formData.testDriver || false,
         adequateDriveAwayFuel: formData.adequateDriveAwayFuel || false,
+        washerJets: formData.washerJets || false,
+        wipers: formData.wipers || false,
+        bulbs: formData.bulbs || false,
         additionalText: formData.additionalText || null,
         completionDate: formData.completionDate || null
       };
@@ -478,6 +481,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
             batteryTest: formData.batteryTest,
             testDriver: formData.testDriver,
             adequateDriveAwayFuel: formData.adequateDriveAwayFuel,
+            washerJets: formData.washerJets,
+            wipers: formData.wipers,
+            bulbs: formData.bulbs,
             additionalText: formData.additionalText,
             completionDate: formData.completionDate
           }
