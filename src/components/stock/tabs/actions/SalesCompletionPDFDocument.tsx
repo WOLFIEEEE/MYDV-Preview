@@ -127,7 +127,8 @@ const styles = StyleSheet.create({
     padding: 0,
     marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2,
     paddingBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap,
-    borderBottom: `${GLOBAL_FORMAT_CONFIG.layout.borders.thin} ${GLOBAL_FORMAT_CONFIG.colors.border}`,
+    borderBottomWidth: 1,
+    borderBottomColor: GLOBAL_FORMAT_CONFIG.colors.border,
   },
   headerRow: {
     flexDirection: 'row',
@@ -245,7 +246,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: '#F9FAFB',
     borderRadius: 4,
-    border: '1 solid #E5E7EB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     minHeight: 35,
   },
   checklistLabel: {
@@ -286,7 +288,8 @@ const styles = StyleSheet.create({
     padding: GLOBAL_FORMAT_CONFIG.spacing.itemGap,
     backgroundColor: GLOBAL_FORMAT_CONFIG.colors.tableAlt,
     borderRadius: 4,
-    border: `${GLOBAL_FORMAT_CONFIG.layout.borders.thin} ${GLOBAL_FORMAT_CONFIG.colors.border}`,
+    borderWidth: 1,
+    borderColor: GLOBAL_FORMAT_CONFIG.colors.border,
   },
   additionalTextTitle: {
     fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading,
