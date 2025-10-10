@@ -637,6 +637,23 @@ export const saleDetails = pgTable('sale_details', {
   // Vulnerability Support
   requiresAdditionalSupport: boolean('requires_additional_support').default(false),
   
+  // New Completion Checklist Fields
+  wheelNuts: boolean('wheel_nuts').default(false),
+  tyrePressures: boolean('tyre_pressures').default(false),
+  tyreSensors: boolean('tyre_sensors').default(false),
+  oilLevel: boolean('oil_level').default(false),
+  coolantLevel: boolean('coolant_level').default(false),
+  screenWash: boolean('screen_wash').default(false),
+  lockingNutGloveBox: boolean('locking_nut_glove_box').default(false),
+  bookPackGloveBox: boolean('book_pack_glove_box').default(false),
+  inflationKit: boolean('inflation_kit').default(false),
+  keyBatteries: boolean('key_batteries').default(false),
+  batteryTest: boolean('battery_test').default(false),
+  testDriver: boolean('test_driver').default(false),
+  adequateDriveAwayFuel: boolean('adequate_drive_away_fuel').default(false),
+  additionalText: text('additional_text'),
+  completionDate: timestamp('completion_date'),
+  
   // Additional Notes
   notes: text('notes'),
   
