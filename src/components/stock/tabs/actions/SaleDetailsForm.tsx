@@ -1428,11 +1428,11 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                   value={formData.batteryTest}
                   onChange={(val) => handleInputChange('batteryTest', val)}
                 />
-                <YesNoToggle
-                  label="Test Driver"
-                  value={formData.testDriver}
-                  onChange={(val) => handleInputChange('testDriver', val)}
-                />
+              <YesNoToggle
+                label="Test Drive"
+                value={formData.testDriver}
+                onChange={(val) => handleInputChange('testDriver', val)}
+              />
                 <YesNoToggle
                   label="Adequate Drive Away Fuel"
                   value={formData.adequateDriveAwayFuel}
