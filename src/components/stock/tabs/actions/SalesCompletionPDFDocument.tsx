@@ -378,7 +378,7 @@ const CHECKLIST_ITEMS = [
   { key: 'inflationKit', label: 'Inflation kit' },
   { key: 'keyBatteries', label: 'Key batteries' },
   { key: 'batteryTest', label: 'Battery Test' },
-  { key: 'testDriver', label: 'Test Driver' },
+  { key: 'testDriver', label: 'Test Drive' },
   { key: 'adequateDriveAwayFuel', label: 'Adequate Drive Away Fuel' },
 ];
 
