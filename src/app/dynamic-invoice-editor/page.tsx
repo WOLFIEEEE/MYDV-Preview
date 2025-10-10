@@ -386,12 +386,65 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
   const invoiceToRaw = toString(formData.invoiceTo) || 'Customer';
   const invoiceTo: 'Customer' | 'Finance Company' = (['Customer', 'Finance Company'].includes(invoiceToRaw) ? invoiceToRaw : 'Customer') as 'Customer' | 'Finance Company';
   
+  // Calculate balance fields if they're missing (same logic as BalanceSummary component)
+  const ensureBalanceFieldsCalculated = () => {
+    // If balance fields already exist and are non-zero, use them
+    if ((formData.remainingBalance && parseFloat(formData.remainingBalance.toString()) > 0) || 
+        (formData.balanceToCustomer && parseFloat(formData.balanceToCustomer.toString()) > 0) || 
+        (formData.tradeBalanceDue && parseFloat(formData.tradeBalanceDue.toString()) > 0)) {
+      return {
+        remainingBalance: parseFloat(formData.remainingBalance?.toString() || '0'),
+        balanceToCustomer: parseFloat(formData.balanceToCustomer?.toString() || '0'),
+        tradeBalanceDue: parseFloat(formData.tradeBalanceDue?.toString() || '0'),
+      };
+    }
+    
+    // Calculate from scratch using same logic as BalanceSummary component
+    const salePrice = parseFloat(formData.salePricePostDiscount?.toString() || formData.salePrice?.toString() || '0');
+    const warrantyPrice = parseFloat(formData.warrantyPricePostDiscount?.toString() || formData.warrantyPrice?.toString() || '0');
+    const deliveryPrice = parseFloat(formData.deliveryPricePostDiscount?.toString() || formData.deliveryCost?.toString() || '0');
+    
+    // Calculate subtotal (same as BalanceSummary)
+    const subtotalCustomer = salePrice + warrantyPrice + deliveryPrice;
+    
+    // Calculate total payments (same as BalanceSummary)
+    const cardPayments = (formData.cardPayments as any[] || []).reduce((sum: number, payment: any) => sum + (parseFloat(payment.amount?.toString() || '0')), 0);
+    const bacsPayments = (formData.bacsPayments as any[] || []).reduce((sum: number, payment: any) => sum + (parseFloat(payment.amount?.toString() || '0')), 0);
+    const cashPayments = (formData.cashPayments as any[] || []).reduce((sum: number, payment: any) => sum + (parseFloat(payment.amount?.toString() || '0')), 0);
+    const partExPayment = parseFloat(formData.amountPaidPartExchange?.toString() || '0');
+    const customerAmountPaid = cardPayments + bacsPayments + cashPayments + partExPayment;
+    
+    // Calculate balance fields using same logic as BalanceSummary component
+    const remainingBalance = Math.max(0, subtotalCustomer - customerAmountPaid); // Line 257 from BalanceSummary
+    const tradeBalanceDue = saleType === 'Trade' ? Math.max(0, subtotalCustomer - customerAmountPaid) : 0; // Line 260 from BalanceSummary
+    
+    // For finance invoices, calculate balanceToCustomer (same as BalanceSummary line 241)
+    let balanceToCustomer = 0;
+    if (invoiceTo === 'Finance Company') {
+      const totalCustomerItems = warrantyPrice + deliveryPrice; // Simplified version
+      const totalFinanceDepositPaid = parseFloat(formData.totalFinanceDepositPaid?.toString() || '0');
+      const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
+      balanceToCustomer = outstandingDepositAmountFinance > 0 ? outstandingDepositAmountFinance : 0;
+    }
+    
+    return {
+      remainingBalance,
+      balanceToCustomer,
+      tradeBalanceDue,
+    };
+  };
+  
+  const calculatedBalances = ensureBalanceFieldsCalculated();
+  
   console.log('🎯 Key conversions:', {
     'formData.saleType': formData.saleType,
     'computed saleType': saleType,
     'computed invoiceType': invoiceType,
     'formData.invoiceTo': formData.invoiceTo,
-    'computed invoiceTo': invoiceTo
+    'computed invoiceTo': invoiceTo,
+    'calculated remainingBalance': calculatedBalances.remainingBalance,
+    'calculated balanceToCustomer': calculatedBalances.balanceToCustomer,
+    'calculated tradeBalanceDue': calculatedBalances.tradeBalanceDue
   });
   
   return {
@@ -487,6 +540,9 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
       // Dealer Deposit Payment fields (for Finance Company invoices only)
       dealerDepositPaidCustomer: parseFloat(formData.dealerDepositPaidCustomer?.toString() || '0'),
       dealerDepositPaymentDateCustomer: toString(formData.dealerDepositPaymentDateCustomer) || '',
+      // Balance calculation fields (required by save API) - use calculated values
+      remainingBalance: calculatedBalances.remainingBalance,
+      tradeBalanceDue: calculatedBalances.tradeBalanceDue,
       // Note: Additional pricing fields stored in notes section
     },
     
@@ -518,16 +574,8 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
       },
       // Required fields for interface
       totalBalance: parseFloat(formData.salePrice?.toString() || '0'),
-      // Calculate outstandingBalance using same logic as save API
-      outstandingBalance: (() => {
-        if (saleType === 'Retail' && invoiceTo === 'Finance Company') {
-          return parseFloat(formData.balanceToCustomer?.toString() || formData.balanceToFinance?.toString() || '0');
-        } else if (saleType === 'Trade') {
-          return parseFloat(formData.tradeBalanceDue?.toString() || formData.customerBalanceDue?.toString() || '0');
-        } else {
-          return parseFloat(formData.remainingBalance?.toString() || formData.customerBalanceDue?.toString() || '0');
-        }
-      })(),
+      // Use calculated outstanding balance
+      outstandingBalance: calculatedBalances.remainingBalance,
       balanceToFinance: parseFloat(formData.balanceToFinance?.toString() || '0'),
       customerBalanceDue: parseFloat(formData.customerBalanceDue?.toString() || '0'),
       // Part Exchange

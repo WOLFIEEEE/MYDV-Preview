@@ -245,7 +245,7 @@ export class InvoiceSyncService {
       saleDate: invoice.sale?.date ? new Date(invoice.sale.date) : new Date(),
       monthOfSale: invoice.sale?.monthOfSale,
       quarterOfSale: invoice.sale?.quarterOfSale,
-      salePrice: invoice.pricing?.salePricePostDiscount?.toString() || invoice.pricing?.salePrice?.toString(),
+      salePrice: (invoice.pricing?.salePricePostDiscount !== undefined ? invoice.pricing.salePricePostDiscount : (invoice.pricing?.salePrice ?? 0)).toString(),
       
       // Customer information (from invoice customer data)
       firstName: invoice.customer?.firstName,
@@ -275,10 +275,11 @@ export class InvoiceSyncService {
       
       // Warranty information
       warrantyType: invoice.warranty?.type || 'none',
+      warrantyPrice: (invoice.pricing?.warrantyPricePostDiscount !== undefined ? invoice.pricing.warrantyPricePostDiscount : (invoice.pricing?.warrantyPrice ?? 0)).toString(),
       
       // Delivery information
       deliveryType: invoice.delivery?.type || 'collection',
-      deliveryPrice: invoice.delivery?.cost?.toString(),
+      deliveryPrice: (invoice.pricing?.deliveryCostPostDiscount !== undefined ? invoice.pricing.deliveryCostPostDiscount : (invoice.pricing?.deliveryCost ?? invoice.delivery?.cost ?? 0)).toString(),
       deliveryDate: invoice.delivery?.date ? new Date(invoice.delivery.date) : undefined,
       deliveryAddress: invoice.delivery?.address,
       
@@ -336,8 +337,16 @@ export class InvoiceSyncService {
 
     // Use single payment fields as fallback/addition
     const financeAmount = breakdown.financeAmount || 0;
-    const depositAmount = breakdown.depositAmount || 0;
-    const partExAmount = breakdown.partExAmount || 0;
+    
+    // Aggregate all deposit payments from multiple sources
+    const depositAmount = (breakdown.depositAmount || 0) + 
+                         (this.invoiceData.pricing?.amountPaidDepositFinance || 0) +
+                         (this.invoiceData.pricing?.amountPaidDepositCustomer || 0) +
+                         (this.invoiceData.pricing?.dealerDepositPaidCustomer || 0);
+    
+    // Part exchange amount from payment section
+    const partExAmount = (breakdown.partExAmount || 0) + 
+                        (this.invoiceData.payment?.partExchange?.amountPaid || 0);
 
     console.log('💰 Payment aggregation:', {
       cashAmount,
