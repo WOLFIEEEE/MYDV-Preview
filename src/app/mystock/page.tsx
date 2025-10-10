@@ -1416,23 +1416,6 @@ function MyStockContent() {
                     </Button>
                   </div>
 
-                  {/* Export Data Button */}
-                  <div className="flex-shrink-0 ml-3">
-                    <Button 
-                      onClick={handleExportData}
-                      className={`group relative overflow-hidden px-5 py-3 text-sm font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl ${
-                        isDarkMode 
-                          ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white border-0 shadow-green-500/25' 
-                          : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white border-0 shadow-green-500/25'
-                      }`}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="relative flex items-center gap-2">
-                        <Download className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-                        <span className="whitespace-nowrap">Export Data</span>
-                      </div>
-                    </Button>
-                  </div>
                 </div>
               </div>
 
@@ -1943,6 +1926,19 @@ function MyStockContent() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Export Data Button */}
+                    <Button
+                      onClick={handleExportData}
+                      className={`flex items-center gap-2 ${
+                        isDarkMode 
+                          ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
+                          : 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                      }`}
+                    >
+                      <Download className="w-4 h-4" />
+                      Export Data
+                    </Button>
 
                     {/* Advanced Filters Toggle */}
                     <Button
