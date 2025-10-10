@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { savedInvoices } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, or } from 'drizzle-orm';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +12,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all saved invoices for the current user
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
+    }
+
+    const dealerId = dealerIdResult.dealerId!;
+
+    // BACKWARD COMPATIBILITY: Get invoices saved with both dealer ID (new) and user Clerk ID (old)
+    // This ensures we show both old invoices (saved with user.id) and new invoices (saved with dealerId)
     const allInvoices = await db.select({
       id: savedInvoices.id,
       invoiceNumber: savedInvoices.invoiceNumber,
@@ -30,7 +43,12 @@ export async function GET(request: NextRequest) {
       lastAccessedAt: savedInvoices.lastAccessedAt
     })
     .from(savedInvoices)
-    .where(eq(savedInvoices.userId, user.id))
+    .where(
+      or(
+        eq(savedInvoices.userId, dealerId),    // New invoices (saved with dealer ID)
+        eq(savedInvoices.userId, user.id)     // Old invoices (saved with Clerk user ID)
+      )
+    )
     .orderBy(desc(savedInvoices.updatedAt));
 
     // Filter to only get the latest invoice per stockId + registration combination
@@ -46,7 +64,7 @@ export async function GET(request: NextRequest) {
     const latestInvoices = Array.from(invoiceMap.values())
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-    console.log(`✅ Retrieved ${latestInvoices.length} latest invoices (filtered from ${allInvoices.length} total) for user ${user.id}`);
+    console.log(`✅ Retrieved ${latestInvoices.length} latest invoices (filtered from ${allInvoices.length} total) for dealer ${dealerId} (includes backward compatibility for old Clerk user ID invoices)`);
 
     return NextResponse.json({ 
       success: true, 

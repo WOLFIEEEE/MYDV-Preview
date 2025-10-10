@@ -172,43 +172,44 @@ export default function DiscountApplication({ formData, updateFormData }: Props)
 
   // Calculate pre-discount values and post-discount values automatically
   useEffect(() => {
-    // Only calculate if discounts are applied
-    if (formData.applyDiscounts !== 'Yes') {
-      return
-    }
     // Sale Price Pre-Discount - input_67 (Calculated)
     const salePricePreDiscount = formData.salePrice || 0
     
     // Sale Price Post-Discount - input_68 (Calculated)
-    const discountOnSalePrice = formData.discountOnSalePrice || 0
+    // If discounts are not applied, use original price as post-discount price
+    const discountOnSalePrice = formData.applyDiscounts === 'Yes' ? (formData.discountOnSalePrice || 0) : 0
     const salePricePostDiscount = Math.max(0, salePricePreDiscount - discountOnSalePrice)
     
     // Warranty Price Pre-Discount - input_69 (Calculated)
     const warrantyPricePreDiscount = formData.warrantyPrice || 0
     
     // Warranty Price Post Discount - input_70 (Calculated)
-    const discountOnWarrantyPrice = formData.discountOnWarrantyPrice || 0
+    // If discounts are not applied, use original price as post-discount price
+    const discountOnWarrantyPrice = formData.applyDiscounts === 'Yes' ? (formData.discountOnWarrantyPrice || 0) : 0
     const warrantyPricePostDiscount = Math.max(0, warrantyPricePreDiscount - discountOnWarrantyPrice)
     
     // Delivery Price Pre-Discount - input_137 (Calculated)
     const deliveryPricePreDiscount = formData.deliveryCost || 0
     
     // Delivery Price Post Discount - input_139 (Calculated)
-    const discountOnDeliveryPrice = formData.discountOnDeliveryPrice || 0
+    // If discounts are not applied, use original price as post-discount price
+    const discountOnDeliveryPrice = formData.applyDiscounts === 'Yes' ? (formData.discountOnDeliveryPrice || 0) : 0
     const deliveryPricePostDiscount = Math.max(0, deliveryPricePreDiscount - discountOnDeliveryPrice)
 
     // Enhanced Warranty Price Pre-Discount (Calculated)
     const enhancedWarrantyPricePreDiscount = formData.enhancedWarrantyPrice || 0
     
     // Enhanced Warranty Price Post Discount (Calculated)
-    const discountOnEnhancedWarrantyPrice = formData.discountOnEnhancedWarrantyPrice || 0
+    // If discounts are not applied, use original price as post-discount price
+    const discountOnEnhancedWarrantyPrice = formData.applyDiscounts === 'Yes' ? (formData.discountOnEnhancedWarrantyPrice || 0) : 0
     const enhancedWarrantyPricePostDiscount = Math.max(0, enhancedWarrantyPricePreDiscount - discountOnEnhancedWarrantyPrice)
 
     // Dynamic Customer Add-ons Discounts (Calculated) - for dynamic array only
     const customerAddonsDiscountArray = (formData.customerAddonsArray || []).map((addon, index) => {
       const existingDiscount = (formData.customerAddonsDiscountArray || [])[index] || {}
       const pricePreDiscount = addon.cost || 0
-      const discountAmount = existingDiscount.discountAmount || 0
+      // If discounts are not applied, set discount amount to 0
+      const discountAmount = formData.applyDiscounts === 'Yes' ? (existingDiscount.discountAmount || 0) : 0
       const pricePostDiscount = Math.max(0, pricePreDiscount - discountAmount)
       
       return {
@@ -223,7 +224,8 @@ export default function DiscountApplication({ formData, updateFormData }: Props)
     const financeAddonsDiscountArray = (formData.financeAddonsArray || []).map((addon, index) => {
       const existingDiscount = (formData.financeAddonsDiscountArray || [])[index] || {}
       const pricePreDiscount = addon.cost || 0
-      const discountAmount = existingDiscount.discountAmount || 0
+      // If discounts are not applied, set discount amount to 0
+      const discountAmount = formData.applyDiscounts === 'Yes' ? (existingDiscount.discountAmount || 0) : 0
       const pricePostDiscount = Math.max(0, pricePreDiscount - discountAmount)
       
       return {
@@ -238,28 +240,32 @@ export default function DiscountApplication({ formData, updateFormData }: Props)
     const customerAddon1PricePreDiscount = formData.customerAddon1Cost || 0
     
     // Customer Add-on 1 Price Post Discount (Calculated)
-    const discountOnCustomerAddon1Price = formData.discountOnCustomerAddon1Price || 0
+    // If discounts are not applied, set discount amount to 0
+    const discountOnCustomerAddon1Price = formData.applyDiscounts === 'Yes' ? (formData.discountOnCustomerAddon1Price || 0) : 0
     const customerAddon1PricePostDiscount = Math.max(0, customerAddon1PricePreDiscount - discountOnCustomerAddon1Price)
 
     // Customer Add-on 2 Price Pre-Discount (Calculated)
     const customerAddon2PricePreDiscount = formData.customerAddon2Cost || 0
     
     // Customer Add-on 2 Price Post Discount (Calculated)
-    const discountOnCustomerAddon2Price = formData.discountOnCustomerAddon2Price || 0
+    // If discounts are not applied, set discount amount to 0
+    const discountOnCustomerAddon2Price = formData.applyDiscounts === 'Yes' ? (formData.discountOnCustomerAddon2Price || 0) : 0
     const customerAddon2PricePostDiscount = Math.max(0, customerAddon2PricePreDiscount - discountOnCustomerAddon2Price)
 
     // Finance Add-on 1 Price Pre-Discount (Calculated)
     const financeAddon1PricePreDiscount = formData.financeAddon1Cost || 0
     
     // Finance Add-on 1 Price Post Discount (Calculated)
-    const discountOnFinanceAddon1Price = formData.discountOnFinanceAddon1Price || 0
+    // If discounts are not applied, set discount amount to 0
+    const discountOnFinanceAddon1Price = formData.applyDiscounts === 'Yes' ? (formData.discountOnFinanceAddon1Price || 0) : 0
     const financeAddon1PricePostDiscount = Math.max(0, financeAddon1PricePreDiscount - discountOnFinanceAddon1Price)
 
     // Finance Add-on 2 Price Pre-Discount (Calculated)
     const financeAddon2PricePreDiscount = formData.financeAddon2Cost || 0
     
     // Finance Add-on 2 Price Post Discount (Calculated)
-    const discountOnFinanceAddon2Price = formData.discountOnFinanceAddon2Price || 0
+    // If discounts are not applied, set discount amount to 0
+    const discountOnFinanceAddon2Price = formData.applyDiscounts === 'Yes' ? (formData.discountOnFinanceAddon2Price || 0) : 0
     const financeAddon2PricePostDiscount = Math.max(0, financeAddon2PricePreDiscount - discountOnFinanceAddon2Price)
 
     // Check if dynamic arrays have changed
@@ -332,9 +338,9 @@ export default function DiscountApplication({ formData, updateFormData }: Props)
     updateFormData
   ])
 
-  // This component is only shown when applyDiscounts === 'Yes'
+  // Only show the UI when applyDiscounts === 'Yes', but calculations always run in useEffect
   if (formData.applyDiscounts !== 'Yes') {
-    return null
+    return <div style={{ display: 'none' }}>Discount calculations running in background</div>
   }
 
   return (

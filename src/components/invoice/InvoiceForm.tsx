@@ -233,6 +233,7 @@ interface StepConfig {
   title: string
   component: React.ComponentType<StepProps>
   isVisible: (formData: FormData) => boolean
+  alwaysRender?: boolean // Optional flag to always render component even when not visible
 }
 
 interface StepProps {
@@ -276,7 +277,9 @@ const STEPS: StepConfig[] = [
     id: 'discount-application',
     title: 'Discount Application',
     component: DiscountApplication,
-    isVisible: (formData) => formData.applyDiscounts === 'Yes'
+    isVisible: (formData) => formData.applyDiscounts === 'Yes',
+    // Always run calculations in background even when not visible
+    alwaysRender: true
   },
   {
     id: 'finance-deposits',
@@ -1364,6 +1367,21 @@ export default function InvoiceForm({ stockData, stockActionsData }: InvoiceForm
             </CardContent>
           </Card>
         </LoadingOverlay>
+
+        {/* Always-render components (hidden) - for background calculations */}
+        <div style={{ display: 'none' }}>
+          {STEPS.filter(step => step.alwaysRender && !step.isVisible(formData)).map(step => {
+            const HiddenComponent = step.component;
+            return (
+              <HiddenComponent
+                key={`hidden-${step.id}`}
+                formData={formData}
+                updateFormData={updateFormData}
+                errors={errors}
+              />
+            );
+          })}
+        </div>
 
         {/* Enhanced Navigation Buttons */}
         <Card className={`shadow-lg border-0 ${

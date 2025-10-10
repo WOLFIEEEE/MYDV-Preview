@@ -2239,10 +2239,15 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 I confirm that, when purchasing the above vehicle, I have been advised that this purchase is a Trade-Sale and outside of the scope of the Consumer Protection provisions. Therefore, no warranty or post-sale liabilities will apply. By purchasing this vehicle, I am confirming my understanding of the above, that all of the details listed are correct and providing my consent for these conditions to be applied.
               </Text>
             </View>
-          )}
+            )}
 
           {/* Payment Breakdown Section */}
-          <View style={{ marginTop: 2, marginBottom: 2, borderTop: '1px solid #d0d0d0', paddingTop: 2 }}>
+          <View style={{ 
+            marginTop: 2, 
+            marginBottom: 2, 
+            borderTop: (invoiceData.saleType === 'Trade' || !invoiceData.warranty.level || invoiceData.warranty.level === 'None Selected') ? '1px solid #d0d0d0' : 'none', 
+            paddingTop: 2 
+          }}>
             <View style={{ marginBottom: 4 }}>
               {/* Header Row - Payment Breakdown and Subtotal in same row */}
               <View style={{ flexDirection: 'row', marginBottom: 2 }}>

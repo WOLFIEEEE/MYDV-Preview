@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { savedInvoices, dealers } from '@/db/schema';
+import { savedInvoices, dealers, teamMembers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { syncInvoiceData } from '@/lib/invoiceSyncService';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,14 +23,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get dealer ID for sync service
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1);
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
+    }
 
-    const dealerId = dealerResult.length > 0 ? dealerResult[0].id : null;
+    const dealerId = dealerIdResult.dealerId!;
 
     // Extract key fields for quick search/filtering with null checks
     const customerName = invoiceData.customer 
@@ -80,13 +83,13 @@ export async function POST(request: NextRequest) {
       invoiceNumber
     };
 
-    // Check if invoice already exists
+    // Check if invoice already exists (using dealer ID instead of user ID)
     const existingInvoice = await db.select()
       .from(savedInvoices)
       .where(
         and(
           eq(savedInvoices.invoiceNumber, invoiceNumber),
-          eq(savedInvoices.userId, user.id)
+          eq(savedInvoices.userId, dealerId)
         )
       )
       .limit(1);
@@ -115,12 +118,12 @@ export async function POST(request: NextRequest) {
       invoiceId = existingInvoice[0].id;
       isUpdate = true;
     } else {
-      // Create new invoice
+      // Create new invoice (using dealer ID instead of user ID)
       const [newInvoice] = await db.insert(savedInvoices)
         .values({
           invoiceNumber,
           stockId,
-          userId: user.id,
+          userId: dealerId,
           invoiceData: updatedInvoiceData,
           customerName,
           vehicleRegistration,
@@ -139,28 +142,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Sync with CRM and Sales Details (non-blocking)
-    if (dealerId) {
-      console.log('🔄 Starting post-invoice sync...');
-      try {
-        const syncResult = await syncInvoiceData(dealerId, stockId, updatedInvoiceData);
-        
-        if (syncResult.success) {
-          console.log('✅ Invoice sync completed successfully:', {
-            customerId: syncResult.customerId,
-            saleDetailsId: syncResult.saleDetailsId
-          });
-        } else {
-          console.log('⚠️ Invoice sync completed with issues:', {
-            errors: syncResult.errors,
-            warnings: syncResult.warnings
-          });
-        }
-      } catch (syncError) {
-        // Don't fail the invoice save if sync fails
-        console.error('❌ Invoice sync failed (non-blocking):', syncError);
+    console.log('🔄 Starting post-invoice sync...');
+    try {
+      const syncResult = await syncInvoiceData(dealerId, stockId, updatedInvoiceData);
+      
+      if (syncResult.success) {
+        console.log('✅ Invoice sync completed successfully:', {
+          customerId: syncResult.customerId,
+          saleDetailsId: syncResult.saleDetailsId
+        });
+      } else {
+        console.log('⚠️ Invoice sync completed with issues:', {
+          errors: syncResult.errors,
+          warnings: syncResult.warnings
+        });
       }
-    } else {
-      console.log('⚠️ No dealer ID found, skipping invoice sync');
+    } catch (syncError) {
+      // Don't fail the invoice save if sync fails
+      console.error('❌ Invoice sync failed (non-blocking):', syncError);
     }
 
     return NextResponse.json({ 

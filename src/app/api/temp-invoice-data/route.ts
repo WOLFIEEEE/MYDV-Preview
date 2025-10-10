@@ -4,14 +4,23 @@ import { currentUser } from '@clerk/nextjs/server';
 // In-memory storage for temporary data (in production, use Redis or database)
 const tempStorage = new Map<string, { data: any; timestamp: number; userId: string }>();
 
-// Clean up old entries (older than 1 hour)
+// Clean up old entries (older than 24 hours) with memory safety
 const cleanupOldEntries = () => {
-  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+  const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
+  const oneHourAgo = Date.now() - (60 * 60 * 1000); // 1 hour for memory pressure
+  
+  const entriesCount = tempStorage.size;
+  
+  // If we have too many entries (memory pressure), use shorter expiry
+  const expiryTime = entriesCount > 100 ? oneHourAgo : twentyFourHoursAgo;
+  
   for (const [key, value] of tempStorage.entries()) {
-    if (value.timestamp < oneHourAgo) {
+    if (value.timestamp < expiryTime) {
       tempStorage.delete(key);
     }
   }
+  
+  console.log(`🧹 Cleanup: ${entriesCount - tempStorage.size} entries removed. Remaining: ${tempStorage.size}`);
 };
 
 export async function POST(request: NextRequest) {
