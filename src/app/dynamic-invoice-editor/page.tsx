@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,15 +17,53 @@ import {
   CheckCircle,
   Loader2,
   Split,
-  FileDown
+  FileDown,
+  Mail
 } from "lucide-react";
 import { ComprehensiveInvoiceData } from "@/app/api/invoice-data/route";
 import DynamicInvoiceFormWrapper from "@/components/invoice/DynamicInvoiceFormWrapper";
 import InvoicePDFPreviewWrapper from "@/components/invoice/InvoicePDFPreviewWrapper";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+
+// Type for stock data vehicle information
+interface StockVehicleData {
+  make?: string;
+  model?: string;
+  derivative?: string;
+  odometerReadingMiles?: string | number;
+  engineNumber?: string;
+  engineSize?: string;
+  vin?: string;
+  firstRegistrationDate?: string;
+  colour?: string;
+  fuelType?: string;
+}
+
+// Type for stock data
+interface StockData {
+  vehicle?: StockVehicleData;
+}
+
+// Type for address data
+interface AddressData {
+  street?: string;
+  address2?: string;
+  city?: string;
+  county?: string;
+  postCode?: string;
+  country?: string;
+}
 
 // Type for form data from invoice form - flexible to handle various data types
 interface InvoiceFormData {
-  [key: string]: any;
+  [key: string]: string | number | boolean | AddressData | StockData | any[] | null | undefined;
+  stockData?: StockData;
+  customerAddress?: AddressData;
+  dealerAddress?: AddressData;
+  financeAddonsDiscountArray?: any[];
+  financeAddonsArray?: any[];
 }
 
 // Extend window interface for our backup data
@@ -35,14 +73,156 @@ declare global {
   }
 }
 
+// Email Dialog Component
+interface EmailInvoiceDialogProps {
+  invoiceData: ComprehensiveInvoiceData | null;
+  onSend: (email: string, message?: string) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}
+
+function EmailInvoiceDialog({ invoiceData, onSend, onCancel, isLoading }: EmailInvoiceDialogProps) {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const { user } = useUser();
+
+  // Pre-populate email with current user's email by default
+  useEffect(() => {
+    if (user?.emailAddresses?.[0]?.emailAddress) {
+      setEmail(user.emailAddresses[0].emailAddress);
+    }
+  }, [user]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      onSend(email.trim(), message.trim() || undefined);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Email Invoice</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCancel}
+              disabled={isLoading}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </Button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                Recipient Email(s) *
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com, customer@example.com"
+                required
+                disabled={isLoading}
+                className="mt-1"
+              />
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-gray-600">
+                  📧 <strong>Default:</strong> Your email address is pre-filled
+                </p>
+                <p className="text-xs text-gray-600">
+                  👥 <strong>Multiple recipients:</strong> Separate emails with commas
+                </p>
+                {invoiceData?.customer?.contact?.email && (
+                  <p className="text-xs text-blue-600 cursor-pointer hover:text-blue-800" 
+                     onClick={() => {
+                       const customerEmail = invoiceData.customer.contact.email;
+                       if (customerEmail && !email.includes(customerEmail)) {
+                         setEmail(email ? `${email}, ${customerEmail}` : customerEmail);
+                       }
+                     }}>
+                    💡 <strong>Click to add customer email:</strong> {invoiceData.customer.contact.email}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="message" className="text-sm font-medium text-gray-700">
+                Optional Message
+              </Label>
+              <Textarea
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Add a personal message to include with the invoice..."
+                rows={3}
+                disabled={isLoading}
+                className="mt-1"
+              />
+            </div>
+
+            {invoiceData && (
+              <div className="bg-gray-50 p-3 rounded-md text-sm">
+                <p className="font-medium text-gray-700 mb-1">Invoice Details:</p>
+                <p className="text-gray-600">
+                  Invoice #{invoiceData.invoiceNumber} - {invoiceData.vehicle.make} {invoiceData.vehicle.model} ({invoiceData.vehicle.registration})
+                </p>
+                <p className="text-gray-600">
+                  Amount: £{invoiceData.pricing.salePricePostDiscount?.toFixed(2)}
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !email.trim()}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send Email
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Helper function to safely convert values to strings
-const toString = (value: any): string => {
+const toString = (value: unknown): string => {
   if (value === null || value === undefined) return '';
   return String(value);
 };
 
 // Helper function to safely convert values to booleans
-const toBoolean = (value: any): boolean => {
+const toBoolean = (value: unknown): boolean => {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') return value.toLowerCase() === 'true';
   return Boolean(value);
@@ -157,6 +337,7 @@ const convertFormDataToInvoiceDataWithDB = async (formData: InvoiceFormData): Pr
         vatNumber: companySettings.vatNumber || '',
         registrationNumber: companySettings.registrationNumber || '',
         logo: companySettings.companyLogo || '',
+        qrCode: companySettings.qrCode || '', // QR code from company settings
       };
     }
     
@@ -200,10 +381,10 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
   
   // Debug key field mappings with safe type conversion
   const saleTypeRaw = toString(formData.saleType) || 'Retail';
-  const saleType = (['Retail', 'Trade', 'Commercial'].includes(saleTypeRaw) ? saleTypeRaw : 'Retail') as 'Retail' | 'Trade' | 'Commercial';
+  const saleType: 'Retail' | 'Trade' | 'Commercial' = (['Retail', 'Trade', 'Commercial'].includes(saleTypeRaw) ? saleTypeRaw : 'Retail') as 'Retail' | 'Trade' | 'Commercial';
   const invoiceType = saleType === 'Trade' ? 'Trade Invoice' : 'Retail (Customer) Invoice';
   const invoiceToRaw = toString(formData.invoiceTo) || 'Customer';
-  const invoiceTo = (['Customer', 'Finance Company'].includes(invoiceToRaw) ? invoiceToRaw : 'Customer') as 'Customer' | 'Finance Company';
+  const invoiceTo: 'Customer' | 'Finance Company' = (['Customer', 'Finance Company'].includes(invoiceToRaw) ? invoiceToRaw : 'Customer') as 'Customer' | 'Finance Company';
   
   console.log('🎯 Key conversions:', {
     'formData.saleType': formData.saleType,
@@ -215,8 +396,8 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
   
   return {
     // Meta Information
-    invoiceNumber: formData.invoiceNumber || `INV-${Date.now()}`,
-    invoiceDate: formData.dateOfSale || new Date().toISOString().split('T')[0],
+    invoiceNumber: toString(formData.invoiceNumber) || `INV-${Date.now()}`,
+    invoiceDate: toString(formData.dateOfSale) || new Date().toISOString().split('T')[0],
     saleType: saleType,
     invoiceType: invoiceType,
     invoiceTo: invoiceTo,
@@ -239,6 +420,7 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
       vatNumber: '',
       registrationNumber: '',
       logo: '',
+      qrCode: '', // QR code field
     },
     
     // Customer Information from form - Fixed mapping
@@ -248,12 +430,12 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
       middleName: toString(formData.middleName),
       lastName: toString(formData.surname || formData.lastName),
       address: {
-        firstLine: toString(formData.address?.street || ''),
-        secondLine: toString(formData.address?.address2 || ''),
-        city: toString(formData.address?.city || ''),
-        county: toString(formData.address?.county || ''),
-        postCode: toString(formData.address?.postCode || ''),
-        country: toString(formData.address?.country || 'United Kingdom'),
+        firstLine: toString((formData.address as AddressData)?.street || ''),
+        secondLine: toString((formData.address as AddressData)?.address2 || ''),
+        city: toString((formData.address as AddressData)?.city || ''),
+        county: toString((formData.address as AddressData)?.county || ''),
+        postCode: toString((formData.address as AddressData)?.postCode || ''),
+        country: toString((formData.address as AddressData)?.country || 'United Kingdom'),
       },
       contact: {
         phone: toString(formData.contactNumber),
@@ -269,16 +451,16 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
     // Vehicle Information from form and stock data
     vehicle: {
       registration: toString(formData.vehicleRegistration),
-      make: toString(formData.make || (formData.stockData as any)?.vehicle?.make),
-      model: toString(formData.model || (formData.stockData as any)?.vehicle?.model),
-      derivative: toString(formData.derivative || (formData.stockData as any)?.vehicle?.derivative),
-      mileage: toString(formData.mileage || (formData.stockData as any)?.vehicle?.odometerReadingMiles),
-      engineNumber: toString(formData.engineNumber || (formData.stockData as any)?.vehicle?.engineNumber),
-      engineCapacity: toString(formData.engineCapacity || (formData.stockData as any)?.vehicle?.engineSize),
-      vin: toString(formData.vin || (formData.stockData as any)?.vehicle?.vin),
-      firstRegDate: toString(formData.firstRegDate || (formData.stockData as any)?.vehicle?.firstRegistrationDate),
-      colour: toString(formData.colour || (formData.stockData as any)?.vehicle?.colour),
-      fuelType: toString(formData.fuelType || (formData.stockData as any)?.vehicle?.fuelType),
+      make: toString(formData.make || formData.stockData?.vehicle?.make),
+      model: toString(formData.model || formData.stockData?.vehicle?.model),
+      derivative: toString(formData.derivative || formData.stockData?.vehicle?.derivative),
+      mileage: toString(formData.mileage || formData.stockData?.vehicle?.odometerReadingMiles),
+      engineNumber: toString(formData.engineNumber || formData.stockData?.vehicle?.engineNumber),
+      engineCapacity: toString(formData.engineCapacity || formData.stockData?.vehicle?.engineSize),
+      vin: toString(formData.vin || formData.stockData?.vehicle?.vin),
+      firstRegDate: toString(formData.firstRegDate || formData.stockData?.vehicle?.firstRegistrationDate),
+      colour: toString(formData.colour || formData.stockData?.vehicle?.colour),
+      fuelType: toString(formData.fuelType || formData.stockData?.vehicle?.fuelType),
     },
     
     // Financial Information from form - Complete mapping with all pricing fields
@@ -336,7 +518,16 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
       },
       // Required fields for interface
       totalBalance: parseFloat(formData.salePrice?.toString() || '0'),
-      outstandingBalance: parseFloat(formData.remainingBalance?.toString() || '0'),
+      // Calculate outstandingBalance using same logic as save API
+      outstandingBalance: (() => {
+        if (saleType === 'Retail' && invoiceTo === 'Finance Company') {
+          return parseFloat(formData.balanceToCustomer?.toString() || formData.balanceToFinance?.toString() || '0');
+        } else if (saleType === 'Trade') {
+          return parseFloat(formData.tradeBalanceDue?.toString() || formData.customerBalanceDue?.toString() || '0');
+        } else {
+          return parseFloat(formData.remainingBalance?.toString() || formData.customerBalanceDue?.toString() || '0');
+        }
+      })(),
       balanceToFinance: parseFloat(formData.balanceToFinance?.toString() || '0'),
       customerBalanceDue: parseFloat(formData.customerBalanceDue?.toString() || '0'),
       // Part Exchange
@@ -451,7 +642,7 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
           
           if (firstAddon && firstAddon.name) {
             // Get discount data for first dynamic customer addon (index 0)
-            const discountData = (formData.customerAddonsDiscountArray || [])[0] || {};
+            const discountData = ((formData.customerAddonsDiscountArray as any[]) || [])[0] || {};
             return {
               name: toString(firstAddon.name),
               cost: parseFloat(toString(firstAddon.cost) || '0'),
@@ -489,7 +680,7 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
           // Map discount data from customerAddonsDiscountArray
           const result = baseAddons.map((addon, index) => {
             const discountIndex = index + 1; // +1 because we sliced off the first addon
-            const discountData = (formData.customerAddonsDiscountArray || [])[discountIndex] || {};
+            const discountData = ((formData.customerAddonsDiscountArray as any[]) || [])[discountIndex] || {};
             const addonWithDiscount = {
               name: toString(addon.name),
               cost: parseFloat(toString(addon.cost) || '0'),
@@ -638,6 +829,10 @@ function DynamicInvoiceEditorContent() {
   
   // PDF Generation State
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  
+  // Email State
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   // Load invoice data on component mount
   const loadInvoiceData = useCallback(async () => {
@@ -669,7 +864,46 @@ function DynamicInvoiceEditorContent() {
           if (response.ok) {
             const result = await response.json();
             console.log(`✅ [EDITOR] Saved invoice loaded successfully`);
-            setInvoiceData(result.invoice);
+            
+            // Merge current company settings (including QR code) with saved invoice data
+            const dealerId = await getDealerId();
+            let mergedInvoiceData = result.invoice;
+            
+            if (dealerId) {
+              console.log('🔄 [EDITOR] Merging current company settings with saved invoice...');
+              const companySettings = await fetchCompanySettings(dealerId);
+              
+              if (companySettings) {
+                // Merge company settings while preserving existing invoice data
+                mergedInvoiceData = {
+                  ...result.invoice,
+                  companyInfo: {
+                    ...result.invoice.companyInfo,
+                    // Update with current company settings, but preserve any custom values from the invoice
+                    name: companySettings.companyName || result.invoice.companyInfo?.name || 'Your Company Name',
+                    address: {
+                      street: companySettings.address?.street || result.invoice.companyInfo?.address?.street || '',
+                      city: companySettings.address?.city || result.invoice.companyInfo?.address?.city || '',
+                      county: companySettings.address?.county || result.invoice.companyInfo?.address?.county || '',
+                      postCode: companySettings.address?.postCode || result.invoice.companyInfo?.address?.postCode || '',
+                      country: companySettings.address?.country || result.invoice.companyInfo?.address?.country || 'United Kingdom',
+                    },
+                    contact: {
+                      phone: companySettings.contact?.phone || result.invoice.companyInfo?.contact?.phone || '',
+                      email: companySettings.contact?.email || result.invoice.companyInfo?.contact?.email || '',
+                      website: companySettings.contact?.website || result.invoice.companyInfo?.contact?.website || '',
+                    },
+                    vatNumber: companySettings.vatNumber || result.invoice.companyInfo?.vatNumber || '',
+                    registrationNumber: companySettings.registrationNumber || result.invoice.companyInfo?.registrationNumber || '',
+                    logo: companySettings.companyLogo || result.invoice.companyInfo?.logo || '',
+                    qrCode: companySettings.qrCode || result.invoice.companyInfo?.qrCode || '', // Always use current QR code
+                  }
+                };
+                console.log('✅ [EDITOR] Company settings merged successfully, QR code:', !!mergedInvoiceData.companyInfo.qrCode);
+              }
+            }
+            
+            setInvoiceData(mergedInvoiceData);
             
             // Update stockId if available from metadata
             if (result.metadata?.stockId) {
@@ -743,7 +977,150 @@ function DynamicInvoiceEditorContent() {
           
         } catch (serverError) {
           console.error(`❌ [EDITOR] Error retrieving data from server:`, serverError);
-          console.log(`🔄 [EDITOR] Falling back to storage methods...`);
+          console.log(`🔄 [EDITOR] Temporary data may have expired (24hr limit).`);
+          
+          // Safari-specific debugging
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          if (isSafari) {
+            console.log(`🍎 [EDITOR] Safari detected - handling temp data expiry`);
+          }
+          
+          // Handle expired temporary data gracefully
+          if (serverError instanceof Error && (serverError.message.includes('404') || serverError.message.includes('not found'))) {
+            console.warn(`⏰ [EDITOR] Temporary data expired. Redirecting to invoice management.`);
+            
+            // Show user-friendly message and redirect to invoice management
+            setLoading(false);
+            setError(null);
+            
+            // Create a helpful message component
+            const showTempDataExpiredMessage = () => {
+              const message = `
+                <div style="
+                  position: fixed;
+                  top: 0;
+                  left: 0;
+                  width: 100%;
+                  height: 100%;
+                  background: rgba(0, 0, 0, 0.5);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  z-index: 9999;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                ">
+                  <div style="
+                    background: white;
+                    padding: 32px;
+                    border-radius: 12px;
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+                    max-width: 500px;
+                    margin: 20px;
+                    text-align: center;
+                  ">
+                    <div style="
+                      width: 64px;
+                      height: 64px;
+                      background: #10b981;
+                      border-radius: 50%;
+                      margin: 0 auto 24px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-size: 32px;
+                    ">✅</div>
+                    
+                    <h2 style="
+                      margin: 0 0 16px 0;
+                      color: #111827;
+                      font-size: 24px;
+                      font-weight: 600;
+                    ">Invoice Saved Successfully!</h2>
+                    
+                    <p style="
+                      margin: 0 0 24px 0;
+                      color: #6b7280;
+                      font-size: 16px;
+                      line-height: 1.5;
+                    ">
+                      Don't worry! Your invoice has been automatically saved. The temporary editing session has expired for security reasons, but all your data is safe.
+                    </p>
+                    
+                    <div style="
+                      background: #f3f4f6;
+                      padding: 16px;
+                      border-radius: 8px;
+                      margin: 0 0 24px 0;
+                      text-align: left;
+                    ">
+                      <p style="
+                        margin: 0 0 8px 0;
+                        color: #374151;
+                        font-size: 14px;
+                        font-weight: 500;
+                      ">What happened?</p>
+                      <p style="
+                        margin: 0;
+                        color: #6b7280;
+                        font-size: 14px;
+                        line-height: 1.4;
+                      ">
+                        Temporary editing sessions expire after a period of inactivity for security. Your invoice data has been preserved and you can continue editing from Invoice Management.
+                      </p>
+                    </div>
+                    
+                    <button id="goto-invoice-management" style="
+                      background: #3b82f6;
+                      color: white;
+                      border: none;
+                      padding: 12px 24px;
+                      border-radius: 8px;
+                      font-size: 16px;
+                      font-weight: 500;
+                      cursor: pointer;
+                      margin-right: 12px;
+                      transition: background-color 0.2s;
+                    " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                      Go to Invoice Management
+                    </button>
+                    
+                    <button id="close-temp-message" style="
+                      background: #e5e7eb;
+                      color: #374151;
+                      border: none;
+                      padding: 12px 24px;
+                      border-radius: 8px;
+                      font-size: 16px;
+                      font-weight: 500;
+                      cursor: pointer;
+                      transition: background-color 0.2s;
+                    " onmouseover="this.style.background='#d1d5db'" onmouseout="this.style.background='#e5e7eb'">
+                      Stay Here
+                    </button>
+                  </div>
+                </div>
+              `;
+              
+              const messageDiv = document.createElement('div');
+              messageDiv.innerHTML = message;
+              messageDiv.id = 'temp-data-expired-message';
+              document.body.appendChild(messageDiv);
+              
+              // Button handlers
+              document.getElementById('goto-invoice-management')?.addEventListener('click', () => {
+                window.location.href = '/invoices';
+              });
+              
+              document.getElementById('close-temp-message')?.addEventListener('click', () => {
+                document.body.removeChild(messageDiv);
+                // Continue with fallback methods
+                console.log('🔄 [EDITOR] User chose to stay, continuing with fallback methods...');
+              });
+            };
+            
+            showTempDataExpiredMessage();
+            return; // Don't continue with fallback methods immediately
+          }
         }
       }
       
@@ -922,6 +1299,132 @@ function DynamicInvoiceEditorContent() {
       // Fallback to old flow (fetch from database) if no form data
       if (!saleId && !stockId) {
         setError('Missing required parameters. Please provide either saleId or stockId, or submit form data.');
+        return;
+      }
+      
+      // If we came from a form submission (tempId exists) but temp data expired,
+      // don't show dummy data - show helpful message instead
+      if (tempId && source === 'form' && stockId) {
+        console.log('⚠️ [EDITOR] Form submission detected but temp data expired. Showing helpful message instead of dummy data.');
+        
+        setLoading(false);
+        setError(null);
+        
+        // Show message about expired session with link to invoice management
+        const showFormExpiredMessage = () => {
+          const message = `
+            <div style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 60vh;
+              text-align: center;
+              padding: 40px 20px;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            ">
+              <div style="
+                width: 80px;
+                height: 80px;
+                background: #f59e0b;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 40px;
+                margin-bottom: 24px;
+              ">⏰</div>
+              
+              <h1 style="
+                margin: 0 0 16px 0;
+                color: #111827;
+                font-size: 32px;
+                font-weight: 700;
+              ">Session Expired</h1>
+              
+              <p style="
+                margin: 0 0 24px 0;
+                color: #6b7280;
+                font-size: 18px;
+                line-height: 1.6;
+                max-width: 600px;
+              ">
+                Your temporary editing session has expired for security reasons. Don't worry - your invoice has been automatically saved and you can continue editing it from Invoice Management.
+              </p>
+              
+              <div style="
+                background: #fef3c7;
+                border: 1px solid #f59e0b;
+                border-radius: 12px;
+                padding: 20px;
+                margin: 0 0 32px 0;
+                max-width: 500px;
+              ">
+                <h3 style="
+                  margin: 0 0 12px 0;
+                  color: #92400e;
+                  font-size: 16px;
+                  font-weight: 600;
+                ">Why did this happen?</h3>
+                <p style="
+                  margin: 0;
+                  color: #92400e;
+                  font-size: 14px;
+                  line-height: 1.5;
+                ">
+                  Temporary editing sessions expire after a period of inactivity to protect your data. Your invoice was automatically saved when you first submitted the form.
+                </p>
+              </div>
+              
+              <div style="display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;">
+                <button onclick="window.location.href='/invoices'" style="
+                  background: #3b82f6;
+                  color: white;
+                  border: none;
+                  padding: 14px 28px;
+                  border-radius: 10px;
+                  font-size: 16px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s;
+                  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                " onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-1px)'" 
+                   onmouseout="this.style.background='#3b82f6'; this.style.transform='translateY(0)'">
+                  📋 Go to Invoice Management
+                </button>
+                
+                <button onclick="window.location.href='/dashboard'" style="
+                  background: #e5e7eb;
+                  color: #374151;
+                  border: none;
+                  padding: 14px 28px;
+                  border-radius: 10px;
+                  font-size: 16px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s;
+                  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                " onmouseover="this.style.background='#d1d5db'; this.style.transform='translateY(-1px)'" 
+                   onmouseout="this.style.background='#e5e7eb'; this.style.transform='translateY(0)'">
+                  🏠 Go to Dashboard
+                </button>
+              </div>
+              
+              <p style="
+                margin: 32px 0 0 0;
+                color: #9ca3af;
+                font-size: 14px;
+              ">
+                Need help? Contact support or check our documentation.
+              </p>
+            </div>
+          `;
+          
+          // Replace the entire page content
+          document.body.innerHTML = message;
+        };
+        
+        showFormExpiredMessage();
         return;
       }
       
@@ -1318,6 +1821,78 @@ function DynamicInvoiceEditorContent() {
     }
   };
 
+  // Save and Email PDF
+  const handleSaveAndEmailPDF = async (recipientEmail: string, message?: string) => {
+    if (!invoiceData) return;
+    
+    setSendingEmail(true);
+    setSaving(true);
+    try {
+      // First save the invoice data
+      console.log('💾 Saving invoice data...');
+      const saved = await saveInvoiceData();
+      
+      if (!saved) {
+        throw new Error('Failed to save invoice data');
+      }
+      
+      console.log('🔄 Generating PDF for email...');
+      
+      // Generate PDF
+      const response = await fetch('/api/dynamic-invoice-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(invoiceData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Convert PDF to base64 for email attachment
+      const pdfBlob = await response.blob();
+      const pdfBuffer = await pdfBlob.arrayBuffer();
+      const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+
+      console.log('📧 Sending email with PDF attachment...');
+      
+      // Send email with PDF attachment
+      const emailResponse = await fetch('/api/invoices/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoiceData,
+          recipientEmail,
+          message,
+          pdfBuffer: pdfBase64
+        }),
+      });
+
+      const emailResult = await emailResponse.json();
+
+      if (emailResult.success) {
+        console.log('✅ Invoice email sent successfully');
+        const recipients = emailResult.recipients ? emailResult.recipients.join(', ') : recipientEmail;
+        alert(`✅ Invoice Email Sent Successfully!\n\nThe invoice has been emailed to:\n${recipients}\n\nMessage ID: ${emailResult.messageId}`);
+        setShowEmailDialog(false);
+      } else {
+        throw new Error(emailResult.error || 'Failed to send email');
+      }
+
+    } catch (error) {
+      console.error('❌ Error sending invoice email:', error);
+      alert(`❌ Failed to send invoice email\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support if the issue persists.`);
+    } finally {
+      setSendingEmail(false);
+      setSaving(false);
+    }
+  };
+
   // Handle back navigation
   const handleBack = () => {
     if (hasUnsavedChanges) {
@@ -1497,6 +2072,20 @@ function DynamicInvoiceEditorContent() {
                 )}
                 Save & Download PDF
               </Button>
+
+              {/* Action Button - Save & Email PDF */}
+              <Button
+                onClick={() => setShowEmailDialog(true)}
+                disabled={sendingEmail || saving || !invoiceData}
+                className="flex items-center bg-green-600 hover:bg-green-700 text-white"
+              >
+                {sendingEmail || saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
+                Save & Email PDF
+              </Button>
             </div>
             </div>
 
@@ -1624,6 +2213,25 @@ function DynamicInvoiceEditorContent() {
                     </>
                   )}
                 </Button>
+
+                <Button
+                  onClick={() => setShowEmailDialog(true)}
+                  disabled={sendingEmail || saving || !invoiceData}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {sendingEmail || saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Save & Email PDF
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </div>
@@ -1631,6 +2239,16 @@ function DynamicInvoiceEditorContent() {
       </div>
       
       <Footer />
+
+      {/* Email Dialog */}
+      {showEmailDialog && (
+        <EmailInvoiceDialog
+          invoiceData={invoiceData}
+          onSend={handleSaveAndEmailPDF}
+          onCancel={() => setShowEmailDialog(false)}
+          isLoading={sendingEmail}
+        />
+      )}
     </div>
   );
 }

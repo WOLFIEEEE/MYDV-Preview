@@ -7,6 +7,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { ComprehensiveInvoiceData } from "@/app/api/invoice-data/route";
+import Image from 'next/image';
 
 interface InvoicePDFPreviewProps {
   invoiceData: ComprehensiveInvoiceData;
@@ -337,6 +338,14 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           </div>
         )}
       </div>
+
+      {/* Thin grey line separator below customer details */}
+      <div style={{ 
+        height: '1px', 
+        backgroundColor: '#d0d0d0', 
+        marginTop: '4px', 
+        marginBottom: '4px' 
+      }} />
 
       {/* Vehicle Information Table - Match PDF Structure */}
       <div style={{ marginBottom: '6px' }}>
@@ -1191,24 +1200,36 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
         {/* Right Column - QR Code */}
         <div style={{ flex: '1', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-          <div style={{ 
-            width: '60px', 
-            height: '60px', 
-            border: '1px solid #ddd',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f9f9f9'
-          }}>
+          {invoiceData.companyInfo.qrCode ? (
+            <Image 
+              src={invoiceData.companyInfo.qrCode} 
+              alt="QR Code" 
+              width={60}
+              height={60}
+              style={{ 
+                objectFit: 'contain'
+              }}
+            />
+          ) : (
             <div style={{ 
-              fontSize: '7px', 
-              textAlign: 'center',
-              color: '#000',
-              fontWeight: 'normal'
+              width: '60px', 
+              height: '60px', 
+              border: '1px solid #ddd',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f9f9f9'
             }}>
-              QR Code
+              <div style={{ 
+                fontSize: '7px', 
+                textAlign: 'center',
+                color: '#000',
+                fontWeight: 'normal'
+              }}>
+                QR Code
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

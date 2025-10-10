@@ -29,6 +29,7 @@ interface CompanyContact {
 interface CompanySettingsResponse {
   companyName: string;
   companyLogo: string; // Supabase public URL for frontend
+  qrCode: string; // QR code image URL or base64 data
   businessType: string;
   establishedYear: string;
   registrationNumber: string;
@@ -51,6 +52,7 @@ interface CompanySettingsRequest {
   description?: string;
   mission?: string;
   vision?: string;
+  qrCode?: string; // QR code image data (base64 or URL)
   // Logo will be handled separately via upload endpoint
 }
 
@@ -125,6 +127,7 @@ export async function GET(request: NextRequest) {
     const response: CompanySettingsResponse = {
       companyName: settingsData?.companyName || '',
       companyLogo: settingsData?.companyLogoPublicUrl || '',
+      qrCode: settingsData?.qrCodePublicUrl || '',
       businessType: settingsData?.businessType || '',
       establishedYear: settingsData?.establishedYear || '',
       registrationNumber: settingsData?.registrationNumber || '',
@@ -248,6 +251,7 @@ export async function POST(request: NextRequest) {
       description: requestSettings.description || null,
       mission: requestSettings.mission || null,
       vision: requestSettings.vision || null,
+      qrCodePublicUrl: requestSettings.qrCode || null, // Store QR code data
       updatedAt: new Date()
     };
 

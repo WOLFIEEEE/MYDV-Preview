@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { savedInvoices } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, or } from 'drizzle-orm';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // GET - Get most recent invoices for all stock IDs for the current user
 export async function GET(request: NextRequest) {
@@ -13,9 +14,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('🔍 Fetching most recent invoices for user:', user.id);
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
+    }
 
-    // Get all saved invoices for the current user (same approach as main invoices page)
+    const dealerId = dealerIdResult.dealerId!;
+    console.log('🔍 Fetching most recent invoices for dealer:', dealerId);
+
+    // BACKWARD COMPATIBILITY: Get invoices saved with both dealer ID (new) and user Clerk ID (old)
     const allInvoices = await db
       .select({
         id: savedInvoices.id,
@@ -29,10 +40,15 @@ export async function GET(request: NextRequest) {
         status: savedInvoices.status
       })
       .from(savedInvoices)
-      .where(eq(savedInvoices.userId, user.id))
+      .where(
+        or(
+          eq(savedInvoices.userId, dealerId),    // New invoices (saved with dealer ID)
+          eq(savedInvoices.userId, user.id)     // Old invoices (saved with Clerk user ID)
+        )
+      )
       .orderBy(desc(savedInvoices.updatedAt));
 
-    console.log(`📊 Found ${allInvoices.length} total invoices for user`);
+    console.log(`📊 Found ${allInvoices.length} total invoices for dealer`);
 
     // Group by stockId and keep only the most recent invoice for each (same logic as main invoices page)
     const invoiceMap = new Map<string, typeof allInvoices[0]>();

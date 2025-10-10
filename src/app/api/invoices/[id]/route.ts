@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { savedInvoices } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 export async function GET(
   request: NextRequest,
@@ -16,13 +17,27 @@ export async function GET(
 
     const { id: invoiceId } = await params;
 
-    // Get the specific invoice
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
+    }
+
+    const dealerId = dealerIdResult.dealerId!;
+
+    // BACKWARD COMPATIBILITY: Get invoice by ID, checking both dealer ID (new) and user Clerk ID (old)
     const [invoice] = await db.select()
       .from(savedInvoices)
       .where(
         and(
           eq(savedInvoices.id, invoiceId),
-          eq(savedInvoices.userId, user.id)
+          or(
+            eq(savedInvoices.userId, dealerId),    // New invoices (saved with dealer ID)
+            eq(savedInvoices.userId, user.id)     // Old invoices (saved with Clerk user ID)
+          )
         )
       )
       .limit(1);
@@ -74,13 +89,27 @@ export async function DELETE(
 
     const { id: invoiceId } = await params;
 
-    // Check if invoice exists and belongs to user
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
+    }
+
+    const dealerId = dealerIdResult.dealerId!;
+
+    // BACKWARD COMPATIBILITY: Check if invoice exists, checking both dealer ID (new) and user Clerk ID (old)
     const [invoice] = await db.select()
       .from(savedInvoices)
       .where(
         and(
           eq(savedInvoices.id, invoiceId),
-          eq(savedInvoices.userId, user.id)
+          or(
+            eq(savedInvoices.userId, dealerId),    // New invoices (saved with dealer ID)
+            eq(savedInvoices.userId, user.id)     // Old invoices (saved with Clerk user ID)
+          )
         )
       )
       .limit(1);
@@ -92,12 +121,15 @@ export async function DELETE(
       }, { status: 404 });
     }
 
-    // Delete the invoice
+    // Delete the invoice (using the same condition as the check above)
     await db.delete(savedInvoices)
       .where(
         and(
           eq(savedInvoices.id, invoiceId),
-          eq(savedInvoices.userId, user.id)
+          or(
+            eq(savedInvoices.userId, dealerId),    // New invoices (saved with dealer ID)
+            eq(savedInvoices.userId, user.id)     // Old invoices (saved with Clerk user ID)
+          )
         )
       );
 

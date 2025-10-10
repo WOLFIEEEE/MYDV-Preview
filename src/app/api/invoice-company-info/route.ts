@@ -39,6 +39,11 @@ export async function GET(request: NextRequest) {
         companyLogoFileName: companySettings.companyLogoFileName,
         companyLogoMimeType: companySettings.companyLogoMimeType,
         
+        // QR Code
+        qrCodePublicUrl: companySettings.qrCodePublicUrl,
+        qrCodeFileName: companySettings.qrCodeFileName,
+        qrCodeMimeType: companySettings.qrCodeMimeType,
+        
         // Address Information
         addressStreet: companySettings.addressStreet,
         addressCity: companySettings.addressCity,
@@ -71,6 +76,9 @@ export async function GET(request: NextRequest) {
           companyLogoPublicUrl: null,
           companyLogoFileName: null,
           companyLogoMimeType: null,
+          qrCode: null,
+          qrCodeFileName: null,
+          qrCodeMimeType: null,
           addressLine1: null,
           addressLine2: null,
           city: null,
@@ -101,6 +109,11 @@ export async function GET(request: NextRequest) {
       companyLogo: settings.companyLogoPublicUrl,
       companyLogoFileName: settings.companyLogoFileName,
       companyLogoMimeType: settings.companyLogoMimeType,
+      
+      // QR Code
+      qrCode: settings.qrCodePublicUrl,
+      qrCodeFileName: settings.qrCodeFileName,
+      qrCodeMimeType: settings.qrCodeMimeType,
       
       // Address Information (formatted for invoice)
       addressLine1: settings.addressStreet,

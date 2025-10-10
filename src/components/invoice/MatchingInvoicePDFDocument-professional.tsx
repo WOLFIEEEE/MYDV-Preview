@@ -1712,6 +1712,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             )}
           </View>
 
+          {/* Thin grey line separator below customer details */}
+          <View style={{ 
+            height: 1, 
+            backgroundColor: '#d0d0d0', 
+            marginTop: 4, 
+            marginBottom: 4 
+          }} />
+
            {/* Vehicle Information - Proper Table Structure */}
           <View style={styles.contentSection}>
              {/* Table Header */}
@@ -2231,10 +2239,15 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 I confirm that, when purchasing the above vehicle, I have been advised that this purchase is a Trade-Sale and outside of the scope of the Consumer Protection provisions. Therefore, no warranty or post-sale liabilities will apply. By purchasing this vehicle, I am confirming my understanding of the above, that all of the details listed are correct and providing my consent for these conditions to be applied.
               </Text>
             </View>
-          )}
+            )}
 
           {/* Payment Breakdown Section */}
-          <View style={{ marginTop: 2, marginBottom: 2, borderTop: '1px solid #d0d0d0', paddingTop: 2 }}>
+          <View style={{ 
+            marginTop: 2, 
+            marginBottom: 2, 
+            borderTop: (invoiceData.saleType === 'Trade' || !invoiceData.warranty.level || invoiceData.warranty.level === 'None Selected') ? '1px solid #d0d0d0' : 'none', 
+            paddingTop: 2 
+          }}>
             <View style={{ marginBottom: 4 }}>
               {/* Header Row - Payment Breakdown and Subtotal in same row */}
               <View style={{ flexDirection: 'row', marginBottom: 2 }}>
@@ -2614,24 +2627,35 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
             {/* Right Column - QR Code */}
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
-              <View style={{ 
-                width: 40, 
-                height: 40, 
-                border: '1px solid #ddd',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#f9f9f9'
-              }}>
-                <Text style={{ 
-                  fontSize: 7, 
-                  fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
-                  textAlign: 'center',
-                  color: '#000',
-                  fontWeight: 'normal'
+              {invoiceData.companyInfo.qrCode ? (
+                <Image
+                  style={{ 
+                    width: 40, 
+                    height: 40,
+                    objectFit: 'contain'
+                  }}
+                  src={invoiceData.companyInfo.qrCode}
+                />
+              ) : (
+                <View style={{ 
+                  width: 40, 
+                  height: 40, 
+                  border: '1px solid #ddd',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: '#f9f9f9'
                 }}>
-                  QR Code{'\n'}Placeholder
-                </Text>
-              </View>
+                  <Text style={{ 
+                    fontSize: 7, 
+                    fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
+                    textAlign: 'center',
+                    color: '#000',
+                    fontWeight: 'normal'
+                  }}>
+                    QR Code{'\n'}Placeholder
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
             </View>

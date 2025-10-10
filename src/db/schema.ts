@@ -1686,6 +1686,13 @@ export const companySettings = pgTable('company_settings', {
   companyLogoFileSize: integer('company_logo_file_size'), // File size in bytes
   companyLogoMimeType: varchar('company_logo_mime_type', { length: 100 }), // e.g., 'image/png'
   
+  // QR Code - stored as base64 or URL
+  qrCodeFileName: varchar('qr_code_file_name', { length: 255 }), // Original filename
+  qrCodeSupabaseFileName: varchar('qr_code_supabase_file_name', { length: 255 }), // Supabase storage filename
+  qrCodePublicUrl: text('qr_code_public_url'), // Supabase public URL or base64 data
+  qrCodeFileSize: integer('qr_code_file_size'), // File size in bytes
+  qrCodeMimeType: varchar('qr_code_mime_type', { length: 100 }), // e.g., 'image/png'
+  
   // Address Information
   addressStreet: varchar('address_street', { length: 255 }),
   addressCity: varchar('address_city', { length: 100 }),

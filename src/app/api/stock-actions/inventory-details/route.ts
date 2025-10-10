@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { inventoryDetails, dealers, fundTransactions, fundSources } from '@/db/schema';
+import { inventoryDetails, dealers, fundTransactions, fundSources, teamMembers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // Helper function to create or update fund transaction
 async function handleFundTransaction(
@@ -91,21 +92,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get dealer record from Clerk user ID
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1);
-
-    if (dealerResult.length === 0) {
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Dealer record not found' 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
       }, { status: 404 });
     }
 
-    const dealerId = dealerResult[0].id;
+    const dealerId = dealerIdResult.dealerId!;
 
     const body = await request.json();
     console.log('📝 Inventory Details API - Received data:', body);
@@ -226,21 +222,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get dealer record from Clerk user ID
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1);
-
-    if (dealerResult.length === 0) {
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Dealer record not found' 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
       }, { status: 404 });
     }
 
-    const dealerId = dealerResult[0].id;
+    const dealerId = dealerIdResult.dealerId!;
 
     const { searchParams } = new URL(request.url);
     const stockId = searchParams.get('stockId');
