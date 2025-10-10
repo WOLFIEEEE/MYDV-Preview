@@ -367,19 +367,22 @@ interface SalesCompletionPDFData {
 
 // Checklist items configuration
 const CHECKLIST_ITEMS = [
-  { key: 'wheelNuts', label: 'Wheel nuts' },
-  { key: 'tyrePressures', label: 'Tyre pressures' },
+  { key: 'wheelNuts', label: 'Wheel Nuts' },
+  { key: 'tyrePressures', label: 'Tyre Pressures' },
   { key: 'tyreSensors', label: 'Tyre Sensors' },
-  { key: 'oilLevel', label: 'Oil level' },
-  { key: 'coolantLevel', label: 'Coolant level' },
-  { key: 'screenWash', label: 'Screen wash' },
-  { key: 'lockingNutGloveBox', label: 'Locking nut – glove box' },
-  { key: 'bookPackGloveBox', label: 'Book pack – glove box' },
-  { key: 'inflationKit', label: 'Inflation kit' },
-  { key: 'keyBatteries', label: 'Key batteries' },
+  { key: 'oilLevel', label: 'Oil Level' },
+  { key: 'coolantLevel', label: 'Coolant Level' },
+  { key: 'screenWash', label: 'Screen Wash' },
+  { key: 'lockingNutGloveBox', label: 'Locking Nut – Glove Box' },
+  { key: 'bookPackGloveBox', label: 'Book Pack – Glove Box' },
+  { key: 'inflationKit', label: 'Inflation Kit' },
+  { key: 'keyBatteries', label: 'Key Batteries' },
   { key: 'batteryTest', label: 'Battery Test' },
   { key: 'testDriver', label: 'Test Drive' },
   { key: 'adequateDriveAwayFuel', label: 'Adequate Drive Away Fuel' },
+  { key: 'washerJets', label: 'Washer Jets' },
+  { key: 'wipers', label: 'Wipers' },
+  { key: 'bulbs', label: 'Bulbs' },
 ];
 
 /**
@@ -519,9 +522,9 @@ export default function SalesCompletionPDFDocument({ completionData }: SalesComp
               <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: 'bold', marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                 Sales Completion:
               </Text>
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
-                Vehicle Sales Checklist
-              </Text>
+            <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
+              VEHICLE PRE-SALES REPORT
+            </Text>
               
               <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                 Registration:
@@ -535,12 +538,6 @@ export default function SalesCompletionPDFDocument({ completionData }: SalesComp
 
         {/* Details Section - Compact */}
         <View style={styles.contentSection}>
-          {completionData.customerName && (
-            <View style={styles.detailsRow}>
-              <Text style={styles.detailLabel}>Customer:</Text>
-              <Text style={styles.detailValue}>{completionData.customerName}</Text>
-            </View>
-          )}
           <View style={styles.detailsRow}>
             <Text style={styles.detailLabel}>Sale Date:</Text>
             <Text style={styles.detailValue}>{formatDate(completionData.saleDate)}</Text>
@@ -551,13 +548,13 @@ export default function SalesCompletionPDFDocument({ completionData }: SalesComp
           </View>
           <View style={styles.detailsRow}>
             <Text style={styles.detailLabel}>Completion Status:</Text>
-            <Text style={styles.detailValue}>{completionPercentage}% Complete ({completedItems}/{CHECKLIST_ITEMS.length} items)</Text>
+            <Text style={styles.detailValue}>{completion.completionDate ? 'Complete' : 'Not Completed'}</Text>
           </View>
         </View>
 
         {/* Checklist Section */}
         <View style={styles.contentSection}>
-          <Text style={[styles.sectionTitle, { fontWeight: 'bold' }]}>Vehicle Sales Checklist</Text>
+          <Text style={[styles.sectionTitle, { fontWeight: 'bold' }]}>VEHICLE PRE-SALES REPORT</Text>
           <View style={styles.checklistGrid}>
             {CHECKLIST_ITEMS.map((item) => {
               const isCompleted = completion[item.key as keyof CompletionData];

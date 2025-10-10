@@ -651,6 +651,9 @@ export const saleDetails = pgTable('sale_details', {
   batteryTest: boolean('battery_test').default(false),
   testDriver: boolean('test_driver').default(false),
   adequateDriveAwayFuel: boolean('adequate_drive_away_fuel').default(false),
+  washerJets: boolean('washer_jets').default(false),
+  wipers: boolean('wipers').default(false),
+  bulbs: boolean('bulbs').default(false),
   additionalText: text('additional_text'),
   completionDate: timestamp('completion_date'),
   
