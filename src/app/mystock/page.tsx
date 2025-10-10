@@ -48,7 +48,8 @@ import {
   Share2,
   Store,
   Plus,
-  MapPin
+  MapPin,
+  Download
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Header from "@/components/shared/Header";
@@ -991,6 +992,83 @@ function MyStockContent() {
     setShowTestDriveForm(false);
   };
 
+  const handleExportData = () => {
+    // Define CSV headers matching the required fields
+    const headers = [
+      'Vehicle_ID',
+      'Title', 
+      'Registration',
+      'RegistrationDate',
+      'Make',
+      'Model',
+      'Variant',
+      'Category',
+      'Year',
+      'FuelType',
+      'Colour',
+      'Mileage',
+      'Transmission',
+      'P.Owners',
+      'Price',
+      'VatStatus',
+      'Status',
+      'DaysInStock',
+      'StockNumber'
+    ];
+
+    // Convert stock data to CSV rows
+    const csvRows = filteredStock.map((item: StockItem, index: number) => {
+      const vehicle = item.vehicle || {};
+      const metadata = item.metadata || {};
+      const adverts = item.adverts || {};
+      
+      // Calculate days in stock
+      const dateOnForecourt = metadata.dateOnForecourt || item.dateOnForecourt;
+      const daysInStock = dateOnForecourt 
+        ? Math.ceil((new Date().getTime() - new Date(dateOnForecourt).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      return [
+        index + 1, // Serial number starting from 1
+        `${vehicle.make || ''} ${vehicle.model || ''} ${vehicle.derivative || ''}`.trim() || '',
+        vehicle.registration || item.registration || '',
+        vehicle.firstRegistrationDate || '',
+        vehicle.make || item.make || '',
+        vehicle.model || item.model || '',
+        vehicle.derivative || item.derivative || '',
+        vehicle.bodyType || item.bodyType || '',
+        vehicle.yearOfManufacture || item.yearOfManufacture || '',
+        vehicle.fuelType || item.fuelType || '',
+        vehicle.colour || item.colour || '',
+        vehicle.odometerReadingMiles || item.odometerReadingMiles || 0,
+        vehicle.transmissionType || item.transmissionType || '',
+        vehicle.previousOwners || item.previousOwners || 0,
+        (getMainPrice(item) || 0) === 0 ? '-' : getMainPrice(item) || 0,
+        adverts.retailAdverts?.vatStatus || '', // VAT Status from adverts data
+        metadata.lifecycleState || item.lifecycleState || '',
+        daysInStock,
+        item.stockId || ''
+      ];
+    });
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...csvRows.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `stock_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Check if vehicle has registration for conditional menu items
   const hasRegistration = (item: StockItem) => {
     const registration = getVehicleProperty(item, 'registration');
@@ -1334,6 +1412,24 @@ function MyStockContent() {
                       <div className="relative flex items-center gap-2">
                         <Plus className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" />
                         <span className="whitespace-nowrap">Schedule Test Drive</span>
+                      </div>
+                    </Button>
+                  </div>
+
+                  {/* Export Data Button */}
+                  <div className="flex-shrink-0 ml-3">
+                    <Button 
+                      onClick={handleExportData}
+                      className={`group relative overflow-hidden px-5 py-3 text-sm font-semibold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-xl ${
+                        isDarkMode 
+                          ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white border-0 shadow-green-500/25' 
+                          : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white border-0 shadow-green-500/25'
+                      }`}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="relative flex items-center gap-2">
+                        <Download className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                        <span className="whitespace-nowrap">Export Data</span>
                       </div>
                     </Button>
                   </div>
