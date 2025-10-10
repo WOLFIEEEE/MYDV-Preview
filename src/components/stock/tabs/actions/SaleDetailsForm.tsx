@@ -182,9 +182,12 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     keyBatteries: false,
     batteryTest: false,
     testDriver: false,
-    adequateDriveAwayFuel: false,
-    additionalText: '',
-    completionDate: ''
+        adequateDriveAwayFuel: false,
+        washerJets: false,
+        wipers: false,
+        bulbs: false,
+        additionalText: '',
+        completionDate: ''
   });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -263,6 +266,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               batteryTest: data.batteryTest || false,
               testDriver: data.testDriver || false,
               adequateDriveAwayFuel: data.adequateDriveAwayFuel || false,
+              washerJets: data.washerJets || false,
+              wipers: data.wipers || false,
+              bulbs: data.bulbs || false,
               additionalText: data.additionalText || '',
               completionDate: data.completionDate ? new Date(data.completionDate).toISOString().split('T')[0] : ''
             });
@@ -1437,6 +1443,21 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                   label="Adequate Drive Away Fuel"
                   value={formData.adequateDriveAwayFuel}
                   onChange={(val) => handleInputChange('adequateDriveAwayFuel', val)}
+                />
+                <YesNoToggle
+                  label="Washer Jets"
+                  value={formData.washerJets}
+                  onChange={(val) => handleInputChange('washerJets', val)}
+                />
+                <YesNoToggle
+                  label="Wipers"
+                  value={formData.wipers}
+                  onChange={(val) => handleInputChange('wipers', val)}
+                />
+                <YesNoToggle
+                  label="Bulbs"
+                  value={formData.bulbs}
+                  onChange={(val) => handleInputChange('bulbs', val)}
                 />
               </div>
 
