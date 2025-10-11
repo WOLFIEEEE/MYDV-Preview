@@ -39,6 +39,14 @@ export interface ComprehensiveInvoiceData {
       email: string;
       website?: string;
     };
+    payment?: {
+      bankName?: string;
+      bankSortCode?: string;
+      bankAccountNumber?: string;
+      bankAccountName?: string;
+      bankIban?: string;
+      bankSwiftCode?: string;
+    };
     vatNumber: string;
     registrationNumber?: string;
     logo?: string;
@@ -504,9 +512,18 @@ export async function GET(request: NextRequest) {
           email: companyData?.contactEmail || '',
           website: companyData?.contactWebsite || '',
         },
+        payment: {
+          bankName: companyData?.bankName || '',
+          bankSortCode: companyData?.bankSortCode || '',
+          bankAccountNumber: companyData?.bankAccountNumber || '',
+          bankAccountName: companyData?.bankAccountName || '',
+          bankIban: companyData?.bankIban || '',
+          bankSwiftCode: companyData?.bankSwiftCode || '',
+        },
         vatNumber: companyData?.vatNumber || '',
         registrationNumber: companyData?.registrationNumber || '',
         logo: companyData?.companyLogoPublicUrl || '',
+        qrCode: companyData?.qrCodePublicUrl || '',
       },
       
       // Customer Information - Enhanced mapping from sale details

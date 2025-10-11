@@ -161,6 +161,14 @@ export default function StoreOwnerSettings() {
       website: '',
       fax: ''
     },
+    payment: {
+      bankName: '',
+      bankSortCode: '',
+      bankAccountNumber: '',
+      bankAccountName: '',
+      bankIban: '',
+      bankSwiftCode: ''
+    },
     description: '',
     mission: '',
     vision: ''
@@ -1096,6 +1104,7 @@ export default function StoreOwnerSettings() {
             vatNumber: companySettings.vatNumber,
             address: companySettings.address,
             contact: companySettings.contact,
+            payment: companySettings.payment, // Include payment information
             description: companySettings.description,
             mission: companySettings.mission,
             vision: companySettings.vision,
@@ -2354,8 +2363,101 @@ export default function StoreOwnerSettings() {
                       </CardContent>
                     </Card>
 
+                    {/* Payment Information */}
+                    <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-0 shadow-xl">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+                          <PoundSterling className="w-5 h-5" />
+                          Payment Information
+                        </CardTitle>
+                        <CardDescription className="text-slate-600 dark:text-slate-300">
+                          Banking details that will appear on invoices for customer payments
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6 pb-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Bank Name
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankName}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankName', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="e.g., Barclays Bank"
+                            />
+                          </div>
 
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Account Name
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankAccountName}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankAccountName', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="Company Name Ltd"
+                            />
+                          </div>
 
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Sort Code
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankSortCode}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankSortCode', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="12-34-56"
+                              maxLength={8}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Account Number
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankAccountNumber}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankAccountNumber', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="12345678"
+                              maxLength={8}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              IBAN <span className="text-slate-500 text-xs">(Optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankIban}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankIban', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="GB29 NWBK 6016 1331 9268 19"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              SWIFT/BIC Code <span className="text-slate-500 text-xs">(Optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankSwiftCode}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankSwiftCode', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="NWBKGB2L"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
                   </div>
                 )}

@@ -26,6 +26,15 @@ interface CompanyContact {
   fax: string;
 }
 
+interface CompanyPayment {
+  bankName: string;
+  bankSortCode: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  bankIban: string;
+  bankSwiftCode: string;
+}
+
 interface CompanySettingsResponse {
   companyName: string;
   companyLogo: string; // Supabase public URL for frontend
@@ -36,6 +45,7 @@ interface CompanySettingsResponse {
   vatNumber: string;
   address: CompanyAddress;
   contact: CompanyContact;
+  payment: CompanyPayment;
   description: string;
   mission: string;
   vision: string;
@@ -49,6 +59,7 @@ interface CompanySettingsRequest {
   vatNumber?: string;
   address?: CompanyAddress;
   contact?: CompanyContact;
+  payment?: CompanyPayment;
   description?: string;
   mission?: string;
   vision?: string;
@@ -144,6 +155,14 @@ export async function GET(request: NextRequest) {
         email: settingsData?.contactEmail || '',
         website: settingsData?.contactWebsite || '',
         fax: settingsData?.contactFax || ''
+      },
+      payment: {
+        bankName: settingsData?.bankName || '',
+        bankSortCode: settingsData?.bankSortCode || '',
+        bankAccountNumber: settingsData?.bankAccountNumber || '',
+        bankAccountName: settingsData?.bankAccountName || '',
+        bankIban: settingsData?.bankIban || '',
+        bankSwiftCode: settingsData?.bankSwiftCode || ''
       },
       description: settingsData?.description || '',
       mission: settingsData?.mission || '',
@@ -248,6 +267,12 @@ export async function POST(request: NextRequest) {
       contactEmail: requestSettings.contact?.email || null,
       contactWebsite: requestSettings.contact?.website || null,
       contactFax: requestSettings.contact?.fax || null,
+      bankName: requestSettings.payment?.bankName || null,
+      bankSortCode: requestSettings.payment?.bankSortCode || null,
+      bankAccountNumber: requestSettings.payment?.bankAccountNumber || null,
+      bankAccountName: requestSettings.payment?.bankAccountName || null,
+      bankIban: requestSettings.payment?.bankIban || null,
+      bankSwiftCode: requestSettings.payment?.bankSwiftCode || null,
       description: requestSettings.description || null,
       mission: requestSettings.mission || null,
       vision: requestSettings.vision || null,
