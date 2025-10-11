@@ -2601,12 +2601,16 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
               {invoiceData.companyInfo.name}
             </Text>
-              <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
-                20-63-28
-            </Text>
-              <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
-                73828913
-              </Text>
+              {invoiceData.companyInfo.payment?.bankSortCode && (
+                <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+                  {invoiceData.companyInfo.payment.bankSortCode}
+                </Text>
+              )}
+              {invoiceData.companyInfo.payment?.bankAccountNumber && (
+                <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+                  {invoiceData.companyInfo.payment.bankAccountNumber}
+                </Text>
+              )}
               <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
                 Ref - {invoiceData.invoiceNumber}
             </Text>
@@ -2621,7 +2625,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 textAlign: 'center',
                 lineHeight: 1.3
               }}>
-                Thank you for choosing MWA{'\n'}Autos LTD
+                Thank you for choosing {invoiceData.companyInfo.name}
               </Text>
             </View>
 

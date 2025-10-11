@@ -43,6 +43,13 @@
       "when": 1760114799280,
       "tag": "0005_brave_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1760198559972,
+      "tag": "0006_many_doomsday",
+      "breakpoints": true
     }
   ]
 }

@@ -57,6 +57,14 @@ export async function GET(request: NextRequest) {
         contactWebsite: companySettings.contactWebsite,
         contactFax: companySettings.contactFax,
         
+        // Payment/Banking Information
+        bankName: companySettings.bankName,
+        bankSortCode: companySettings.bankSortCode,
+        bankAccountNumber: companySettings.bankAccountNumber,
+        bankAccountName: companySettings.bankAccountName,
+        bankIban: companySettings.bankIban,
+        bankSwiftCode: companySettings.bankSwiftCode,
+        
         // Additional Information
         description: companySettings.description,
       })
@@ -128,6 +136,14 @@ export async function GET(request: NextRequest) {
       email: settings.contactEmail,
       website: settings.contactWebsite,
       fax: settings.contactFax,
+      
+      // Payment/Banking Information
+      bankName: settings.bankName,
+      bankSortCode: settings.bankSortCode,
+      bankAccountNumber: settings.bankAccountNumber,
+      bankAccountName: settings.bankAccountName,
+      bankIban: settings.bankIban,
+      bankSwiftCode: settings.bankSwiftCode,
       
       // Additional Information
       description: settings.description,

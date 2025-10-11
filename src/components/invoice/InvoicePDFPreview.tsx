@@ -1180,12 +1180,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ fontSize: '7px' }}>
             {invoiceData.companyInfo.name}
           </div>
-          <div style={{ fontSize: '7px' }}>
-            20-63-28
-          </div>
-          <div style={{ fontSize: '7px' }}>
-            73828913
-          </div>
+          {invoiceData.companyInfo.payment?.bankSortCode && (
+            <div style={{ fontSize: '7px' }}>
+              {invoiceData.companyInfo.payment.bankSortCode}
+            </div>
+          )}
+          {invoiceData.companyInfo.payment?.bankAccountNumber && (
+            <div style={{ fontSize: '7px' }}>
+              {invoiceData.companyInfo.payment.bankAccountNumber}
+            </div>
+          )}
           <div style={{ fontSize: '7px' }}>
             Ref - {invoiceData.invoiceNumber}
           </div>

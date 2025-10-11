@@ -1726,6 +1726,14 @@ export const companySettings = pgTable('company_settings', {
   contactWebsite: varchar('contact_website', { length: 255 }),
   contactFax: varchar('contact_fax', { length: 50 }),
   
+  // Payment/Banking Information
+  bankName: varchar('bank_name', { length: 255 }),
+  bankSortCode: varchar('bank_sort_code', { length: 20 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 50 }),
+  bankAccountName: varchar('bank_account_name', { length: 255 }),
+  bankIban: varchar('bank_iban', { length: 50 }),
+  bankSwiftCode: varchar('bank_swift_code', { length: 20 }),
+  
   // Additional Information
   description: text('description'),
   mission: text('mission'),

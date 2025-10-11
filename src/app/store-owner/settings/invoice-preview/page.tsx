@@ -99,6 +99,13 @@ interface CompanyInfo {
   vatNumber?: string;
   companyNumber?: string;
   description?: string;
+  // Payment information
+  bankName?: string;
+  bankSortCode?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
+  bankIban?: string;
+  bankSwiftCode?: string;
 }
 
 interface PaymentEntry {
