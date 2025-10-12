@@ -34,6 +34,7 @@ interface StockDetailLayoutProps {
   onOpenDocuments?: () => void;
   registration?: string;
   vehicleTitle?: string;
+  saleDetailsData?: any | null;
 }
 
 export type TabType = 
@@ -57,7 +58,7 @@ export type TabType =
   | "detailed-margins"
   | "generate-invoice";
 
-export default function StockDetailLayout({ stockData, stockId, onOpenDocuments, registration, vehicleTitle }: StockDetailLayoutProps) {
+export default function StockDetailLayout({ stockData, stockId, onOpenDocuments, registration, vehicleTitle, saleDetailsData }: StockDetailLayoutProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -134,7 +135,7 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
       case "detailed-margins":
         return <DetailedMarginsForm stockData={stockData} onSuccess={refreshActionStatuses} />;
       case "generate-invoice":
-        return <GenerateInvoiceForm stockData={stockData} onSuccess={refreshActionStatuses} />;
+        return <GenerateInvoiceForm stockData={stockData} saleDetailsData={saleDetailsData} onSuccess={refreshActionStatuses} />;
       default:
         return <OverviewTab stockData={stockData} />;
     }
