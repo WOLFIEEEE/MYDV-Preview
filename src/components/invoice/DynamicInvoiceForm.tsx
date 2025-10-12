@@ -78,6 +78,7 @@ const FormInput = React.memo(({
   value, 
   onChange, 
   type = 'text', 
+  highlight = false,
   placeholder, 
   subtitle,
   icon: Icon,
@@ -90,6 +91,7 @@ const FormInput = React.memo(({
   onChange: (value: string) => void;
   type?: string;
   placeholder?: string;
+    highlight?: boolean;
   icon?: React.ComponentType<{ className?: string }>;
   required?: boolean;
     subtitle?: string;
@@ -131,7 +133,7 @@ const FormInput = React.memo(({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label className={`text-sm font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+      <Label className={`text-sm font-semibold flex items-center ${isDarkMode ? highlight ? 'text-red-400' : 'text-white' : highlight ? 'text-red-400' : 'text-slate-700'}`}>
         {Icon && <Icon className="h-4 w-4 mr-2" />}
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
@@ -342,7 +344,6 @@ export default function DynamicInvoiceForm({
   onTabChange 
 }: DynamicInvoiceFormProps) {
   const { isDarkMode } = useTheme();
-  const [voluntaryContribution, setVoluntaryContribution] = useState<number>(0);
 
   // Optimized helper function to update nested data (prevents unnecessary re-renders)
   const updateNestedData = useCallback((path: string, value: string | number | boolean | object | null) => {
@@ -733,7 +734,9 @@ export default function DynamicInvoiceForm({
       
       // CRITICAL FIX: Calculate overpayments (Finance) - matches Stock Invoice Form
       // Formula: Math.max(0, totalPaid - compulsory)
-      const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - compulsorySaleDepositFinance);
+      const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - ((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)));
+      // const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - compulsorySaleDepositFinance); 
+      console.log((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0))
       
       if (invoiceData.pricing.outstandingDepositFinance !== outstandingDepositFinance || 
           invoiceData.pricing.totalFinanceDepositPaid !== totalFinanceDepositPaid ||
@@ -1741,47 +1744,6 @@ export default function DynamicInvoiceForm({
                   </>
                 )}
                 
-                
-                {/* Deposit Information - Only for Customer invoices (Finance deposits moved to Payment tab) */}
-                {invoiceData.invoiceTo !== 'Finance Company' && (
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Deposit Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormInput
-                        label="Compulsory Sale Deposit (Customer)"
-                        value={invoiceData.pricing.compulsorySaleDepositCustomer || 0}
-                        onChange={createChangeHandler('pricing.compulsorySaleDepositCustomer')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
-                      
-                      <FormInput
-                          label="Amount Paid in Deposit (Customer)"
-                          value={invoiceData.pricing.amountPaidDepositCustomer || 0}
-                          onChange={createChangeHandler('pricing.amountPaidDepositCustomer')}
-                          type="number"
-                          icon={PoundSterling}
-                        />
-                        
-                        <FormInput
-                          label="Deposit Date (Customer)"
-                          value={invoiceData.payment?.breakdown?.depositDate || ''}
-                          onChange={createChangeHandler('payment.breakdown.depositDate')}
-                          type="date"
-                          icon={Calendar}
-                        />
-                        
-                        <FormInput
-                          label="Outstanding Deposit (Customer)"
-                          value={invoiceData.pricing.outstandingDepositCustomer || 0}
-                          onChange={createChangeHandler('pricing.outstandingDepositCustomer')}
-                          type="number"
-                          icon={PoundSterling}
-                          disabled
-                        />
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1796,6 +1758,8 @@ export default function DynamicInvoiceForm({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {invoiceData.invoiceTo === 'Finance Company' ? <div>
+
                 {/* Customer Contributions to Invoice Total */}
                 <div className="space-y-4">
                   <h3 className={`text-lg font-bold border-b pb-2 ${isDarkMode ? 'text-white border-slate-600' : 'text-slate-900 border-slate-300'}`}>
@@ -1807,8 +1771,8 @@ export default function DynamicInvoiceForm({
                     <FormInput
                       label="Voluntary Contribution to Sale Price "
                       subtitle="(to be deducted from vehicle sale price and Balance to Finance)"
-                      value={voluntaryContribution}
-                      onChange={(value) => setVoluntaryContribution(parseFloat(value) || 0)}
+                      value={invoiceData.pricing?.voluntaryContribution || 0}
+                      onChange={(value) => updateNestedData('pricing.voluntaryContribution', parseFloat(value) || 0)}
                       type="number"
                       icon={PoundSterling}
                     />
@@ -1828,7 +1792,7 @@ export default function DynamicInvoiceForm({
                       {/* Total Customer Deposit */}
                         <FormInput
                           label="Total Customer Deposit Due"
-                          value={(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + voluntaryContribution}
+                        value={(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)}
                           onChange={() => { }}
                           subtitle='(mandatory deposit and any customer contribution to sale price)'
                           type="number"
@@ -1840,22 +1804,38 @@ export default function DynamicInvoiceForm({
 
                     {/* Amount paid in Deposit */}
                     <FormInput
-                        label="Amount Paid in Deposit (Finance)"
+                        label="Amount Paid in Deposit"
                         value={invoiceData.pricing?.amountPaidDepositFinance || 0}
                         onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
                         type="number"
                         icon={PoundSterling}
                       />
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+
                     {/* Remaining Deposit Amount */}
                     <FormInput
                       label="Remaining Deposit Amount"
-                      value={(invoiceData.pricing?.outstandingDepositCustomer || invoiceData.pricing?.outstandingDepositFinance || 0) + voluntaryContribution}
-                      onChange={() => { }}
-                      type="number"
-                      disabled={true}
-                      icon={PoundSterling}
-                    />
+                        value={Math.max(0, (invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+
+                      {/* Overpayments - Read-only */}
+                      <FormInput
+                        label="Overpayments"
+                        // value={Math.abs((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+                        value={invoiceData.pricing?.overpaymentsFinance || 0}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+                    </div>
+
                   </div>
                 </div>
 
@@ -1871,6 +1851,7 @@ export default function DynamicInvoiceForm({
 
                       {/* Dealer Deposit Paid - Editable */}
                       <FormInput
+                        highlight={true}
                         label="Dealership Deposit (pre-sale reservation fee)"
                         value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
                         onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
@@ -1881,17 +1862,19 @@ export default function DynamicInvoiceForm({
 
 
                       {/* Total Finance Deposit Paid - Read-only */}
-                      <FormInput
+                      {/* <FormInput
+                        highlight={true}
                         label="Total Finance Deposit Paid"
                         value={invoiceData.pricing?.totalFinanceDepositPaid || 0}
                         onChange={() => { }}
                         type="number"
                         disabled={true}
                         icon={PoundSterling}
-                      />
+                      /> */}
 
                       {/* Outstanding Deposit - Read-only */}
                       <FormInput
+                        highlight={true}
                         label="Outstanding Deposit (Finance)"
                         value={invoiceData.pricing?.outstandingDepositFinance || 0}
                         onChange={() => { }}
@@ -1900,18 +1883,11 @@ export default function DynamicInvoiceForm({
                         icon={PoundSterling}
                       />
 
-                      {/* Overpayments - Read-only */}
-                      <FormInput
-                        label="Overpayments (Finance)"
-                        value={invoiceData.pricing?.overpaymentsFinance || 0}
-                        onChange={() => { }}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
+
 
                       {/* Deposit Date */}
                       <FormInput
+                        highlight={true}
                         label="Deposit Date (Finance)"
                         value={invoiceData.payment?.breakdown?.depositDate || ''}
                         onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
@@ -1926,6 +1902,44 @@ export default function DynamicInvoiceForm({
                     </p>
                   </div>
                 )}
+                </div> : <div className="space-y-4">
+                    <h4 className="font-medium">Deposit Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        label="Compulsory Sale Deposit"
+                        value={invoiceData.pricing.compulsorySaleDepositCustomer || 0}
+                        onChange={createChangeHandler('pricing.compulsorySaleDepositCustomer')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+                      
+                      <FormInput
+                          label="Amount Paid in Deposit"
+                          value={invoiceData.pricing.amountPaidDepositCustomer || 0}
+                          onChange={createChangeHandler('pricing.amountPaidDepositCustomer')}
+                          type="number"
+                          icon={PoundSterling}
+                        />
+                        
+                        <FormInput
+                          label="Deposit Date"
+                          value={invoiceData.payment?.breakdown?.depositDate || ''}
+                          onChange={createChangeHandler('payment.breakdown.depositDate')}
+                          type="date"
+                          icon={Calendar}
+                        />
+                        
+                        <FormInput
+                          label="Outstanding Deposit"
+                          value={invoiceData.pricing.outstandingDepositCustomer || 0}
+                          onChange={createChangeHandler('pricing.outstandingDepositCustomer')}
+                          type="number"
+                          icon={PoundSterling}
+                          disabled
+                        />
+                    </div>
+                  </div>}
+                
               </CardContent>
             </Card>
           </TabsContent>
@@ -2895,7 +2909,7 @@ export default function DynamicInvoiceForm({
                   {invoiceData.invoiceTo === 'Finance Company' && (
                     <FormInput
                       label="Balance to Finance"
-                      value={(invoiceData.payment.balanceToFinance || 0) - voluntaryContribution}
+                      value={(invoiceData.payment.balanceToFinance || 0) - (invoiceData.payment.partExchange?.amountPaid || 0)}
                       onChange={createChangeHandler('payment.balanceToFinance')}
                       type="number"
                       icon={PoundSterling}
@@ -3134,7 +3148,7 @@ export default function DynamicInvoiceForm({
                         {/* Balance to Finance - ONLY field shown for Finance Company */}
                         <FormInput
                           label="Balance to Finance"
-                        value={(invoiceData.payment?.balanceToFinance || 0) - voluntaryContribution}
+                        value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
                         onChange={() => {}}
                         type="number"
                         disabled={true}

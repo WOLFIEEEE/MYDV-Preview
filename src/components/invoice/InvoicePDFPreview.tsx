@@ -877,7 +877,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 DEPOSIT DUE:
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
-                {formatCurrency(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0)}
+                {/* {formatCurrency(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0)} */}
+                {formatCurrency((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0))}
               </div>
             </div>
             
@@ -894,7 +895,18 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 })()}
               </div>
             </div>
-            
+
+
+            {((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0)) > 0 && <div style={{ display: 'flex', marginBottom: '2px' }}>
+              <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
+                REMAINING DEPOSIT AMOUNT:
+              </div>
+              <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
+                {formatCurrency((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+              </div>
+            </div>}
+
+
             <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
                 DATE OF COLLECTION (ESTIMATED):
@@ -948,6 +960,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   ((invoiceData.payment?.breakdown?.cashPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0)) +
                   // Add overpayment as Vehicle Reservation Fees ONLY when there's an overpayment (Finance)
                   (invoiceData.invoiceTo === 'Finance Company' && (invoiceData.pricing?.overpaymentsFinance || 0) > 0 ? (invoiceData.pricing?.overpaymentsFinance || 0) : 0) +
+                  // (invoiceData.invoiceTo === 'Finance Company' && (invoiceData.pricing?.overpaymentsFinance || 0) > 0 ? (invoiceData.pricing?.overpaymentsFinance || 0) : 0) +
                   // Add overpayment as Additional Deposit Payment for Customer invoices
                   (invoiceData.invoiceTo === 'Customer' && (invoiceData.pricing?.overpaymentsCustomer || 0) > 0 ? (invoiceData.pricing?.overpaymentsCustomer || 0) : 0)
                 )}

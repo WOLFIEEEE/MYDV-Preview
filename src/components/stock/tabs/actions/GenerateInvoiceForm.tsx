@@ -406,27 +406,6 @@ export default function GenerateInvoiceForm({ stockData, saleDetailsData }: Gene
   const [isLoadingTerms, setIsLoadingTerms] = useState(false);
   const [customFinanceCountyPostCode, setCustomFinanceCountyPostCode] = useState<string>('');
 
-  if (!saleDetailsData) return (
-    <div className="p-4 space-y-4 bg-gradient-to-br from-indigo-100/80 via-purple-100/60 to-blue-100/80">
-      <Card className={`p-6 rounded-2xl border ${
-        isDarkMode 
-          ? 'bg-slate-900/50 border-slate-700/50' 
-          : 'bg-indigo-100/80 border-purple-300/50'
-      }`}>
-        <div className="flex items-center space-x-4">
-          <AlertCircle className="h-8 w-8 text-red-500" />
-          <div>
-            <h3 className={`font-semibold text-lg ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-              Sale Details Required
-            </h3>
-            <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              Sale details are required to generate an invoice. Please complete the sale details first.
-            </p>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
 
   const isFinanceInvoice = formData.invoiceTo === 'Finance Company';
   const isCustomerInvoice = formData.invoiceTo === 'Customer';
@@ -550,8 +529,8 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         })(),
 
         // Set default sale type
-        saleType: 'Retail',
-        invoiceTo: 'Customer',
+        saleType: '-',
+        invoiceTo: 'select',
       };
 
       // Populate from sale details if available
@@ -698,17 +677,17 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
   };
 
   // Handle sale type changes - set default invoiceTo for non-Retail sales
-  useEffect(() => {
-    if (formData.saleType && formData.saleType !== 'Retail') {
-      // For Trade and Commercial sales, default to Customer
-      if (formData.invoiceTo !== 'Customer') {
-        handleInputChange('invoiceTo', 'Customer');
-      }
-    } else if (formData.saleType === 'Retail') {
-      // For Retail sales, clear invoiceTo if it was auto-set
-      // Let user choose between Customer and Finance Company
-    }
-  }, [formData.saleType, formData.invoiceTo]);
+  // useEffect(() => {
+  //   if (formData.saleType && formData.saleType !== 'Retail') {
+  //     // For Trade and Commercial sales, default to Customer
+  //     if (formData.invoiceTo !== 'Customer') {
+  //       handleInputChange('invoiceTo', 'Customer');
+  //     }
+  //   } else if (formData.saleType === 'Retail') {
+  //     // For Retail sales, clear invoiceTo if it was auto-set
+  //     // Let user choose between Customer and Finance Company
+  //   }
+  // }, [formData.saleType, formData.invoiceTo]);
 
   // Handle finance company selection and auto-populate address
   const handleFinanceCompanyChange = (companyId: string) => {
@@ -758,12 +737,16 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
       // Only check saleType and invoiceTo (for Retail sales)
       const newErrors: Record<string, string> = {};
 
-      if (!formData.saleType) {
+      if (!formData.saleType || formData.saleType === '-') {
         newErrors.saleType = 'Sale type is required';
       }
 
+      if (!formData.invoiceTo || formData.invoiceTo === 'select') {
+        newErrors.invoiceTo = 'Please select who the invoice is to';
+      }
+
       // Invoice To is only required for Retail sales
-      if (formData.saleType === 'Retail' && !formData.invoiceTo) {
+      if (formData.saleType === 'Retail' && formData.invoiceTo === 'select') {
         newErrors.invoiceTo = 'Invoice recipient is required for retail sales';
       }
 
@@ -971,7 +954,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                 onChange={(e) => handleInputChange('saleType', e.target.value)}
                 className={`${inputBaseClass} ${errors.saleType ? 'border-red-500' : ''}`}
               >
-                <option value="">-</option>
+                <option value="-">-</option>
                 <option value="Retail">Retail</option>
                 <option value="Trade">Trade</option>
                 <option value="Commercial">Commercial</option>
@@ -1002,7 +985,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                   onChange={(e) => handleInputChange('invoiceTo', e.target.value)}
                   className={`${inputBaseClass} ${errors.invoiceTo ? 'border-red-500' : ''}`}
                 >
-                  <option value="">Select Invoice Recipient</option>
+                  <option value="select">Select Invoice Recipient</option>
                   <option value="Customer">Customer</option>
                   <option value="Finance Company">Finance Company</option>
                 </select>

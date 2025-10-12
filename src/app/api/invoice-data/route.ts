@@ -98,6 +98,7 @@ export interface ComprehensiveInvoiceData {
     salePrice: number;                    // {Sale Price:6}
     discountOnSalePrice?: number;         // {Discount on Sale Price:64/51}
     salePricePostDiscount: number;        // {Sale Price Post-Discount:68}
+    voluntaryContribution?: number;     // Voluntary contribution to sale price
     
     // Warranty
     warrantyPrice?: number;               // {Warranty Price:45}
