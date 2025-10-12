@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useEffect } from "react";
+import React, { useCallback, useMemo, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,7 @@ const FORM_SECTIONS = [
   { id: 'customer', label: 'Customer', icon: User },
   { id: 'finance', label: 'Finance', icon: Building },
   { id: 'pricing', label: 'Pricing', icon: PoundSterling },
+  { id: 'deposit', label: 'Deposit Details', icon: PoundSterling },
   { id: 'warranty', label: 'Warranty & Add-ons', icon: Shield },
   { id: 'delivery', label: 'Delivery', icon: Truck },
   { id: 'payment', label: 'Payment', icon: CreditCard },
@@ -78,6 +79,7 @@ const FormInput = React.memo(({
   onChange, 
   type = 'text', 
   placeholder, 
+  subtitle,
   icon: Icon,
   required = false,
   disabled = false,
@@ -90,9 +92,12 @@ const FormInput = React.memo(({
   placeholder?: string;
   icon?: React.ComponentType<{ className?: string }>;
   required?: boolean;
+    subtitle?: string;
   disabled?: boolean;
   className?: string;
 }) => {
+  const { isDarkMode } = useTheme();
+  
   // Handle display value for numeric inputs
   const getDisplayValue = () => {
     if (type === 'number') {
@@ -126,18 +131,27 @@ const FormInput = React.memo(({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label className="text-sm font-medium flex items-center">
+      <Label className={`text-sm font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
         {Icon && <Icon className="h-4 w-4 mr-2" />}
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </Label>
+      <p className={`text-xs italic ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        {subtitle}
+      </p>
       <Input
         type={type === 'number' ? 'text' : type}
         value={getDisplayValue()}
         onChange={handleChange}
         placeholder={placeholder || (type === 'number' ? '0.00' : undefined)}
         disabled={disabled}
-        className={`${disabled ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+        className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${
+          disabled 
+            ? 'bg-slate-100 dark:bg-slate-800 opacity-60' 
+            : isDarkMode 
+              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600' 
+              : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+        }`}
       />
     </div>
   );
@@ -164,31 +178,41 @@ const FormSelect = React.memo(({
   icon?: React.ComponentType<{ className?: string }>;
   required?: boolean;
   disabled?: boolean;
-}) => (
-  <div className="space-y-2">
-    <Label className="text-sm font-medium flex items-center">
-      {Icon && <Icon className="h-4 w-4 mr-2" />}
-      {label}
-      {required && <span className="text-red-500 ml-1">*</span>}
-    </Label>
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className={disabled ? 'bg-slate-100 dark:bg-slate-800' : ''}>
-        <SelectValue placeholder={placeholder || `Select ${label}`} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => {
-          const optionValue = typeof option === 'string' ? option : option.value;
-          const optionLabel = typeof option === 'string' ? option : option.label;
-          return (
-            <SelectItem key={optionValue} value={optionValue}>
-              {optionLabel}
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
-  </div>
-));
+}) => {
+  const { isDarkMode } = useTheme();
+  
+  return (
+    <div className="space-y-2">
+      <Label className={`text-sm font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+        {Icon && <Icon className="h-4 w-4 mr-2" />}
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </Label>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className={`px-4 py-3 border rounded-xl transition-all duration-200 ${
+          disabled 
+            ? 'bg-slate-100 dark:bg-slate-800 opacity-60' 
+            : isDarkMode 
+              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 hover:bg-slate-800/70 hover:border-slate-600' 
+              : 'bg-white border-slate-200 text-slate-900 hover:bg-white hover:border-slate-300'
+        }`}>
+          <SelectValue placeholder={placeholder || `Select ${label}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => {
+            const optionValue = typeof option === 'string' ? option : option.value;
+            const optionLabel = typeof option === 'string' ? option : option.label;
+            return (
+              <SelectItem key={optionValue} value={optionValue}>
+                {optionLabel}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+});
 
 FormSelect.displayName = 'FormSelect';
 
@@ -317,7 +341,8 @@ export default function DynamicInvoiceForm({
   activeTab, 
   onTabChange 
 }: DynamicInvoiceFormProps) {
-  const { } = useTheme();
+  const { isDarkMode } = useTheme();
+  const [voluntaryContribution, setVoluntaryContribution] = useState<number>(0);
 
   // Optimized helper function to update nested data (prevents unnecessary re-renders)
   const updateNestedData = useCallback((path: string, value: string | number | boolean | object | null) => {
@@ -1010,22 +1035,41 @@ export default function DynamicInvoiceForm({
   return (
     <div className="safari-form-container">
       {/* Tab Navigation */}
-      <div className="border-b px-4 py-2 flex-shrink-0">
+      <div className={`border-b px-4 py-3 flex-shrink-0 ${isDarkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-gradient-to-r from-violet-50 to-blue-50'}`}>
         <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-          <TabsList className="bg-muted text-muted-foreground rounded-lg p-2 h-auto w-full flex flex-col gap-1">
+          <TabsList className={`p-2 h-auto w-full flex flex-col gap-2 rounded-2xl ${isDarkMode ? 'bg-slate-800/50 border border-slate-700' : 'bg-white/80 backdrop-blur-sm border border-slate-200 shadow-sm'}`}>
             {/* First Row - First 6 tabs */}
-            <div className="grid grid-cols-6 gap-1 w-full">
+            <div className="grid grid-cols-6 gap-2 w-full">
               {visibleSections.slice(0, 6).map((section) => {
                 const IconComponent = section.icon;
+                const isActive = activeTab === section.id;
                 return (
                   <TabsTrigger 
                     key={section.id} 
                     value={section.id}
-                    className="flex items-center justify-center text-xs py-2 px-2 h-auto min-h-[3rem] w-full"
+                    className={`flex items-center justify-center text-xs py-3 px-2 h-auto min-h-[4rem] w-full rounded-xl transition-all duration-200 ${
+                      isActive 
+                        ? isDarkMode
+                          ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
+                          : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
+                        : isDarkMode
+                          ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
+                          : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
+                    }`}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <IconComponent className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-[10px] leading-tight text-center break-words">{section.label}</span>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className={`p-2 rounded-lg ${
+                        isActive
+                          ? isDarkMode
+                            ? 'bg-indigo-500/20'
+                            : 'bg-indigo-200/50'
+                          : isDarkMode
+                            ? 'bg-slate-600/30'
+                            : 'bg-slate-200/50'
+                      }`}>
+                        <IconComponent className="h-5 w-5 flex-shrink-0" />
+                      </div>
+                      <span className="text-[10px] leading-tight text-center break-words font-semibold">{section.label}</span>
                     </div>
                   </TabsTrigger>
                 );
@@ -1034,18 +1078,37 @@ export default function DynamicInvoiceForm({
             
             {/* Second Row - Remaining tabs (up to 6 more) */}
             {visibleSections.length > 6 && (
-              <div className="grid grid-cols-6 gap-1 w-full">
+              <div className="grid grid-cols-6 gap-2 w-full">
                 {visibleSections.slice(6, 12).map((section) => {
                   const IconComponent = section.icon;
+                  const isActive = activeTab === section.id;
                   return (
                     <TabsTrigger 
                       key={section.id} 
                       value={section.id}
-                      className="flex items-center justify-center text-xs py-2 px-2 h-auto min-h-[3rem] w-full"
+                      className={`flex items-center justify-center text-xs py-3 px-2 h-auto min-h-[4rem] w-full rounded-xl transition-all duration-200 ${
+                        isActive 
+                          ? isDarkMode
+                            ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
+                            : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
+                          : isDarkMode
+                            ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
+                            : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
+                      }`}
                     >
-                      <div className="flex flex-col items-center gap-1">
-                        <IconComponent className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-[10px] leading-tight text-center break-words">{section.label}</span>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className={`p-2 rounded-lg ${
+                          isActive
+                            ? isDarkMode
+                              ? 'bg-indigo-500/20'
+                              : 'bg-indigo-200/50'
+                            : isDarkMode
+                              ? 'bg-slate-600/30'
+                              : 'bg-slate-200/50'
+                        }`}>
+                          <IconComponent className="h-5 w-5 flex-shrink-0" />
+                        </div>
+                        <span className="text-[10px] leading-tight text-center break-words font-semibold">{section.label}</span>
                       </div>
                     </TabsTrigger>
                   );
@@ -1060,10 +1123,10 @@ export default function DynamicInvoiceForm({
       <div className="flex-1 overflow-y-auto p-4 min-h-0">
         <Tabs value={activeTab} onValueChange={onTabChange}>
           {/* Basic Information */}
-          <TabsContent value="basic" className="space-y-6">
-            <Card>
+          <TabsContent value="basic" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-violet-100/80 border-blue-300/50 shadow-cyan-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <FileText className="h-5 w-5 mr-2" />
                   Basic Invoice Information
                 </CardTitle>
@@ -1189,10 +1252,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Vehicle Information */}
-          <TabsContent value="vehicle" className="space-y-6">
-            <Card>
+          <TabsContent value="vehicle" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-indigo-100/80 border-purple-300/50 shadow-blue-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Car className="h-5 w-5 mr-2" />
                   Vehicle Information
                 </CardTitle>
@@ -1283,10 +1346,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Customer Information */}
-          <TabsContent value="customer" className="space-y-6">
-            <Card>
+          <TabsContent value="customer" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-purple-100/80 border-indigo-300/50 shadow-purple-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <User className="h-5 w-5 mr-2" />
                   Customer Information
                 </CardTitle>
@@ -1433,10 +1496,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Finance Company */}
-          <TabsContent value="finance" className="space-y-6">
-            <Card>
+          <TabsContent value="finance" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-blue-100/80 border-cyan-300/50 shadow-blue-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Building className="h-5 w-5 mr-2" />
                   Finance Company Details
                 </CardTitle>
@@ -1464,26 +1527,34 @@ export default function DynamicInvoiceForm({
                         />
                         
                         <div className="space-y-2">
-                          <Label>First Line and Street</Label>
+                          <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>First Line and Street</Label>
                           <Textarea
                             value={invoiceData.financeCompany?.address?.firstLine || ''}
                             onChange={(e) => updateNestedData('financeCompany.address.firstLine', e.target.value)}
                             placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter street address' : 'Auto-populated from selection'}
                             rows={2}
-                            className="resize-none"
+                            className={`resize-none px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${
+                              isDarkMode 
+                                ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600' 
+                                : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                            }`}
                           />
                         </div>
                         
                         <div className="space-y-2">
-                          <Label>County, Post Code and Contact Details</Label>
+                          <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>County, Post Code and Contact Details</Label>
                           <Textarea
                             value={invoiceData.financeCompany?.address?.countyPostCodeContact || ''}
                             onChange={(e) => updateNestedData('financeCompany.address.countyPostCodeContact', e.target.value)}
                             placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter county, postcode, phone, email' : 'Auto-populated from selection'}
                             rows={3}
-                            className="resize-none"
+                            className={`resize-none px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${
+                              isDarkMode 
+                                ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600' 
+                                : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                            }`}
                           />
-                          <p className="text-xs text-muted-foreground">
+                          <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-muted-foreground'}`}>
                             Include any Contact Numbers and/or Email Address
                           </p>
                         </div>
@@ -1501,10 +1572,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Pricing */}
-          <TabsContent value="pricing" className="space-y-6">
-            <Card>
+          <TabsContent value="pricing" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-emerald-100/80 border-teal-300/50 shadow-emerald-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <PoundSterling className="h-5 w-5 mr-2" />
                   Pricing Information
                 </CardTitle>
@@ -1715,13 +1786,157 @@ export default function DynamicInvoiceForm({
             </Card>
           </TabsContent>
 
+          {/* Deposit */}
+          <TabsContent value="deposit" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-emerald-100/80 border-teal-300/50 shadow-emerald-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <PoundSterling className="h-5 w-5 mr-2" />
+                  Deposits
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Customer Contributions to Invoice Total */}
+                <div className="space-y-4">
+                  <h3 className={`text-lg font-bold border-b pb-2 ${isDarkMode ? 'text-white border-slate-600' : 'text-slate-900 border-slate-300'}`}>
+                    Customer Contributions to Invoice Total
+                  </h3>
+
+                  <div className="space-y-3">
+                    {/* Voluntary Contribution to Sale Price */}
+                    <FormInput
+                      label="Voluntary Contribution to Sale Price "
+                      subtitle="(to be deducted from vehicle sale price and Balance to Finance)"
+                      value={voluntaryContribution}
+                      onChange={(value) => setVoluntaryContribution(parseFloat(value) || 0)}
+                      type="number"
+                      icon={PoundSterling}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Mandatory (addons, warranty and delivery) */}
+                      <FormInput
+                        label="Mandatory Deposit"
+                        subtitle="(addons, warranty and delivery)"
+                        value={invoiceData.pricing?.compulsorySaleDepositFinance || 0}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+
+                      {/* Total Customer Deposit */}
+                        <FormInput
+                          label="Total Customer Deposit Due"
+                          value={(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + voluntaryContribution}
+                          onChange={() => { }}
+                          subtitle='(mandatory deposit and any customer contribution to sale price)'
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+                    </div>
+
+
+                    {/* Amount paid in Deposit */}
+                    <FormInput
+                        label="Amount Paid in Deposit (Finance)"
+                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
+                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                    {/* Remaining Deposit Amount */}
+                    <FormInput
+                      label="Remaining Deposit Amount"
+                      value={(invoiceData.pricing?.outstandingDepositCustomer || invoiceData.pricing?.outstandingDepositFinance || 0) + voluntaryContribution}
+                      onChange={() => { }}
+                      type="number"
+                      disabled={true}
+                      icon={PoundSterling}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Finance Deposit Information - Consolidated - Only show for Finance Company invoices */}
+                {invoiceData.invoiceTo === 'Finance Company' && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Finance Deposit Information</h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Compulsory Sale Deposit - Read-only */}
+
+                      {/* Dealer Deposit Paid - Editable */}
+                      <FormInput
+                        label="Dealership Deposit (pre-sale reservation fee)"
+                        value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
+                        onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                        placeholder="0.00"
+                      />
+
+
+                      {/* Total Finance Deposit Paid - Read-only */}
+                      <FormInput
+                        label="Total Finance Deposit Paid"
+                        value={invoiceData.pricing?.totalFinanceDepositPaid || 0}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+
+                      {/* Outstanding Deposit - Read-only */}
+                      <FormInput
+                        label="Outstanding Deposit (Finance)"
+                        value={invoiceData.pricing?.outstandingDepositFinance || 0}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+
+                      {/* Overpayments - Read-only */}
+                      <FormInput
+                        label="Overpayments (Finance)"
+                        value={invoiceData.pricing?.overpaymentsFinance || 0}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+
+                      {/* Deposit Date */}
+                      <FormInput
+                        label="Deposit Date (Finance)"
+                        value={invoiceData.payment?.breakdown?.depositDate || ''}
+                        onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
+                        type="date"
+                        icon={Calendar}
+                      />
+                    </div>
+
+                    {/* Helper text */}
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Total Finance Deposit Paid = Dealer Deposit Paid + Amount Paid in Deposit (Finance)
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Warranty & Add-ons */}
-          <TabsContent value="warranty" className="space-y-6">
+          <TabsContent value="warranty" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
             {/* Warranty Section - Only show for non-trade sales */}
             {invoiceData.saleType !== 'Trade' && (
-              <Card>
+              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-amber-100/80 border-orange-300/50 shadow-amber-200/40'}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                     <Shield className="h-5 w-5 mr-2" />
                     Warranty Information
                   </CardTitle>
@@ -1803,12 +2018,17 @@ export default function DynamicInvoiceForm({
                       />
                       
                       <div className="space-y-2">
-                        <Label>Enhanced Warranty Details</Label>
+                        <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>Enhanced Warranty Details</Label>
                         <Textarea
                           value={invoiceData.warranty.enhancedDetails || ''}
                           onChange={(e) => updateNestedData('warranty.enhancedDetails', e.target.value)}
                           placeholder="Enter details about the enhanced warranty coverage..."
                           rows={4}
+                          className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${
+                            isDarkMode 
+                              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600' 
+                              : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                          }`}
                         />
                       </div>
                     </div>
@@ -1818,9 +2038,9 @@ export default function DynamicInvoiceForm({
             )}
             
             {/* Add-ons Section */}
-            <Card>
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-pink-100/80 border-rose-300/50 shadow-pink-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Plus className="h-5 w-5 mr-2" />
                   Add-ons & Discounts
                 </CardTitle>
@@ -2263,10 +2483,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Delivery */}
-          <TabsContent value="delivery" className="space-y-6">
-            <Card>
+          <TabsContent value="delivery" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Truck className="h-5 w-5 mr-2" />
                   Delivery Information
                 </CardTitle>
@@ -2326,12 +2546,17 @@ export default function DynamicInvoiceForm({
                 
                 {invoiceData.delivery.type === 'delivery' && (
                   <div className="space-y-2">
-                    <Label>Delivery Address</Label>
+                    <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>Delivery Address</Label>
                     <Textarea
                       value={invoiceData.delivery.address || ''}
                       onChange={(e) => updateNestedData('delivery.address', e.target.value)}
                       placeholder="Delivery address if different from customer address..."
                       rows={3}
+                      className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${
+                        isDarkMode 
+                          ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600' 
+                          : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                      }`}
                     />
                   </div>
                 )}
@@ -2396,10 +2621,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Payment */}
-          <TabsContent value="payment" className="space-y-6">
-            <Card>
+          <TabsContent value="payment" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-lime-100/80 border-green-300/50 shadow-lime-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <CreditCard className="h-5 w-5 mr-2" />
                   Payment Breakdown
                 </CardTitle>
@@ -2590,88 +2815,6 @@ export default function DynamicInvoiceForm({
                     </div>
                   </div>
                 )}
-
-                {/* Finance Deposit Information - Consolidated - Only show for Finance Company invoices */}
-                {invoiceData.invoiceTo === 'Finance Company' && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Finance Deposit Information</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Compulsory Sale Deposit - Read-only */}
-                      <FormInput
-                        label="Compulsory Sale Deposit (Finance)"
-                        value={invoiceData.pricing?.compulsorySaleDepositFinance || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Dealer Deposit Paid - Editable */}
-                      <FormInput
-                        label="Dealer Deposit Paid (Customer)"
-                        value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
-                        onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                        placeholder="0.00"
-                      />
-                      
-                      {/* Amount Paid in Deposit - Editable */}
-                      <FormInput
-                        label="Amount Paid in Deposit (Finance)"
-                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
-                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Total Finance Deposit Paid - Read-only */}
-                      <FormInput
-                        label="Total Finance Deposit Paid"
-                        value={invoiceData.pricing?.totalFinanceDepositPaid || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Outstanding Deposit - Read-only */}
-                      <FormInput
-                        label="Outstanding Deposit (Finance)"
-                        value={invoiceData.pricing?.outstandingDepositFinance || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Overpayments - Read-only */}
-                      <FormInput
-                        label="Overpayments (Finance)"
-                        value={invoiceData.pricing?.overpaymentsFinance || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Deposit Date */}
-                      <FormInput
-                        label="Deposit Date (Finance)"
-                        value={invoiceData.payment?.breakdown?.depositDate || ''}
-                        onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
-                        type="date"
-                        icon={Calendar}
-                      />
-                    </div>
-                    
-                    {/* Helper text */}
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Total Finance Deposit Paid = Dealer Deposit Paid + Amount Paid in Deposit (Finance)
-                    </p>
-                  </div>
-                )}
                 
                 <Separator />
                 
@@ -2752,7 +2895,7 @@ export default function DynamicInvoiceForm({
                   {invoiceData.invoiceTo === 'Finance Company' && (
                     <FormInput
                       label="Balance to Finance"
-                      value={invoiceData.payment.balanceToFinance || 0}
+                      value={(invoiceData.payment.balanceToFinance || 0) - voluntaryContribution}
                       onChange={createChangeHandler('payment.balanceToFinance')}
                       type="number"
                       icon={PoundSterling}
@@ -2789,10 +2932,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Checklist */}
-          <TabsContent value="checklist" className="space-y-6">
-            <Card>
+          <TabsContent value="checklist" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-teal-100/80 border-cyan-300/50 shadow-teal-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <CheckCircle className="h-5 w-5 mr-2" />
                   Vehicle Checklist
                 </CardTitle>
@@ -2873,10 +3016,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Balance Summary */}
-          <TabsContent value="balance" className="space-y-6">
-            <Card>
+          <TabsContent value="balance" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-yellow-100/80 border-amber-300/50 shadow-yellow-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <PoundSterling className="h-5 w-5 mr-2" />
                   Balance Summary
                 </CardTitle>
@@ -2991,7 +3134,7 @@ export default function DynamicInvoiceForm({
                         {/* Balance to Finance - ONLY field shown for Finance Company */}
                         <FormInput
                           label="Balance to Finance"
-                        value={invoiceData.payment?.balanceToFinance || 0}
+                        value={(invoiceData.payment?.balanceToFinance || 0) - voluntaryContribution}
                         onChange={() => {}}
                         type="number"
                         disabled={true}
@@ -3145,10 +3288,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Signature & IDD */}
-          <TabsContent value="signature" className="space-y-6">
-            <Card>
+          <TabsContent value="signature" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-fuchsia-100/80 border-pink-300/50 shadow-fuchsia-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <PenTool className="h-5 w-5 mr-2" />
                   Customer Signature & IDD Acceptance
                 </CardTitle>
