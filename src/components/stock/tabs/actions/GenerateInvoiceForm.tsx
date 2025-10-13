@@ -200,7 +200,6 @@ export interface FormData {
   remainingBalanceIncVat: number
   additionalInformation: string
   termsOfServiceInHouse: boolean
-  termsOfServiceTrade: boolean
   customerAcceptedIdd: string
   customerAvailableSignature: string
   customerSignature: string
@@ -346,7 +345,6 @@ const initialFormData: FormData = {
   remainingBalanceIncVat: 0,
   additionalInformation: '',
   termsOfServiceInHouse: false,
-  termsOfServiceTrade: false,
   customerAcceptedIdd: 'N/A',
   customerAvailableSignature: '',
   customerSignature: '',
@@ -746,11 +744,6 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         newErrors.invoiceTo = 'Invoice recipient is required for retail sales';
       }
 
-      // Terms of service agreement is required for Trade sales
-      if (formData.saleType === 'Trade' && !formData.termsOfServiceTrade) {
-        newErrors.termsOfServiceTrade = 'You must agree to the Trade Sale terms to proceed';
-      }
-
       // If validation fails, show errors and return
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
@@ -960,7 +953,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                 Terms of Service
               </h3>
               
-              <div className={`p-4 border-2 rounded-xl max-h-48 overflow-y-auto ${
+              <div className={`p-4 border-2 rounded-xl max-h-96 overflow-y-auto ${
                 isDarkMode 
                   ? 'border-slate-600 bg-slate-800' 
                   : 'border-indigo-200 bg-indigo-50/50'
@@ -977,34 +970,6 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                     {tradeTerms || 'No trade terms available. Please contact your administrator to set up custom terms.'}
                   </div>
                 )}
-              </div>
-              
-              {/* Trade Sale Terms Checkbox */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={formData.termsOfServiceTrade}
-                    onChange={(e) => handleInputChange('termsOfServiceTrade', e.target.checked)}
-                    className={`w-4 h-4 text-indigo-600 border-2 rounded focus:ring-indigo-500 ${
-                      isDarkMode ? 'bg-slate-800 border-slate-600' : 'bg-white border-indigo-300'
-                    } ${errors.termsOfServiceTrade ? 'border-red-500' : ''}`}
-                  />
-                  <span className={`text-sm font-medium ${
-                    isDarkMode ? 'text-white' : 'text-slate-700'
-                  }`}>
-                    I agree to the Trade Sale terms
-                  </span>
-                </label>
-                {errors.termsOfServiceTrade && (
-                  <p className="text-red-500 text-xs flex items-center gap-1 ml-7">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.termsOfServiceTrade}
-                  </p>
-                )}
-                <p className={`text-xs ml-7 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Confirmation of Trade Sale Terms and Conditions
-                </p>
               </div>
             </div>
           )}
