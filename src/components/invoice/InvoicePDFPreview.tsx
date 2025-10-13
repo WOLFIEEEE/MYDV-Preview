@@ -188,7 +188,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 1 - Invoice Core
   const renderPage1 = () => (
-    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
+    <div className="bg-white w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
       fontFamily: 'Century Gothic, Arial, sans-serif', 
       fontSize: '7px', 
       lineHeight: '1.1',
@@ -1254,7 +1254,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 2 - Checklist or Trade Disclaimer
   const renderPage2 = () => (
-    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
+    <div className="bg-white w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
       fontFamily: 'Century Gothic, Arial, sans-serif', 
       fontSize: '7px', 
       lineHeight: '1.1',
@@ -1564,7 +1564,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 3 - Standard T&Cs (only for non-Trade)
   const renderPage3 = () => (
-    <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
+    <div className="bg-white p-8 w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
       <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>
         {invoiceData.companyInfo.name.toUpperCase()} STANDARD LIMITED TERMS AND CONDITIONS
       </h2>
@@ -1589,7 +1589,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     if (invoiceData.saleType === 'Trade') return null;
     
     return (
-      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
+      <div className="bg-white p-8 w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
         <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>IN-HOUSE ENGINE & TRANSMISSION WARRANTY</h2>
         <div style={{ fontSize: '7px', lineHeight: '1.4' }}>
           {invoiceData.terms.inHouseWarrantyTerms ? (
@@ -1616,7 +1616,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     if (invoiceData.saleType === 'Trade') return null;
     
     return (
-      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
+      <div className="bg-white p-8 w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
         <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>EXTERNAL WARRANTY{invoiceData.warranty.name ? ` — ${invoiceData.warranty.name.toUpperCase()}` : ''}</h2>
         <div style={{ fontSize: '7px', lineHeight: '1.4' }}>
           {invoiceData.terms.thirdPartyTerms ? (
@@ -1760,7 +1760,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
       {/* PDF Preview Area */}
       <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900 p-4 min-h-0">
         <div className="min-h-full flex justify-center items-start">
-          <div className="invoice-pdf-preview-wrapper w-full max-w-4xl min-h-[1000px]" style={{ 
+          <div className="invoice-pdf-preview-wrapper w-full max-w-6xl min-h-[1000px]" style={{ 
             isolation: 'isolate',
             contain: 'style layout'
           }}>
