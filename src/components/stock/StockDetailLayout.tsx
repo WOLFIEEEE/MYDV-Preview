@@ -27,6 +27,7 @@ import SaleDetailsForm from "./tabs/actions/SaleDetailsForm";
 import ServiceDetailsForm from "./tabs/actions/ServiceDetailsForm";
 import DetailedMarginsForm from "./tabs/actions/DetailedMarginsForm";
 import GenerateInvoiceForm from "./tabs/actions/GenerateInvoiceForm";
+import BrochureDownloadModal from "./BrochureDownloadModal";
 
 interface StockDetailLayoutProps {
   stockData: any;
@@ -61,6 +62,7 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showBrochureModal, setShowBrochureModal] = useState(false);
   const { isDarkMode } = useTheme();
   const { user, isLoaded } = useUser();
   const queryClient = useQueryClient();
@@ -149,6 +151,7 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
         stockId={stockId}
         stockData={stockData}
         refreshTrigger={refreshTrigger}
+        onOpenBrochureModal={() => setShowBrochureModal(true)}
       />
 
       {/* Main Layout with Enhanced Design - Full Width */}
@@ -173,6 +176,13 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
           </div>
         </div>
       </div>
+
+      {/* Brochure Download Modal */}
+      <BrochureDownloadModal
+        isOpen={showBrochureModal}
+        onClose={() => setShowBrochureModal(false)}
+        stockData={stockData}
+      />
     </div>
   );
 }
