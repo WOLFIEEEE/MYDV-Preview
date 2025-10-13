@@ -1958,7 +1958,7 @@ export default function DynamicInvoiceForm({
                     <h4 className="font-medium">Deposit Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormInput
-                        label="Compulsory Sale Deposit"
+                        label="Required Reservation Fee"
                         value={invoiceData.pricing.compulsorySaleDepositCustomer || 0}
                         onChange={createChangeHandler('pricing.compulsorySaleDepositCustomer')}
                         type="number"
@@ -1966,7 +1966,7 @@ export default function DynamicInvoiceForm({
                       />
                       
                       <FormInput
-                          label="Amount Paid in Deposit"
+                          label="Amount Paid in Reservation"
                           value={invoiceData.pricing.amountPaidDepositCustomer || 0}
                           onChange={createChangeHandler('pricing.amountPaidDepositCustomer')}
                           type="number"

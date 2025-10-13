@@ -879,7 +879,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
                 {/* {formatCurrency(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0)} */}
-                {formatCurrency((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0))}
+                {formatCurrency(((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0))}
               </div>
             </div>
             
