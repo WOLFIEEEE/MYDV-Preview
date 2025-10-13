@@ -568,6 +568,10 @@ export default function EditStockPage() {
         stockId={stockId}
         stockData={stockData}
         refreshTrigger={refreshTrigger}
+        downloadBrochure={async () => {
+          console.log('Brochure download not available in edit mode');
+        }}
+        isBrochureGenerating={false}
       />
 
       {/* Main Layout with Side Navigation */}
