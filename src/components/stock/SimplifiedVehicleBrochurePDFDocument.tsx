@@ -330,45 +330,22 @@ const SimplifiedVehicleBrochurePDFDocument: React.FC<SimplifiedVehicleBrochurePD
   const getVehicleDescription = () => {
     const description1 = adverts.retailAdverts?.description;
     const description2 = adverts.retailAdverts?.description2;
-    
+
     const descriptions = [];
-    
-    // Add both descriptions if they exist and are different
+
     if (description1 && description1.trim()) {
       descriptions.push(description1.trim());
     }
-    
+
     if (description2 && description2.trim() && description2.trim() !== description1?.trim()) {
       descriptions.push(description2.trim());
     }
-    
-    // If we have actual descriptions, use them
+
     if (descriptions.length > 0) {
-      return descriptions.join('\n\n'); // Separate multiple descriptions with double line break
+      return descriptions.join('\n\n');
     }
-    
-    // Fallback: Create description from available data if no actual descriptions exist
-    const parts = [];
-    
-    if (vehicle.make && vehicle.model) {
-      parts.push(`This ${vehicle.make} ${vehicle.model} represents excellent value and quality.`);
-    }
-    
-    if (vehicle.yearOfManufacture) {
-      parts.push(`Manufactured in ${vehicle.yearOfManufacture}.`);
-    }
-    
-    if (vehicle.odometerReadingMiles) {
-      parts.push(`With ${vehicle.odometerReadingMiles.toLocaleString()} miles on the clock.`);
-    }
-    
-    if (vehicle.fuelType && vehicle.transmissionType) {
-      parts.push(`Featuring ${vehicle.fuelType} engine with ${vehicle.transmissionType} transmission.`);
-    }
-    
-    parts.push('This vehicle has been carefully inspected and is ready for its new owner.');
-    
-    return parts.join(' ');
+
+    return 'No vehicle description';
   };
 
   return (
