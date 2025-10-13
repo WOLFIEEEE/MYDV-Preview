@@ -913,8 +913,10 @@ function DynamicInvoiceEditorContent() {
       const source = urlParams.get('source');
       const debugId = urlParams.get('debug');
       const tempId = urlParams.get('tempId');
+      const saleType = urlParams.get('saleType');
+      const invoiceTo = urlParams.get('invoiceTo');
       
-      console.log(`🔍 [EDITOR] URL Parameters:`, { source, debugId, saleId, stockId, tempId, invoiceId });
+      console.log(`🔍 [EDITOR] URL Parameters:`, { source, debugId, saleId, stockId, tempId, invoiceId, saleType, invoiceTo });
       
       // PRIORITY 1: Load saved invoice if invoiceId is provided
       if (invoiceId) {
@@ -1523,7 +1525,28 @@ function DynamicInvoiceEditorContent() {
           invoiceType: result.data.invoiceType,
           termsDataRaw: result.data.terms
         });
-        setInvoiceData(result.data);
+        
+        // Apply URL parameters for saleType and invoiceTo if provided
+        if (saleType || invoiceTo) {
+          console.log(`🔧 [EDITOR] Applying URL parameters: saleType=${saleType}, invoiceTo=${invoiceTo}`);
+          
+          const updatedData = { ...result.data };
+          
+          if (saleType && ['Retail', 'Trade', 'Commercial'].includes(saleType)) {
+            updatedData.saleType = saleType as 'Retail' | 'Trade' | 'Commercial';
+            updatedData.invoiceType = saleType === 'Trade' ? 'Trade Invoice' : 'Retail (Customer) Invoice';
+          }
+          
+          if (invoiceTo && ['Customer', 'Finance Company'].includes(invoiceTo)) {
+            updatedData.invoiceTo = invoiceTo as 'Customer' | 'Finance Company';
+          }
+          
+          console.log(`✅ [EDITOR] URL parameters applied: saleType=${updatedData.saleType}, invoiceTo=${updatedData.invoiceTo}`);
+          setInvoiceData(updatedData);
+        } else {
+          setInvoiceData(result.data);
+        }
+        
         console.log('✅ Invoice data loaded from database successfully');
         console.log('📊 Data sources found:', result.meta?.dataSourcesFound);
         console.log('🔍 Meta info:', result.meta);

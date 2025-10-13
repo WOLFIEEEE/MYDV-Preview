@@ -746,11 +746,6 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         newErrors.invoiceTo = 'Invoice recipient is required for retail sales';
       }
 
-      // Finance company is required when invoicing to Finance Company
-      if (formData.saleType === 'Retail' && formData.invoiceTo === 'Finance Company' && !formData.financeCompany) {
-        newErrors.financeCompany = 'Finance company selection is required';
-      }
-
       // Terms of service agreement is required for Trade sales
       if (formData.saleType === 'Trade' && !formData.termsOfServiceTrade) {
         newErrors.termsOfServiceTrade = 'You must agree to the Trade Sale terms to proceed';
@@ -772,56 +767,15 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         stockData?.stockId ||
         formData.vehicleRegistration;
 
-      // Prepare form data for dynamic editor
-      const invoiceFormData = {
-        ...formData,
+      // Redirect to dynamic invoice editor with URL parameters
+      const params = new URLSearchParams({
         stockId: stockId,
-        stockData: stockData,
-        timestamp: new Date().toISOString(),
-        source: 'invoice_form',
-        // Concatenate custom county/postcode with existing financeCountyPostCode for custom finance companies
-        financeCountyPostCode: formData.financeCompany === CUSTOM_FINANCE_COMPANY_ID && customFinanceCountyPostCode
-          ? (formData.financeCountyPostCode ? `${formData.financeCountyPostCode}\n${customFinanceCountyPostCode}` : customFinanceCountyPostCode)
-          : formData.financeCountyPostCode
-      };
+        source: 'form',
+        saleType: formData.saleType,
+        invoiceTo: formData.invoiceTo || 'Customer'
+      });
 
-      // Prepare the data for router state
-      const routerStateData = {
-        formData: invoiceFormData,
-        timestamp: new Date().toISOString(),
-        source: 'invoice_form'
-      };
-
-      // Store as backup in sessionStorage
-      try {
-        sessionStorage.setItem('invoiceFormData', JSON.stringify(invoiceFormData));
-      } catch (storageError) {
-        console.warn('Backup storage failed:', storageError);
-      }
-
-      // Store data on server temporarily to avoid URL length limits
-      try {
-        const response = await fetch('/api/temp-invoice-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(routerStateData),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const finalUrl = `/dynamic-invoice-editor?stockId=${stockId}&source=form&tempId=${result.tempId}`;
-          router.push(finalUrl);
-        } else {
-          throw new Error(`Server storage failed: ${response.status} ${response.statusText}`);
-        }
-
-      } catch (serverError) {
-        console.error('Error storing data on server:', serverError);
-        // Fallback: redirect without data and rely on sessionStorage backup
-        router.push(`/dynamic-invoice-editor?stockId=${stockId}&source=form`);
-      }
+      router.push(`/dynamic-invoice-editor?${params.toString()}`);
 
     } catch (error) {
       console.error('Error in handleSubmit:', error);
@@ -994,80 +948,6 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                 <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   Determines deposit and payment flow
                 </p>
-              </div>
-            )}
-
-            {/* Finance Company - Only shown when invoicing to Finance Company */}
-            {formData.saleType === 'Retail' && formData.invoiceTo === 'Finance Company' && (
-              <div className="lg:col-span-2 space-y-2">
-                <label className={`${labelClass} flex items-center gap-2`}>
-                  <Building2 className="h-4 w-4" />
-                  Finance Company
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    isDarkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'
-                  }`}>Required</span>
-                </label>
-                <select
-                  value={formData.financeCompany}
-                  onChange={(e) => handleFinanceCompanyChange(e.target.value)}
-                  className={`${inputBaseClass} ${errors.financeCompany ? 'border-red-500' : ''}`}
-                >
-                  <option value="">Select Finance Company</option>
-                  {PREDEFINED_FINANCE_COMPANIES.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.name}
-                    </option>
-                  ))}
-                  <option value={CUSTOM_FINANCE_COMPANY_ID}>Other</option>
-                </select>
-                {errors.financeCompany && (
-                  <p className="text-red-500 text-xs flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {errors.financeCompany}
-                  </p>
-                )}
-                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Finance company details will be auto-populated
-                </p>
-
-                {/* Custom Finance Company Fields */}
-                {formData.financeCompany === CUSTOM_FINANCE_COMPANY_ID && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div className="space-y-2">
-                      <label className={labelClass}>Finance Company Name</label>
-                      <input
-                        type="text"
-                        value={formData.financeCompanyName}
-                        onChange={(e) => handleInputChange('financeCompanyName', e.target.value)}
-                        className={inputBaseClass}
-                        placeholder="Enter finance company name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className={labelClass}>Street Address</label>
-                      <input
-                        type="text"
-                        value={formData.financeStreetAddress}
-                        onChange={(e) => handleInputChange('financeStreetAddress', e.target.value)}
-                        className={inputBaseClass}
-                        placeholder="Enter street address"
-                      />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                      <label className={labelClass}>County, Post Code and Contact Details</label>
-                      <textarea
-                        value={customFinanceCountyPostCode}
-                        onChange={(e) => setCustomFinanceCountyPostCode(e.target.value)}
-                        className={inputBaseClass}
-                        placeholder="Enter County, Post Code or Contact Details"
-                        rows={3}
-                      />
-                      <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Include any Contact Numbers and/or Email Address
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
