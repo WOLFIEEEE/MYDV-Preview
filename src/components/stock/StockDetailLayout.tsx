@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { useTheme } from "@/contexts/ThemeContext";
 import { stockQueryKeys } from "@/hooks/useStockDataQuery";
+import { useDirectBrochureDownload } from "@/hooks/useDirectBrochureDownload";
 import StockHeader from "./StockHeader";
 import SideTabNavigation from "./SideTabNavigation";
 import TopActionNavigation from "./TopActionNavigation";
@@ -66,6 +67,9 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
   const { isDarkMode } = useTheme();
   const { user, isLoaded } = useUser();
   const queryClient = useQueryClient();
+  
+  // Centralized brochure download state and logic
+  const { downloadBrochure, isGenerating: isBrochureGenerating } = useDirectBrochureDownload();
 
   // Generate user-specific cache ID - only when user is loaded and authenticated
   const userCacheId = user?.id && isLoaded ? `user_${user.id}` : null;
@@ -104,7 +108,11 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
       case "vehicle":
         return <VehicleTab stockData={stockData} />;
       case "gallery":
-        return <GalleryTab stockData={stockData} />;
+        return <GalleryTab 
+          stockData={stockData} 
+          downloadBrochure={downloadBrochure}
+          isBrochureGenerating={isBrochureGenerating}
+        />;
       case "features":
         return <FeaturesTab stockData={stockData} />;
       case "adverts":
@@ -152,6 +160,8 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
         stockData={stockData}
         refreshTrigger={refreshTrigger}
         onOpenBrochureModal={() => setShowBrochureModal(true)}
+        downloadBrochure={downloadBrochure}
+        isBrochureGenerating={isBrochureGenerating}
       />
 
       {/* Main Layout with Enhanced Design - Full Width */}

@@ -5,18 +5,16 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Camera, Video, RotateCw, Maximize, Image, Eye, Download } from "lucide-react";
 import DataGrid from "../shared/DataGrid";
-import { useDirectBrochureDownload } from '@/hooks/useDirectBrochureDownload';
 
 interface GalleryTabProps {
   stockData: any;
+  downloadBrochure: (options: { stockData: any }) => Promise<void>;
+  isBrochureGenerating: boolean;
 }
 
-export default function GalleryTab({ stockData }: GalleryTabProps) {
+export default function GalleryTab({ stockData, downloadBrochure, isBrochureGenerating }: GalleryTabProps) {
   const { isDarkMode } = useTheme();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  
-  // Direct brochure download hook
-  const { downloadBrochure, isGenerating } = useDirectBrochureDownload();
   
   const media = stockData.media || {};
   const images = media.images || [];
@@ -76,9 +74,9 @@ export default function GalleryTab({ stockData }: GalleryTabProps) {
                 } catch (error) {
                   console.error('❌ Error in gallery brochure download:', error);
                 }
-              }} disabled={isGenerating}>
+              }} disabled={isBrochureGenerating}>
                 <Download className="h-4 w-4 mr-1" />
-                {isGenerating ? 'Generating...' : 'Download Brochure'}
+                {isBrochureGenerating ? 'Generating...' : 'Download Brochure'}
               </Button>
             </div>
           </div>
