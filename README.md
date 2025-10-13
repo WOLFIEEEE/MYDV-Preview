@@ -1,7 +1,5 @@
 # Car Dealership Landing Page 4
-
 A modern, professional landing page for a car dealership management platform built with Next.js, Tailwind CSS, and shadcn/ui.
-
 
 ## Features
 
