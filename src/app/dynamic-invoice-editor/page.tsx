@@ -2239,14 +2239,16 @@ function DynamicInvoiceEditorContent() {
           </div>
 
           {/* Main Content Area - Safari Compatible Layout */}
-          <div className={`grid gap-6 ${
-            viewMode === 'split' ? 'grid-cols-1 xl:grid-cols-2' :
+          <div className={`flex gap-6
+          }`}>
+          {/* <div className={`grid gap-6 ${
+            viewMode === 'split' ? 'grid-cols-1 xl:grid-cols-3' :
             viewMode === 'preview' ? 'grid-cols-1' :
             'grid-cols-1'
-          }`}>
+          }`}> */}
             {/* Form Editor */}
             {(viewMode === 'form' || viewMode === 'split') && (
-              <div className={`${viewMode === 'form' ? 'xl:col-span-2' : ''}`}>
+              <div className={`${viewMode === 'form' ? 'xl:w-full' : 'xl:w-[40%]'}`}>
                 <Card className="safari-card-fix">
                   <CardHeader className="pb-4 flex-shrink-0">
                     <CardTitle className="flex items-center">
@@ -2270,7 +2272,7 @@ function DynamicInvoiceEditorContent() {
 
             {/* PDF Preview */}
             {(viewMode === 'preview' || viewMode === 'split') && (
-              <div className={`${viewMode === 'preview' ? 'xl:col-span-2' : ''}`}>
+              <div className={`${viewMode === 'preview' ? 'xl:w-full' : 'xl:w-[60%]'}`}>
                 <Card className="safari-card-fix">
                   <CardHeader className="pb-4 flex-shrink-0">
                     <CardTitle className="flex items-center">
