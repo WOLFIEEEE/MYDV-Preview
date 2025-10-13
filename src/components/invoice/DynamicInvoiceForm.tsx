@@ -1839,7 +1839,7 @@ export default function DynamicInvoiceForm({
                 <Separator />
 
                 {/* Finance Deposit Information - Consolidated - Only show for Finance Company invoices */}
-                {invoiceData.invoiceTo === 'Finance Company' && (
+                  {false && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Finance Deposit Information</h3>
 
@@ -1899,6 +1899,61 @@ export default function DynamicInvoiceForm({
                     </p>
                   </div>
                 )}
+                
+
+                  {invoiceData.invoiceTo === 'Finance Company' && (
+                    <>
+                    <div className="w-full h-0.25 my-4 dark:bg-gray-200 bg-gray-500" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        label="Overall cost to Customer"
+                        value={(() => {
+                          // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
+                          // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
+                          const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
+                          const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
+                          const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+
+                          // Static customer add-ons (use post-discount values when available)
+                          const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+                          const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+
+                          // Dynamic customer add-ons (use post-discount values when available)
+                          const postDynamicCustomerAddons = (() => {
+                            let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
+                            if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                              dynamicAddons = Object.values(dynamicAddons);
+                            }
+                            return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                          })();
+
+                          const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
+                            postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
+
+                          // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
+                          const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) +
+                            (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
+                          const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
+                          return Math.max(0, outstandingDepositAmountFinance);
+                        })()}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Overall cost to Finance"
+                        value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      />
+                    </div>
+                    </>
+                  )}
+
                 </div> : <div className="space-y-4">
                     <h4 className="font-medium">Deposit Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3378,6 +3433,67 @@ export default function DynamicInvoiceForm({
                   )}
                 </div>
               </CardContent>
+
+              {/* Customer Available for Signature - input_116 */}
+              {/* <div className="space-y-2">
+                      <label className={`text-sm font-medium ${
+                        isDarkMode ? 'text-white' : 'text-gray-700'
+                      }`}>
+                        Customer Available for Signature
+                      </label>
+                      <select
+                        value={formData.customerAvailableSignature}
+                        onChange={(e) => handleInputChange('customerAvailableSignature', e.target.value)}
+                        className={`w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                          isDarkMode 
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500' 
+                            : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
+                        }`}
+                      >
+                        <option value="">-</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+              
+                    {isSignatureAvailable && (
+                      <div className="space-y-2">
+                        <label className={`text-sm font-medium ${
+                          isDarkMode ? 'text-white' : 'text-gray-700'
+                        }`}>
+                          Customer Signature
+                        </label>
+                        <SignatureCapture
+                          value={formData.customerSignature}
+                          onChange={(signature) => handleInputChange('customerSignature', signature)}
+                          width={400}
+                          height={200}
+                        />
+                        {errors.customerSignature && (
+                          <p className="text-xs text-red-500">{errors.customerSignature}</p>
+                        )}
+                      </div>
+                    )}
+              
+                    {isSignatureAvailable && (
+                      <div className="space-y-2">
+                        <label className={`text-sm font-medium ${
+                          isDarkMode ? 'text-white' : 'text-gray-700'
+                        }`}>
+                          Date of Signature
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.dateOfSignature}
+                          onChange={(e) => handleInputChange('dateOfSignature', e.target.value)}
+                          className={`w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                            isDarkMode 
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500' 
+                              : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
+                          }`}
+                        />
+                      </div>
+                    )} */}
             </Card>
           </TabsContent>
 

@@ -40,7 +40,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
         : 0;
     })();
-    
+
     // Finance addons - exclude for trade sales and only include for Finance Company invoices
     const financeAddon1Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
     const financeAddon2Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
@@ -94,6 +94,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     // For retail customer invoices - check multiple possible locations
     return invoiceData.payment.customerBalanceDue ?? invoiceData.payment.outstandingBalance ?? 0;
   };
+
 
   // Helper function to render HTML content with proper formatting for preview
   const renderHTMLContentForPreview = (htmlContent: string, fontSize: number = 12) => {
@@ -634,27 +635,27 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             })()}
           </>
         )}
-
         {/* Delivery Cost */}
-        {((invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) > 0) && (
+        {(invoiceData.delivery.type === 'delivery') && (
+        // {((invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) > 0) && (
           <div style={{ 
             display: 'flex', 
             paddingTop: '2px',
             paddingBottom: '2px',
             borderBottom: '1px solid #ccc'
           }}>
-            <div style={{ fontSize: '7px', flex: '3', textAlign: 'left' }}>
+            <div style={{ fontSize: '7px', flex: '3', textAlign: 'left', fontWeight: '600' }}>
               Delivery Cost
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-              {formatCurrency(invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0)}
+              {formatCurrency(invoiceData.delivery?.cost ?? invoiceData.pricing?.deliveryCost ??  0)}
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'center' }}>1</div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
-              {(invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) > 0 ? formatCurrency(invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) : '-'}
+              {(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) > 0 ? formatCurrency(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) : '-'}
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-              {formatCurrency(invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0)}
+              {formatCurrency(invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? 0)}
             </div>
           </div>
         )}
@@ -909,7 +910,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
             <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
-                DATE OF COLLECTION (ESTIMATED):
+                DATE OF {invoiceData.delivery.type === 'collection' ? 'COLLECTION' : 'DELIVERY'} (ESTIMATED):
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
                 {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
