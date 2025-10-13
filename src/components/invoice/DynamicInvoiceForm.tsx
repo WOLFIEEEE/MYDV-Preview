@@ -1195,7 +1195,7 @@ export default function DynamicInvoiceForm({
             </Card>
 
             {/* Company Information */}
-            <Card>
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-violet-100/80 border-blue-300/50 shadow-cyan-200/40'}`}>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Building className="h-5 w-5 mr-2" />
@@ -1342,6 +1342,45 @@ export default function DynamicInvoiceForm({
                     placeholder="e.g., 45,000"
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-indigo-100/80 border-purple-300/50 shadow-blue-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <PoundSterling className="h-5 w-5 mr-2" />
+                  Pricing Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Sale Price"
+                    value={invoiceData.pricing.salePrice}
+                    onChange={createChangeHandler('pricing.salePrice')}
+                    type="number"
+                    icon={PoundSterling}
+                    required
+                  />
+
+                  <FormInput
+                    label="Discount on Sale Price"
+                    value={invoiceData.pricing.discountOnSalePrice || 0}
+                    onChange={createChangeHandler('pricing.discountOnSalePrice')}
+                    type="number"
+                    icon={PoundSterling}
+                  />
+
+                  <FormInput
+                    label="Sale Price Post-Discount"
+                    value={invoiceData.pricing.salePricePostDiscount}
+                    onChange={createChangeHandler('pricing.salePricePostDiscount')}
+                    type="number"
+                    icon={PoundSterling}
+                    disabled
+                  />
+                </div>
+
               </CardContent>
             </Card>
           </TabsContent>
@@ -1537,34 +1576,6 @@ export default function DynamicInvoiceForm({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Sale Price"
-                    value={invoiceData.pricing.salePrice}
-                    onChange={createChangeHandler('pricing.salePrice')}
-                    type="number"
-                    icon={PoundSterling}
-                    required
-                  />
-
-                  <FormInput
-                    label="Discount on Sale Price"
-                    value={invoiceData.pricing.discountOnSalePrice || 0}
-                    onChange={createChangeHandler('pricing.discountOnSalePrice')}
-                    type="number"
-                    icon={PoundSterling}
-                  />
-
-                  <FormInput
-                    label="Sale Price Post-Discount"
-                    value={invoiceData.pricing.salePricePostDiscount}
-                    onChange={createChangeHandler('pricing.salePricePostDiscount')}
-                    type="number"
-                    icon={PoundSterling}
-                    disabled
-                  />
-
-                </div>
 
                 {/* Warranty Pricing - Only show for non-trade sales */}
                 {invoiceData.saleType !== 'Trade' && (
