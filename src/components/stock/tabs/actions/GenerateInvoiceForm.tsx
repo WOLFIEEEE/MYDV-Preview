@@ -741,12 +741,8 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         newErrors.saleType = 'Sale type is required';
       }
 
-      if (!formData.invoiceTo || formData.invoiceTo === 'select') {
-        newErrors.invoiceTo = 'Please select who the invoice is to';
-      }
-
       // Invoice To is only required for Retail sales
-      if (formData.saleType === 'Retail' && formData.invoiceTo === 'select') {
+      if (formData.saleType === 'Retail' && (!formData.invoiceTo || formData.invoiceTo === 'select')) {
         newErrors.invoiceTo = 'Invoice recipient is required for retail sales';
       }
 

@@ -667,13 +667,19 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
           
           // Map discount data from financeAddonsDiscountArray
           return baseAddons.map((addon, index) => {
-            const discountIndex = index + 1; // +1 because we sliced off the first addon
+            // FIXED: Correct index mapping - we sliced from index 1, so discount array index should be index + 1
+            const discountIndex = index + 1; // This is correct: dynamicAddons[0] uses financeAddonsDiscountArray[1]
             const discountData = (formData.financeAddonsDiscountArray || [])[discountIndex] || {};
+            
+            // Standardize field name: use postDiscountCost consistently
+            const calculatedPostDiscount = discountData.pricePostDiscount || discountData.postDiscountCost || 
+              Math.max(0, (parseFloat(toString(addon.cost) || '0') - (discountData.discountAmount || 0)));
+            
             return {
               name: toString(addon.name),
               cost: parseFloat(toString(addon.cost) || '0'),
               discount: discountData.discountAmount || 0,
-              postDiscountCost: discountData.pricePostDiscount || Math.max(0, (parseFloat(toString(addon.cost) || '0') - (discountData.discountAmount || 0)))
+              postDiscountCost: calculatedPostDiscount
             };
           });
         })(),
@@ -2013,6 +2019,41 @@ function DynamicInvoiceEditorContent() {
                     <Button onClick={handleBack} variant="outline">
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Go Back
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // No data state - prevents blank screen when loading completes but no data is available
+  if (!loading && !error && !invoiceData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <Header />
+        <div className="pt-16">
+          <main className="container mx-auto px-4 py-8">
+            <div className="flex items-center justify-center min-h-[400px]">
+              <Card className="w-full max-w-md">
+                <CardContent className="p-6 text-center">
+                  <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold mb-2">No Invoice Data Available</h2>
+                  <p className="text-slate-600 dark:text-slate-400 mb-4">
+                    Unable to load invoice data. This may be due to an expired session or network issue.
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={loadInvoiceData} variant="outline">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
+                    <Button onClick={() => router.push('/invoices')} variant="outline">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Go to Invoices
                     </Button>
                   </div>
                 </CardContent>

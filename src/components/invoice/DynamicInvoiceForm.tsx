@@ -564,6 +564,14 @@ export default function DynamicInvoiceForm({
   }, [invoiceData.payment?.breakdown, updateNestedData]);
   
     // Comprehensive calculation function for all pricing and discount fields
+  // Helper function to ensure consistent array format for dynamic addons
+  const ensureArrayFormat = (data: any): any[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object') return Object.values(data);
+    return [];
+  };
+
   const performCalculations = useCallback(() => {
     const calculations: Record<string, number> = {};
     let hasChanges = false;
@@ -851,28 +859,13 @@ export default function DynamicInvoiceForm({
     const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
     const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
     const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-    const financeDynamicAddonsCost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (() => {
-      let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
-      // Convert object format back to array if needed
-      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-        dynamicAddons = Object.values(dynamicAddons);
-      }
-      return Array.isArray(dynamicAddons)
-        ? dynamicAddons.reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) => 
-            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
-        : 0;
-    })();
-    const customerDynamicAddonsCost = (() => {
-      let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-      // Convert object format back to array if needed
-      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-        dynamicAddons = Object.values(dynamicAddons);
-      }
-      return Array.isArray(dynamicAddons)
-        ? dynamicAddons.reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) => 
-            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
-        : 0;
-    })();
+    // FIXED: Use helper function for consistent array handling
+    const financeDynamicAddonsCost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : 
+      ensureArrayFormat(invoiceData.addons?.finance?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) => 
+        sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0);
+    
+    const customerDynamicAddonsCost = ensureArrayFormat(invoiceData.addons?.customer?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) => 
+      sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0);
     
     const balanceSubtotal = salePricePostDiscount + warrantyPrice + enhancedWarrantyPrice + deliveryPrice + 
                            financeAddon1Cost + financeAddon2Cost + customerAddon1Cost + customerAddon2Cost +
@@ -972,8 +965,9 @@ export default function DynamicInvoiceForm({
     invoiceData.addons?.customer?.addon1?.discount,
     invoiceData.addons?.customer?.addon2?.cost,
     invoiceData.addons?.customer?.addon2?.discount,
-    invoiceData.addons?.finance?.dynamicAddons,
-    invoiceData.addons?.customer?.dynamicAddons,
+    // FIXED: Add proper dynamic addon dependencies
+    JSON.stringify(invoiceData.addons?.finance?.dynamicAddons || []),
+    JSON.stringify(invoiceData.addons?.customer?.dynamicAddons || []),
     // Current calculated values (to prevent infinite loops)
     invoiceData.pricing.salePricePostDiscount,
     invoiceData.pricing.warrantyPricePostDiscount,
@@ -1163,15 +1157,18 @@ export default function DynamicInvoiceForm({
                     disabled={true}
                   />
                   
-                  <FormSelect
-                    label="Invoice To"
-                    value={invoiceData.invoiceTo}
-                    onChange={() => {}} // Read-only - create new invoice to change
-                    options={['Customer', 'Finance Company']}
-                    disabled={true}
-                    icon={Building}
-                    required
-                  />
+                  {/* Only show Invoice To field for Retail sales */}
+                  {invoiceData.saleType === 'Retail' && (
+                    <FormSelect
+                      label="Invoice To"
+                      value={invoiceData.invoiceTo}
+                      onChange={() => {}} // Read-only - create new invoice to change
+                      options={['Customer', 'Finance Company']}
+                      disabled={true}
+                      icon={Building}
+                      required
+                    />
+                  )}
                 </div>
                 
                 <Separator />
