@@ -10,6 +10,9 @@ import {
   updateStockImages, 
   extractImageIdsFromStock,
   validateImageFiles,
+  replaceStockImage,
+  processAutoTraderImageUrl,
+  loadImageWithFallbacks,
   type ImageUploadResult,
   type BatchImageUploadResult,
   type StockImageUpdateResult
@@ -63,6 +66,7 @@ interface ImageEdits {
 interface CurrentImage {
   id: string;
   url: string;
+  originalUrl?: string; // Store original URL with {resize} placeholder for AutoTrader images
   name: string;
   size: string;
   order: number;
@@ -71,6 +75,8 @@ interface CurrentImage {
   originalImageId?: string; // For tracking original image IDs
   edits?: ImageEdits; // For newly uploaded images that can be edited
   edited?: boolean; // Track if image has been edited
+  isLocalCopy?: boolean; // Track if this is a local copy of an AutoTrader image
+  originalAutoTraderUrl?: string; // Store original AutoTrader URL when converted to local
 }
 
 interface ImagesTabProps {
@@ -94,86 +100,97 @@ async function processImageEdits(imageUrl: string, edits: ImageEdits): Promise<B
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const img = new Image();
     
-    img.onload = () => {
-      try {
-        // Calculate canvas size based on rotation
-        const angle = (edits.rotation * Math.PI) / 180;
-        const cos = Math.abs(Math.cos(angle));
-        const sin = Math.abs(Math.sin(angle));
-        
-        const originalWidth = img.width;
-        const originalHeight = img.height;
-        
-        // Calculate rotated dimensions
-        const rotatedWidth = originalWidth * cos + originalHeight * sin;
-        const rotatedHeight = originalWidth * sin + originalHeight * cos;
-        
-        // Apply scale
-        const scale = edits.scale / 100;
-        canvas.width = rotatedWidth * scale;
-        canvas.height = rotatedHeight * scale;
-        
-        if (!ctx) {
-          reject(new Error('Could not get canvas context'));
-          return;
-        }
-        
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Apply filters
-        ctx.filter = `brightness(${edits.brightness}%) contrast(${edits.contrast}%) saturate(${edits.saturation}%)`;
-        
-        // Move to center for rotation
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        
-        // Apply rotation
-        ctx.rotate(angle);
-        
-        // Apply scale
-        ctx.scale(scale, scale);
-        
-        // Calculate crop dimensions
-        const cropX = (edits.cropX / 100) * originalWidth;
-        const cropY = (edits.cropY / 100) * originalHeight;
-        const cropWidth = (edits.cropWidth / 100) * originalWidth;
-        const cropHeight = (edits.cropHeight / 100) * originalHeight;
-        
-        // Draw the image with cropping
-        ctx.drawImage(
-          img,
-          cropX, cropY, cropWidth, cropHeight, // Source crop
-          -cropWidth / 2, -cropHeight / 2, cropWidth, cropHeight // Destination
-        );
-        
-        // Convert canvas to blob
-        canvas.toBlob((blob) => {
-          if (blob) {
-            console.log('✅ Image processing complete:', {
-              originalSize: `${originalWidth}x${originalHeight}`,
-              processedSize: `${canvas.width}x${canvas.height}`,
-              edits
-            });
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to convert canvas to blob'));
+    console.log('🎨 Starting image processing:', {
+      url: imageUrl.substring(0, 100) + '...',
+      edits
+    });
+    
+    // Use the robust image loading utility
+    loadImageWithFallbacks(
+      imageUrl,
+      (img) => {
+        try {
+          console.log('🎨 Processing image edits:', {
+            dimensions: `${img.width}x${img.height}`,
+            edits
+          });
+          
+          // Calculate canvas size based on rotation
+          const angle = (edits.rotation * Math.PI) / 180;
+          const cos = Math.abs(Math.cos(angle));
+          const sin = Math.abs(Math.sin(angle));
+          
+          const originalWidth = img.width;
+          const originalHeight = img.height;
+          
+          // Calculate rotated dimensions
+          const rotatedWidth = originalWidth * cos + originalHeight * sin;
+          const rotatedHeight = originalWidth * sin + originalHeight * cos;
+          
+          // Apply scale
+          const scale = edits.scale / 100;
+          canvas.width = rotatedWidth * scale;
+          canvas.height = rotatedHeight * scale;
+          
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
           }
-        }, 'image/jpeg', 0.9);
-        
-      } catch (error) {
-        console.error('Error processing image:', error);
-        reject(error);
-      }
-    };
-    
-    img.onerror = () => {
-      reject(new Error('Failed to load image for processing'));
-    };
-    
-    img.crossOrigin = 'anonymous';
-    img.src = imageUrl;
+          
+          // Clear canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Apply filters
+          ctx.filter = `brightness(${edits.brightness}%) contrast(${edits.contrast}%) saturate(${edits.saturation}%)`;
+          
+          // Move to center for rotation
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          
+          // Apply rotation
+          ctx.rotate(angle);
+          
+          // Apply scale
+          ctx.scale(scale, scale);
+          
+          // Calculate crop dimensions
+          const cropX = (edits.cropX / 100) * originalWidth;
+          const cropY = (edits.cropY / 100) * originalHeight;
+          const cropWidth = (edits.cropWidth / 100) * originalWidth;
+          const cropHeight = (edits.cropHeight / 100) * originalHeight;
+          
+          // Draw the image with cropping
+          ctx.drawImage(
+            img,
+            cropX, cropY, cropWidth, cropHeight, // Source crop
+            -cropWidth / 2, -cropHeight / 2, cropWidth, cropHeight // Destination
+          );
+          
+          // Convert canvas to blob
+          canvas.toBlob((blob) => {
+            if (blob) {
+              console.log('✅ Image processing complete:', {
+                originalSize: `${originalWidth}x${originalHeight}`,
+                processedSize: `${canvas.width}x${canvas.height}`,
+                edits
+              });
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to convert canvas to blob'));
+            }
+          }, 'image/jpeg', 0.9);
+          
+        } catch (error) {
+          console.error('❌ Error processing image:', error);
+          reject(error);
+        }
+      },
+      (error) => {
+        console.error('❌ Failed to load image for processing:', error);
+        reject(new Error(`Failed to load image for processing: ${error}`));
+      },
+      true // forEditing = true to avoid CORS taint issues
+    );
   });
 }
 
@@ -232,17 +249,9 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
 
   const currentGridConfig = gridConfigs.find(config => config.size === gridSize) || gridConfigs[1];
 
-  // Helper function to process AutoTrader image URLs
-  const processImageUrl = (url: string): string => {
-    if (!url) return '';
-    
-    // Handle AutoTrader URLs with {resize} placeholder
-    if (url.includes('{resize}')) {
-      // Use the working AutoTrader format: w200h200 (as shown in your example)
-      return url.replace('{resize}', 'w200h200');
-    }
-    
-    return url;
+  // Helper function to process AutoTrader image URLs (using utility function)
+  const processImageUrl = (url: string, size: 'gallery' | 'overview' | 'thumbnail' | 'edit' | 'list' = 'overview'): string => {
+    return processAutoTraderImageUrl(url, size);
   };
 
   // Load current images from stock data
@@ -251,15 +260,30 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
       const imageList = stockData.media.images
         .filter((img: any) => img && img.href) // Filter out invalid images
         .map((img: any, index: number) => {
-          const processedUrl = processImageUrl(img.href);
+          // Use overview size for grid display, but store original URL for editing
+          const displayUrl = processImageUrl(img.href, 'overview');
           
           return {
             id: img.imageId || img.id || `current-${index}`,
-            url: processedUrl,
+            url: displayUrl,
+            originalUrl: img.href, // Store original URL with {resize} placeholder
             name: `Vehicle Image ${index + 1}`,
             size: '2.1 MB', // Mock size
             order: index,
-            isPrimary: index === 0
+            isPrimary: index === 0,
+            isNew: false,
+            edited: false,
+            edits: {
+              rotation: 0,
+              brightness: 100,
+              contrast: 100,
+              saturation: 100,
+              scale: 100,
+              cropX: 0,
+              cropY: 0,
+              cropWidth: 100,
+              cropHeight: 100
+            }
           };
         });
       setCurrentImages(imageList);
@@ -429,6 +453,7 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
   };
 
   const updateImageEdits = (imageId: string, edits: Partial<ImageEdits>) => {
+    // Update newly uploaded images
     setNewlyUploadedImages(prev => 
       prev.map(img => 
         img.id === imageId 
@@ -440,16 +465,15 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
           : img
       )
     );
-  };
-
-  const resetImageEdits = (imageId: string) => {
-    setNewlyUploadedImages(prev => 
+    
+    // Update current images (existing stock images)
+    setCurrentImages(prev => 
       prev.map(img => 
         img.id === imageId 
           ? { 
               ...img, 
-              edited: false,
-              edits: {
+              edited: true,
+              edits: img.edits ? { ...img.edits, ...edits } : {
                 rotation: 0,
                 brightness: 100,
                 contrast: 100,
@@ -458,8 +482,49 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
                 cropX: 0,
                 cropY: 0,
                 cropWidth: 100,
-                cropHeight: 100
+                cropHeight: 100,
+                ...edits
               }
+            }
+          : img
+      )
+    );
+  };
+
+  const resetImageEdits = (imageId: string) => {
+    const defaultEdits = {
+      rotation: 0,
+      brightness: 100,
+      contrast: 100,
+      saturation: 100,
+      scale: 100,
+      cropX: 0,
+      cropY: 0,
+      cropWidth: 100,
+      cropHeight: 100
+    };
+    
+    // Reset newly uploaded images
+    setNewlyUploadedImages(prev => 
+      prev.map(img => 
+        img.id === imageId 
+          ? { 
+              ...img, 
+              edited: false,
+              edits: defaultEdits
+            }
+          : img
+      )
+    );
+    
+    // Reset current images (existing stock images)
+    setCurrentImages(prev => 
+      prev.map(img => 
+        img.id === imageId 
+          ? { 
+              ...img, 
+              edited: false,
+              edits: defaultEdits
             }
           : img
       )
@@ -474,9 +539,116 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
     };
   };
 
-  const openImageEditor = (image: CurrentImage) => {
-    setImageToEdit(image);
-    setImageEditorOpen(true);
+  const openImageEditor = async (image: CurrentImage) => {
+    console.log('🎨 Opening image editor for:', {
+      imageId: image.id,
+      originalUrl: image.originalUrl,
+      isAutoTrader: image.originalUrl?.includes('autotrader'),
+      hasResizePlaceholder: image.originalUrl?.includes('{resize}')
+    });
+
+    // Check if this is an AutoTrader image that needs to be converted to local
+    const isAutoTraderImage = image.originalUrl?.includes('autotrader') || image.url.includes('autotrader');
+    
+    if (isAutoTraderImage && !image.url.startsWith('data:') && !image.url.startsWith('blob:')) {
+      console.log('🔄 Converting AutoTrader image to local copy for editing...');
+      
+      try {
+        // Show loading state
+        setUploadStatus('Converting image for editing...');
+        
+        // Convert AutoTrader image to local blob
+        const localImageData = await convertAutoTraderImageToLocal(image);
+        
+        if (localImageData) {
+          console.log('✅ AutoTrader image converted to local copy:', {
+            originalUrl: (image.originalUrl || image.url).substring(0, 100) + '...',
+            localUrl: localImageData.url.substring(0, 50) + '...',
+            blobSize: `${(localImageData.blob.size / 1024).toFixed(2)} KB`,
+            isBlobUrl: localImageData.url.startsWith('blob:')
+          });
+
+          // Create editing image with local data
+          const editingImage = {
+            ...image,
+            url: localImageData.url,
+            isLocalCopy: true,
+            originalAutoTraderUrl: image.originalUrl || image.url
+          };
+
+          setImageToEdit(editingImage);
+          setImageEditorOpen(true);
+          setUploadStatus('');
+        } else {
+          throw new Error('Failed to convert image');
+        }
+        
+      } catch (error) {
+        console.error('❌ Failed to convert AutoTrader image:', error);
+        setUploadErrors(['Failed to prepare image for editing. Please try again.']);
+        setUploadStatus('');
+        return;
+      }
+    } else {
+      // For non-AutoTrader images or already local images, open directly
+      const editingImage = {
+        ...image,
+        url: image.url
+      };
+      
+      setImageToEdit(editingImage);
+      setImageEditorOpen(true);
+    }
+  };
+
+  // Convert AutoTrader image to local blob to avoid CORS issues
+  const convertAutoTraderImageToLocal = async (image: CurrentImage): Promise<{url: string, blob: Blob} | null> => {
+    try {
+      // Determine the best URL to fetch - use highest quality for editing
+      let fetchUrl = image.url;
+      if (image.originalUrl && image.originalUrl.includes('{resize}')) {
+        fetchUrl = processAutoTraderImageUrl(image.originalUrl, 'edit'); // Use highest quality for editing (w1920h1080)
+      } else if (image.originalUrl) {
+        fetchUrl = image.originalUrl;
+      }
+
+      console.log('🔄 Converting image via server proxy for CORS-free editing:', {
+        originalUrl: fetchUrl.substring(0, 100) + '...',
+        isHighQuality: fetchUrl.includes('w1920h1080')
+      });
+
+      // Use server-side proxy to fetch the image without CORS restrictions
+      const response = await fetch('/api/proxy-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageUrl: fetchUrl }),
+      });
+
+      if (!response.ok) {
+        console.error('❌ Server proxy failed:', response.status);
+        return null;
+      }
+
+      // Get the proxied image as a blob
+      const blob = await response.blob();
+      
+      // Create a local URL from the blob
+      const localUrl = URL.createObjectURL(blob);
+      
+      console.log('✅ Image converted via server proxy:', {
+        blobSize: `${(blob.size / 1024).toFixed(2)} KB`,
+        blobType: blob.type,
+        isHighQuality: fetchUrl.includes('w1920h1080')
+      });
+
+      return { url: localUrl, blob };
+      
+    } catch (error) {
+      console.error('❌ Failed to convert image via server proxy:', error);
+      return null;
+    }
   };
 
   const handleImageEditorSave = (editedImageData: any) => {
@@ -485,10 +657,11 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
     // Create a new image object with the edited data
     const editedImage: CurrentImage = {
       ...imageToEdit,
+      id: Math.random().toString(36).substr(2, 9), // Generate new ID for edited image
       url: editedImageData.url,
       name: `${editedImageData.originalName}_edited`,
       edited: true,
-      isNew: true,
+      isNew: true, // ALWAYS treat edited images as new
       edits: {
         rotation: 0,
         brightness: 100,
@@ -502,7 +675,6 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
       }
     };
 
-    // Replace the original image with the edited version
     if (imageToEdit.isNew) {
       // If it's a newly uploaded image, replace it in newlyUploadedImages
       console.log('🔄 Replacing newly uploaded image with edited version:', imageToEdit.id);
@@ -510,11 +682,52 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
         prev.map(img => img.id === imageToEdit.id ? editedImage : img)
       );
     } else {
-      // If it's an existing image, mark the original as deleted and add the edited version
-      console.log('🔄 Marking existing image as deleted and adding edited version:', imageToEdit.id);
+      // If it's an existing image (including converted AutoTrader images), treat as NEW
+      console.log('🆕 Converting edited existing image to new image:', imageToEdit.id, '→', editedImage.id);
+      
+      // Remove the original image from currentImages (mark as deleted)
       setDeletedImages(prev => [...prev, imageToEdit.id]);
-      setNewlyUploadedImages(prev => [...prev, editedImage]);
+      
+      // Add the edited version as a new image with the same order position
+      const originalOrder = imageToEdit.order;
+      const editedImageWithOrder = {
+        ...editedImage,
+        order: originalOrder, // Maintain the same position
+        isPrimary: imageToEdit.isPrimary // Maintain primary status if it was primary
+      };
+      
+      setNewlyUploadedImages(prev => [...prev, editedImageWithOrder]);
+      
+      console.log('✅ Edited existing image will be uploaded as new image with fresh AutoTrader ID');
     }
+    
+    // Cleanup: Revoke the local copy URL if it was created for editing
+    if (imageToEdit.isLocalCopy && imageToEdit.url.startsWith('blob:')) {
+      URL.revokeObjectURL(imageToEdit.url);
+      console.log('🧹 Cleaned up local copy URL');
+    }
+    
+    // Show success message
+    setUploadStatus('🎨 Image edited successfully! Remember to save your changes to upload to AutoTrader.');
+    setTimeout(() => {
+      setUploadStatus('');
+    }, 4000);
+
+    // Close editor
+    setImageEditorOpen(false);
+    setImageToEdit(null);
+  };
+
+  const handleImageEditorCancel = () => {
+    // Cleanup: Revoke the local copy URL if it was created for editing
+    if (imageToEdit?.isLocalCopy && imageToEdit.url.startsWith('blob:')) {
+      URL.revokeObjectURL(imageToEdit.url);
+      console.log('🧹 Cleaned up local copy URL after cancel');
+    }
+    
+    // Close editor without saving
+    setImageEditorOpen(false);
+    setImageToEdit(null);
   };
 
   const handleSaveImages = async () => {
@@ -626,11 +839,15 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
         console.log('📸 Upload results:', uploadResults);
       }
       
+      // Note: Edited existing images are now treated as new images and handled above
+      // No need for separate replacement logic since they go through the normal upload flow
+      
       // 5. Build final image array in correct order
       const finalImageIds: string[] = [];
       const imageIdMap = new Map<number, string>();
       
       // Map existing images to their positions
+      // Note: Edited existing images are now treated as new images, so they won't be in existingImagesInOrder
       existingImagesInOrder.forEach(img => {
         const orderIndex = allImagesInOrder.findIndex(item => item.id === img.id);
         const imageId = img.originalImageId || img.id;
@@ -686,10 +903,10 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
         });
         
         setCurrentImages(updatedImages);
-      setNewlyUploadedImages([]);
-      setDeletedImages([]);
+        setNewlyUploadedImages([]);
+        setDeletedImages([]);
         setSaveSuccess(true);
-        setUploadStatus(`Successfully saved ${finalImageIds.length} images in correct order! Primary image: ${allImagesInOrder[0]?.name}`);
+        setUploadStatus(`✅ Successfully saved ${finalImageIds.length} images to AutoTrader! Primary image: ${allImagesInOrder[0]?.name}`);
         
         console.log('✅ Images saved successfully with correct ordering');
         
@@ -773,7 +990,8 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
   };
 
   const EditingPanel = ({ imageId }: { imageId: string }) => {
-    const image = newlyUploadedImages.find(img => img.id === imageId);
+    // Look for the image in both new and current images
+    const image = [...newlyUploadedImages, ...currentImages].find(img => img.id === imageId);
     if (!image || !image.edits) return null;
 
     return (
@@ -1082,16 +1300,54 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
 
                     <div className={`${currentGridConfig.itemHeight} bg-gray-100 rounded-lg overflow-hidden ${image.isNew ? 'ring-2 ring-green-500 ring-opacity-50' : ''}`}>
                       <img
-                        src={image.url}
+                        src={(() => {
+                          // Use appropriate image size based on grid size for better performance
+                          if (image.originalUrl) {
+                            const sizeForGrid = gridSize === 'small' ? 'thumbnail' : 
+                                               gridSize === 'extra-large' ? 'gallery' : 'overview';
+                            return processImageUrl(image.originalUrl, sizeForGrid);
+                          }
+                          return image.url;
+                        })()}
                         alt={image.name}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        style={image.isNew && image.edits ? getImageStyle(image.edits) : undefined}
+                        style={image.edits ? getImageStyle(image.edits) : undefined}
                         loading="lazy"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          console.warn('🖼️ Image failed to load:', {
+                            imageId: image.id,
+                            currentSrc: target.src,
+                            originalUrl: image.originalUrl
+                          });
+                          
+                          // Try fallbacks for AutoTrader images
+                          if (image.originalUrl && image.originalUrl.includes('{resize}')) {
+                            if (target.src.includes('w800h600')) {
+                              // Try medium size
+                              target.src = processImageUrl(image.originalUrl, 'overview');
+                              console.log('🔄 Trying medium size fallback');
+                            } else if (target.src.includes('w400h300')) {
+                              // Try small size
+                              target.src = processImageUrl(image.originalUrl, 'thumbnail');
+                              console.log('🔄 Trying thumbnail size fallback');
+                            } else if (target.src.includes('w200h150')) {
+                              // Last resort: try original URL as-is
+                              target.src = image.originalUrl;
+                              console.log('🔄 Trying original URL as fallback');
+                            } else {
+                              // All fallbacks failed, show placeholder
+                              console.error('❌ All image fallbacks failed for:', image.id);
+                              target.style.display = 'none';
+                              // You could add a placeholder image here
+                            }
+                          }
+                        }}
                       />
                     </div>
 
-                    {/* Edit Indicator for new images - positioned at bottom left to not overlap */}
-                    {image.isNew && image.edited && (
+                    {/* Edit Indicator for all edited images - positioned at bottom left to not overlap */}
+                    {image.edited && (
                       <div className="absolute bottom-2 left-2 z-10">
                         <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center shadow-lg">
                           <Edit3 className="w-3 h-3 mr-1 flex-shrink-0" />
@@ -1106,7 +1362,7 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         {(() => {
                           const buttons = [];
-                          const hasEditButton = image.isNew;
+                          const hasEditButton = true; // Enable edit for all images
                           const hasPrimaryButton = !image.isPrimary;
                           const buttonCount = 2 + (hasEditButton ? 1 : 0) + (hasPrimaryButton ? 1 : 0); // Eye + Delete + Edit? + Primary?
                           
@@ -1123,7 +1379,12 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
                                 variant="secondary"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setViewingImage(image);
+                                  // For viewing, use the highest quality image available
+                                  const viewingImageWithHighQuality = {
+                                    ...image,
+                                    url: image.originalUrl ? processImageUrl(image.originalUrl, 'gallery') : image.url
+                                  };
+                                  setViewingImage(viewingImageWithHighQuality);
                                 }}
                                 className={`${buttonSize} p-0 bg-white/90 hover:bg-white border-0 shadow-md`}
                                 title="View Image"
@@ -1308,7 +1569,7 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
                           loading="lazy"
                         />
                       </div>
-                      <div className="absolute inset-0 bg-red-500 bg-opacity-30 rounded-lg flex items-center justify-center">
+                      <div className="absolute inset-0 bg-opacity-30 rounded-lg flex items-center justify-center">
                         <Button
                           size="sm"
                           variant="secondary"
@@ -1409,10 +1670,7 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
       {imageEditorOpen && imageToEdit && (
         <ImageEditorDialog
           isOpen={imageEditorOpen}
-          onClose={() => {
-            setImageEditorOpen(false);
-            setImageToEdit(null);
-          }}
+          onClose={handleImageEditorCancel}
           imageUrl={imageToEdit.url}
           imageName={imageToEdit.name}
           onSave={handleImageEditorSave}
