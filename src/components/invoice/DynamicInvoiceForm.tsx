@@ -52,13 +52,11 @@ const FORM_SECTIONS = [
   { id: 'vehicle', label: 'Vehicle', icon: Car },
   { id: 'customer', label: 'Customer', icon: User },
   { id: 'finance', label: 'Finance Company', icon: Building },
-  { id: 'pricing', label: 'Pricing', icon: PoundSterling },
   { id: 'deposit', label: 'Deposit Details', icon: PoundSterling },
-  { id: 'warranty', label: 'Warranty & Add-ons', icon: Shield },
-  { id: 'delivery', label: 'Delivery', icon: Truck },
+  { id: 'products', label: 'Products', icon: Truck },
+  { id: 'checklist', label: 'Checklist', icon: CheckCircle },
   { id: 'payment', label: 'Payment', icon: CreditCard },
   { id: 'balance', label: 'Balance Summary', icon: PoundSterling },
-  { id: 'checklist', label: 'Checklist', icon: CheckCircle },
 ];
 
 
@@ -151,8 +149,8 @@ const FormInput = React.memo(({
         className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${disabled
             ? 'bg-slate-100 dark:bg-slate-800 opacity-60'
             : isDarkMode
-              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
-              : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+              : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
           }`}
       />
     </div>
@@ -192,10 +190,10 @@ const FormSelect = React.memo(({
       </Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger className={`px-4 py-3 border rounded-xl transition-all duration-200 ${disabled
-            ? 'bg-slate-100 dark:bg-slate-800 opacity-60'
-            : isDarkMode
-              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 hover:bg-slate-800/70 hover:border-slate-600'
-              : 'bg-white border-slate-200 text-slate-900 hover:bg-white hover:border-slate-300'
+          ? 'bg-slate-100 dark:bg-slate-800 opacity-60'
+          : isDarkMode
+            ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 hover:bg-slate-800/70 hover:border-slate-600'
+            : 'bg-white border-slate-200 text-slate-900 hover:bg-white hover:border-slate-300'
           }`}>
           <SelectValue placeholder={placeholder || `Select ${label}`} />
         </SelectTrigger>
@@ -1015,7 +1013,6 @@ export default function DynamicInvoiceForm({
   // Memoized change handlers to prevent re-renders
   const createChangeHandler = useCallback((path: string) => {
     return (value: string) => {
-      console.log({value})
       // Handle empty string as 0 for numeric fields
       if (value === '' || value === null || value === undefined) {
         updateNestedData(path, 0);
@@ -1048,22 +1045,22 @@ export default function DynamicInvoiceForm({
                     key={section.id}
                     value={section.id}
                     className={`flex items-center justify-center text-xs py-3 px-2 h-auto min-h-[4rem] w-full rounded-xl transition-all duration-200 ${isActive
-                        ? isDarkMode
-                          ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
-                          : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
-                        : isDarkMode
-                          ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
-                          : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
+                      ? isDarkMode
+                        ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
+                        : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
+                      : isDarkMode
+                        ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
+                        : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
                       }`}
                   >
                     <div className="flex flex-col items-center gap-1.5">
                       <div className={`p-2 rounded-lg ${isActive
-                          ? isDarkMode
-                            ? 'bg-indigo-500/20'
-                            : 'bg-indigo-200/50'
-                          : isDarkMode
-                            ? 'bg-slate-600/30'
-                            : 'bg-slate-200/50'
+                        ? isDarkMode
+                          ? 'bg-indigo-500/20'
+                          : 'bg-indigo-200/50'
+                        : isDarkMode
+                          ? 'bg-slate-600/30'
+                          : 'bg-slate-200/50'
                         }`}>
                         <IconComponent className="h-5 w-5 flex-shrink-0" />
                       </div>
@@ -1085,22 +1082,22 @@ export default function DynamicInvoiceForm({
                       key={section.id}
                       value={section.id}
                       className={`flex items-center justify-center text-xs py-3 px-2 h-auto min-h-[4rem] w-full rounded-xl transition-all duration-200 ${isActive
-                          ? isDarkMode
-                            ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
-                            : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
-                          : isDarkMode
-                            ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
-                            : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
+                        ? isDarkMode
+                          ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
+                          : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
+                        : isDarkMode
+                          ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
+                          : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
                         }`}
                     >
                       <div className="flex flex-col items-center gap-1.5">
                         <div className={`p-2 rounded-lg ${isActive
-                            ? isDarkMode
-                              ? 'bg-indigo-500/20'
-                              : 'bg-indigo-200/50'
-                            : isDarkMode
-                              ? 'bg-slate-600/30'
-                              : 'bg-slate-200/50'
+                          ? isDarkMode
+                            ? 'bg-indigo-500/20'
+                            : 'bg-indigo-200/50'
+                          : isDarkMode
+                            ? 'bg-slate-600/30'
+                            : 'bg-slate-200/50'
                           }`}>
                           <IconComponent className="h-5 w-5 flex-shrink-0" />
                         </div>
@@ -1508,8 +1505,8 @@ export default function DynamicInvoiceForm({
                     value={availableForFinalSignature}
                     onChange={(e) => setAvailableForFinalSignature(e.target.value)}
                     className={`w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${isDarkMode
-                        ? 'border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500'
-                        : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
+                      ? 'border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500'
+                      : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
                       }`}
                   >
                     <option value="">-</option>
@@ -1543,6 +1540,20 @@ export default function DynamicInvoiceForm({
                     icon={Calendar}
                   />
                 )}
+
+                {/* Additional Information - input_114 */}
+                <div className="space-y-2 mt-6">
+                  <label className="text-sm font-medium text-gray-700">
+                    Additional Information
+                  </label>
+                  <textarea
+                    value={invoiceData.additionalInformation || ''}
+                    onChange={(e) => updateNestedData('additionalInformation', e.target.value)}
+                    rows={10}
+                    placeholder="Enter any additional information about the sale..."
+                    className="w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 border-gray-200 bg-white text-gray-900 hover:border-gray-300"
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1586,8 +1597,8 @@ export default function DynamicInvoiceForm({
                             placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter street address' : 'Auto-populated from selection'}
                             rows={2}
                             className={`resize-none px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
-                                ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
-                                : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                                : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
                               }`}
                           />
                         </div>
@@ -1600,8 +1611,8 @@ export default function DynamicInvoiceForm({
                             placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter county, postcode, phone, email' : 'Auto-populated from selection'}
                             rows={3}
                             className={`resize-none px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
-                                ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
-                                : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                                : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
                               }`}
                           />
                           <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-muted-foreground'}`}>
@@ -1611,119 +1622,119 @@ export default function DynamicInvoiceForm({
                       </div>
                     )}
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Finance Company Balance Summary</h3>
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Finance Company Balance Summary</h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Subtotal - Hidden for Finance Company */}
-                      {false && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Subtotal - Hidden for Finance Company */}
+                        {false && (
+                          <FormInput
+                            label="Subtotal"
+                            value={(() => {
+                              const salePrice = invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0;
+                              const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
+                              const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
+                              const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+
+                              // Finance addons
+                              const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0;
+                              const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0;
+                              const financeDynamicAddonsCost = (() => {
+                                let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
+                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                  dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
+                                }
+                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                              })();
+
+                              // Customer addons
+                              const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+                              const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                              const customerDynamicAddonsCost = (() => {
+                                let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
+                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                  dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
+                                }
+                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                              })();
+
+                              // Settlement amount - only for finance company invoices with part exchange
+                              const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included
+                                ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0)
+                                : 0;
+
+                              return salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
+                                financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
+                                customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
+                            })()}
+                            onChange={() => { }}
+                            type="number"
+                            disabled={true}
+                            icon={PoundSterling}
+                          />
+                        )}
+
+                        {/* Balance to Customer - Show for Finance Company */}
                         <FormInput
-                          label="Subtotal"
+                          label="Balance to Customer"
                           value={(() => {
-                            const salePrice = invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0;
-                            const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-                            const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-                            const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                            // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
+                            // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
+                            const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
+                            const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
+                            const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
 
-                            // Finance addons
-                            const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0;
-                            const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0;
-                            const financeDynamicAddonsCost = (() => {
-                              let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
-                              if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
-                              }
-                              return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
-                            })();
+                            // Static customer add-ons (use post-discount values when available)
+                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
 
-                            // Customer addons
-                            const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                            const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-                            const customerDynamicAddonsCost = (() => {
+                            // Dynamic customer add-ons (use post-discount values when available)
+                            const postDynamicCustomerAddons = (() => {
                               let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
                               if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
+                                dynamicAddons = Object.values(dynamicAddons);
                               }
-                              return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
                             })();
 
-                            // Settlement amount - only for finance company invoices with part exchange
-                            const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included
-                              ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0)
-                              : 0;
+                            const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
+                              postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
 
-                            return salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
-                              financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
-                              customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
+                            // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
+                            const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) +
+                              (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
+                            const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
+                            return Math.max(0, outstandingDepositAmountFinance);
                           })()}
                           onChange={() => { }}
                           type="number"
                           disabled={true}
                           icon={PoundSterling}
                         />
-                      )}
 
-                      {/* Balance to Customer - Show for Finance Company */}
-                      <FormInput
-                        label="Balance to Customer"
-                        value={(() => {
-                          // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
-                          // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
-                          const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
-                          const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
-                          const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                        {/* Customer Balance Due - Hidden for Finance Company */}
+                        {false && (
+                          <FormInput
+                            label="Customer Balance Due"
+                            value={invoiceData.payment?.customerBalanceDue || 0}
+                            onChange={() => { }}
+                            type="number"
+                            disabled={true}
+                            icon={PoundSterling}
+                          />
+                        )}
 
-                          // Static customer add-ons (use post-discount values when available)
-                          const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                          const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-
-                          // Dynamic customer add-ons (use post-discount values when available)
-                          const postDynamicCustomerAddons = (() => {
-                            let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-                            if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                              dynamicAddons = Object.values(dynamicAddons);
-                            }
-                            return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
-                          })();
-
-                          const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
-                            postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
-
-                          // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
-                          const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) +
-                            (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
-                          const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
-                          return Math.max(0, outstandingDepositAmountFinance);
-                        })()}
-                        onChange={() => { }}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-
-                      {/* Customer Balance Due - Hidden for Finance Company */}
-                      {false && (
+                        {/* Balance to Finance - ONLY field shown for Finance Company */}
                         <FormInput
-                          label="Customer Balance Due"
-                          value={invoiceData.payment?.customerBalanceDue || 0}
+                          label="Balance to Finance"
+                          value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
                           onChange={() => { }}
                           type="number"
                           disabled={true}
                           icon={PoundSterling}
                         />
-                      )}
-
-                      {/* Balance to Finance - ONLY field shown for Finance Company */}
-                      <FormInput
-                        label="Balance to Finance"
-                        value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
-                        onChange={() => { }}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
+                      </div>
                     </div>
-                  </div>
                   </>
                 ) : (
                   <div className="text-center py-8 text-slate-500">
@@ -1735,151 +1746,6 @@ export default function DynamicInvoiceForm({
             </Card>
           </TabsContent>
 
-          {/* Pricing */}
-          <TabsContent value="pricing" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
-            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-emerald-100/80 border-teal-300/50 shadow-emerald-200/40'}`}>
-              <CardHeader>
-                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  <PoundSterling className="h-5 w-5 mr-2" />
-                  Pricing Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-
-                {/* Warranty Pricing - Only show for non-trade sales */}
-                {invoiceData.saleType !== 'Trade' && (
-                  <>
-                    <Separator />
-
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Warranty Pricing</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormInput
-                          label="Warranty Price"
-                          value={invoiceData.pricing.warrantyPrice || 0}
-                          onChange={createChangeHandler('pricing.warrantyPrice')}
-                          type="number"
-                          icon={PoundSterling}
-                        />
-
-                        <FormInput
-                          label="Discount on Warranty"
-                          value={invoiceData.pricing.discountOnWarranty || 0}
-                          onChange={createChangeHandler('pricing.discountOnWarranty')}
-                          type="number"
-                          icon={PoundSterling}
-                        />
-
-                        <FormInput
-                          label="Warranty Price Post-Discount"
-                          value={
-                            (invoiceData.pricing.warrantyPrice || 0) - (invoiceData.pricing.discountOnWarranty || 0)
-                          }
-                          onChange={createChangeHandler('pricing.warrantyPricePostDiscount')}
-                          type="number"
-                          icon={PoundSterling}
-                          disabled
-                        />
-                      </div>
-                    </div>
-
-                    <Separator />
-                  </>
-                )}
-
-                {/* Enhanced Warranty Section - Only show for non-trade sales */}
-                {invoiceData.saleType !== 'Trade' && (
-                  <>
-                    <Separator />
-
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Enhanced Warranty</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Enhanced Warranty</label>
-                          <select
-                            value={invoiceData.warranty.enhanced ? 'Yes' : 'No'}
-                            onChange={(e) => updateNestedData('warranty.enhanced', e.target.value === 'Yes')}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="No">No</option>
-                            <option value="Yes">Yes</option>
-                          </select>
-                        </div>
-
-                        {invoiceData.warranty.enhanced && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Enhanced Warranty Level</label>
-                            <select
-                              value={invoiceData.warranty.enhancedLevel || ''}
-                              onChange={(e) => updateNestedData('warranty.enhancedLevel', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">-</option>
-                              <option value="3 Months Enhanced">3 Months Enhanced</option>
-                              <option value="6 Months Enhanced">6 Months Enhanced</option>
-                              <option value="12 Months Enhanced">12 Months Enhanced</option>
-                              <option value="18 Months Enhanced">18 Months Enhanced</option>
-                              <option value="24 Months Enhanced">24 Months Enhanced</option>
-                              <option value="36 Months Enhanced">36 Months Enhanced</option>
-                              <option value="48 Months Enhanced">48 Months Enhanced</option>
-                            </select>
-                          </div>
-                        )}
-                      </div>
-
-                      {invoiceData.warranty.enhanced && (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormInput
-                              label="Enhanced Warranty Price"
-                              value={invoiceData.pricing.enhancedWarrantyPrice || 0}
-                              onChange={createChangeHandler('pricing.enhancedWarrantyPrice')}
-                              type="number"
-                              icon={PoundSterling}
-                            />
-
-                            <FormInput
-                              label="Discount on Enhanced Warranty"
-                              value={invoiceData.pricing.discountOnEnhancedWarranty || 0}
-                              onChange={createChangeHandler('pricing.discountOnEnhancedWarranty')}
-                              type="number"
-                              icon={PoundSterling}
-                            />
-
-                            <FormInput
-                              label="Enhanced Warranty Post-Discount"
-                              value={
-                                (invoiceData.pricing.enhancedWarrantyPrice || 0) - (invoiceData.pricing.discountOnEnhancedWarranty || 0)
-                              }
-                              onChange={createChangeHandler('pricing.enhancedWarrantyPricePostDiscount')}
-                              type="number"
-                              icon={PoundSterling}
-                              disabled
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Enhanced Warranty Details</label>
-                            <textarea
-                              value={invoiceData.warranty.enhancedDetails || ''}
-                              onChange={(e) => updateNestedData('warranty.enhancedDetails', e.target.value)}
-                              rows={3}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Enter enhanced warranty details..."
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <Separator />
-                  </>
-                )}
-
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Deposit */}
           <TabsContent value="deposit" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
@@ -2128,15 +1994,151 @@ export default function DynamicInvoiceForm({
                   </div>
                 </div>}
 
+                {/* Dealer Deposit Payment - Only show for Finance Company invoices */}
+                {invoiceData.invoiceTo === 'Finance Company' && invoiceData.saleType === 'Retail' && (
+                  <div className="space-y-4 mt-6 pt-6 border-t">
+                    <h4 className="font-medium">Dealer Deposit Payment</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        label="Dealer Deposit Paid (Customer)"
+                        value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
+                        onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                        placeholder="0.00"
+                      />
+
+                      <FormInput
+                        label="Payment Date (Customer)"
+                        value={invoiceData.pricing?.dealerDepositPaymentDateCustomer || ''}
+                        onChange={(value) => updateNestedData('pricing.dealerDepositPaymentDateCustomer', value)}
+                        type="date"
+                        icon={Calendar}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Amount of dealer deposit paid by customer (Vehicle Reservation Fees)
+                    </p>
+                  </div>
+                )}
+
+                {/* Finance Deposit Payment - Only show for Finance Company invoices */}
+                {invoiceData.invoiceTo === 'Finance Company' && (
+                  <div className="space-y-4 mt-6 pt-6 border-t">
+                    <h4 className="font-medium">Finance Deposit Payment</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        label="Deposit Amount Paid (Finance)"
+                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
+                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                        placeholder="0.00"
+                      />
+
+                      <FormInput
+                        label="Deposit Payment Date (Finance)"
+                        value={invoiceData.payment?.breakdown?.depositDate || ''}
+                        onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
+                        type="date"
+                        icon={Calendar}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Enter the amount and date when deposit was paid to the finance company
+                    </p>
+                  </div>
+                )}
+
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Warranty & Add-ons */}
-          <TabsContent value="warranty" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+          {/* Products */}
+          <TabsContent value="products" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Truck className="h-5 w-5 mr-2" />
+                  Delivery Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormSelect
+                    label="Delivery Type"
+                    value={invoiceData.delivery.type}
+                    onChange={(value) => updateNestedData('delivery.type', value)}
+                    options={['collection', 'delivery']}
+                    icon={Truck}
+                    required
+                  />
+
+                  <FormInput
+                    label="Delivery/Collection Date"
+                    value={invoiceData.delivery.date || ''}
+                    onChange={(value) => updateNestedData('delivery.date', value)}
+                    type="date"
+                    icon={Calendar}
+                  />
+                </div>
+
+                {/* Delivery Pricing Section - Only show for Delivery type */}
+                {invoiceData.delivery.type === 'delivery' && (
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Delivery Pricing</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormInput
+                        label="Delivery Cost"
+                        value={invoiceData.delivery.cost || 0}
+                        onChange={createChangeHandler('delivery.cost')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Discount on Delivery"
+                        value={invoiceData.delivery.discount || 0}
+                        onChange={createChangeHandler('delivery.discount')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Delivery Cost Post-Discount"
+                        value={Math.max(0, (invoiceData.delivery.cost || 0) - (invoiceData.delivery.discount || 0))}
+                        onChange={() => { }}
+                        type="number"
+                        icon={PoundSterling}
+                        disabled={true}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {invoiceData.delivery.type === 'delivery' && (
+                  <div className="space-y-2">
+                    <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>Delivery Address</Label>
+                    <Textarea
+                      value={invoiceData.delivery.address || ''}
+                      onChange={(e) => updateNestedData('delivery.address', e.target.value)}
+                      placeholder="Delivery address if different from customer address..."
+                      rows={3}
+                      className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
+                        ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                        : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                        }`}
+                    />
+                  </div>
+                )}
+
+
+              </CardContent>
+            </Card>
+
             {/* Warranty Section - Only show for non-trade sales */}
             {invoiceData.saleType !== 'Trade' && (
-              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-amber-100/80 border-orange-300/50 shadow-amber-200/40'}`}>
+              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
                 <CardHeader>
                   <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                     <Shield className="h-5 w-5 mr-2" />
@@ -2179,13 +2181,49 @@ export default function DynamicInvoiceForm({
                       rows={4}
                     />
                   </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Warranty Pricing</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormInput
+                        label="Warranty Price"
+                        value={invoiceData.pricing.warrantyPrice || 0}
+                        onChange={createChangeHandler('pricing.warrantyPrice')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Discount on Warranty"
+                        value={invoiceData.pricing.discountOnWarranty || 0}
+                        onChange={createChangeHandler('pricing.discountOnWarranty')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Warranty Price Post-Discount"
+                        value={
+                          (invoiceData.pricing.warrantyPrice || 0) - (invoiceData.pricing.discountOnWarranty || 0)
+                        }
+                        onChange={createChangeHandler('pricing.warrantyPricePostDiscount')}
+                        type="number"
+                        icon={PoundSterling}
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
                 </CardContent>
               </Card>
             )}
 
             {/* Enhanced Warranty Section - Only show for non-trade sales */}
             {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected' && (
-              <Card>
+              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Shield className="h-5 w-5 mr-2" />
@@ -2227,19 +2265,81 @@ export default function DynamicInvoiceForm({
                           placeholder="Enter details about the enhanced warranty coverage..."
                           rows={4}
                           className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
-                              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
-                              : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                            ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                              : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
                             }`}
                         />
                       </div>
                     </div>
                   )}
+
+
+                </CardContent>
+              </Card>
+            )}
+
+
+            {/* Enhanced Warranty Section - Only show for non-trade sales */}
+            {invoiceData.saleType !== 'Trade' && (
+              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
+                <CardContent className="space-y-4">
+                  <Separator />
+
+                  <div className="space-y-4">
+                    
+
+                    {invoiceData.warranty.enhanced && (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormInput
+                            label="Enhanced Warranty Price"
+                            value={invoiceData.pricing.enhancedWarrantyPrice || 0}
+                            onChange={createChangeHandler('pricing.enhancedWarrantyPrice')}
+                            type="number"
+                            icon={PoundSterling}
+                          />
+
+                          <FormInput
+                            label="Discount on Enhanced Warranty"
+                            value={invoiceData.pricing.discountOnEnhancedWarranty || 0}
+                            onChange={createChangeHandler('pricing.discountOnEnhancedWarranty')}
+                            type="number"
+                            icon={PoundSterling}
+                          />
+
+                          <FormInput
+                            label="Enhanced Warranty Post-Discount"
+                            value={
+                              (invoiceData.pricing.enhancedWarrantyPrice || 0) - (invoiceData.pricing.discountOnEnhancedWarranty || 0)
+                            }
+                            onChange={createChangeHandler('pricing.enhancedWarrantyPricePostDiscount')}
+                            type="number"
+                            icon={PoundSterling}
+                            disabled
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Enhanced Warranty Details</label>
+                          <textarea
+                            value={invoiceData.warranty.enhancedDetails || ''}
+                            onChange={(e) => updateNestedData('warranty.enhancedDetails', e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter enhanced warranty details..."
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Separator />
                 </CardContent>
               </Card>
             )}
 
             {/* Add-ons Section */}
-            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-pink-100/80 border-rose-300/50 shadow-pink-200/40'}`}>
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
               <CardHeader>
                 <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Plus className="h-5 w-5 mr-2" />
@@ -2683,143 +2783,6 @@ export default function DynamicInvoiceForm({
             </Card>
           </TabsContent>
 
-          {/* Delivery */}
-          <TabsContent value="delivery" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
-            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
-              <CardHeader>
-                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  <Truck className="h-5 w-5 mr-2" />
-                  Delivery Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormSelect
-                  label="Delivery Type"
-                  value={invoiceData.delivery.type}
-                  onChange={(value) => updateNestedData('delivery.type', value)}
-                  options={['collection', 'delivery']}
-                  icon={Truck}
-                  required
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Delivery/Collection Date"
-                    value={invoiceData.delivery.date || ''}
-                    onChange={(value) => updateNestedData('delivery.date', value)}
-                    type="date"
-                    icon={Calendar}
-                  />
-                </div>
-
-                {/* Delivery Pricing Section - Only show for Delivery type */}
-                {invoiceData.delivery.type === 'delivery' && (
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Delivery Pricing</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormInput
-                        label="Delivery Cost"
-                        value={invoiceData.delivery.cost || 0}
-                        onChange={createChangeHandler('delivery.cost')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
-
-                      <FormInput
-                        label="Discount on Delivery"
-                        value={invoiceData.delivery.discount || 0}
-                        onChange={createChangeHandler('delivery.discount')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
-
-                      <FormInput
-                        label="Delivery Cost Post-Discount"
-                        value={Math.max(0, (invoiceData.delivery.cost || 0) - (invoiceData.delivery.discount || 0))}
-                        onChange={() => { }}
-                        type="number"
-                        icon={PoundSterling}
-                        disabled={true}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {invoiceData.delivery.type === 'delivery' && (
-                  <div className="space-y-2">
-                    <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>Delivery Address</Label>
-                    <Textarea
-                      value={invoiceData.delivery.address || ''}
-                      onChange={(e) => updateNestedData('delivery.address', e.target.value)}
-                      placeholder="Delivery address if different from customer address..."
-                      rows={3}
-                      className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
-                          ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
-                          : 'bg-white border-slate-200 text-slate-900 placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
-                        }`}
-                    />
-                  </div>
-                )}
-
-                {/* Dealer Deposit Payment - Only show for Finance Company invoices */}
-                {invoiceData.invoiceTo === 'Finance Company' && invoiceData.saleType === 'Retail' && (
-                  <div className="space-y-4 mt-6 pt-6 border-t">
-                    <h4 className="font-medium">Dealer Deposit Payment</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormInput
-                        label="Dealer Deposit Paid (Customer)"
-                        value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
-                        onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                        placeholder="0.00"
-                      />
-
-                      <FormInput
-                        label="Payment Date (Customer)"
-                        value={invoiceData.pricing?.dealerDepositPaymentDateCustomer || ''}
-                        onChange={(value) => updateNestedData('pricing.dealerDepositPaymentDateCustomer', value)}
-                        type="date"
-                        icon={Calendar}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Amount of dealer deposit paid by customer (Vehicle Reservation Fees)
-                    </p>
-                  </div>
-                )}
-
-                {/* Finance Deposit Payment - Only show for Finance Company invoices */}
-                {invoiceData.invoiceTo === 'Finance Company' && (
-                  <div className="space-y-4 mt-6 pt-6 border-t">
-                    <h4 className="font-medium">Finance Deposit Payment</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormInput
-                        label="Deposit Amount Paid (Finance)"
-                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
-                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                        placeholder="0.00"
-                      />
-
-                      <FormInput
-                        label="Deposit Payment Date (Finance)"
-                        value={invoiceData.payment?.breakdown?.depositDate || ''}
-                        onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
-                        type="date"
-                        icon={Calendar}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Enter the amount and date when deposit was paid to the finance company
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Payment */}
           <TabsContent value="payment" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
             <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-lime-100/80 border-green-300/50 shadow-lime-200/40'}`}>
@@ -3226,7 +3189,7 @@ export default function DynamicInvoiceForm({
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Finance Company Balance Summary - Only shown when Invoice To = Finance Company */}
-                
+
 
                 {/* General Balance Summary */}
                 <div className="space-y-4">
@@ -3354,19 +3317,41 @@ export default function DynamicInvoiceForm({
                   </div>
                 </div>
 
-                {/* Additional Information - input_114 */}
-                <div className="space-y-2 mt-6">
-                  <label className="text-sm font-medium text-gray-700">
-                    Additional Information
-                  </label>
-                  <textarea
-                    value={invoiceData.additionalInformation || ''}
-                    onChange={(e) => updateNestedData('additionalInformation', e.target.value)}
-                    rows={10}
-                    placeholder="Enter any additional information about the sale..."
-                    className="w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 border-gray-200 bg-white text-gray-900 hover:border-gray-300"
-                  />
-                </div>
+
+                <h4 className="font-medium">Enhanced Warranty</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Enhanced Warranty</label>
+                        <select
+                          value={invoiceData.warranty.enhanced ? 'Yes' : 'No'}
+                          onChange={(e) => updateNestedData('warranty.enhanced', e.target.value === 'Yes')}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="No">No</option>
+                          <option value="Yes">Yes</option>
+                        </select>
+                      </div>
+
+                      {invoiceData.warranty.enhanced && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Enhanced Warranty Level</label>
+                          <select
+                            value={invoiceData.warranty.enhancedLevel || ''}
+                            onChange={(e) => updateNestedData('warranty.enhancedLevel', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">-</option>
+                            <option value="3 Months Enhanced">3 Months Enhanced</option>
+                            <option value="6 Months Enhanced">6 Months Enhanced</option>
+                            <option value="12 Months Enhanced">12 Months Enhanced</option>
+                            <option value="18 Months Enhanced">18 Months Enhanced</option>
+                            <option value="24 Months Enhanced">24 Months Enhanced</option>
+                            <option value="36 Months Enhanced">36 Months Enhanced</option>
+                            <option value="48 Months Enhanced">48 Months Enhanced</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
               </CardContent>
             </Card>
           </TabsContent>
