@@ -148,9 +148,18 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
   
+  // Performance optimization for smooth dragging/resizing
+  const animationFrameRef = useRef<number | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
+  const pendingUpdateRef = useRef<Partial<OverlayLayer> | null>(null);
+  
   // Template upload states
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const templateUploadRef = useRef<HTMLInputElement>(null);
+  
+  // Image loading states
+  const [isLoadingImage, setIsLoadingImage] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
   
   // Enhanced resize interaction states
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null);
@@ -168,16 +177,86 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     }
   }, [isOpen]);
 
-  // Load original image
+  // Load original image with fallback handling for AutoTrader images
+  // Load image via server proxy to ensure CORS-free canvas operations
+  const loadImageForEditing = async (url: string): Promise<HTMLImageElement> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // If already a blob URL, use it directly
+        if (url.startsWith('blob:') || url.startsWith('data:')) {
+          const img = new window.Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('Failed to load blob image'));
+          img.src = url;
+          return;
+        }
+
+        // For external URLs, use server proxy
+        console.log('🔄 Loading image via server proxy for CORS-free editing:', url.substring(0, 100) + '...');
+
+        const response = await fetch('/api/proxy-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ imageUrl: url }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server proxy failed: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const img = new window.Image();
+        img.onload = () => {
+          URL.revokeObjectURL(blobUrl); // Clean up
+          resolve(img);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(blobUrl); // Clean up
+          reject(new Error('Failed to load proxied image'));
+        };
+        img.src = blobUrl;
+
+      } catch (error) {
+        console.error('❌ Failed to load image for editing:', error);
+        reject(error);
+      }
+    });
+  };
+
   useEffect(() => {
     if (imageUrl && isOpen) {
-      const img = new window.Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        setOriginalImage(img);
-        setCanvasSize({ width: img.width, height: img.height });
-      };
-      img.src = imageUrl;
+      console.log('🖼️ Loading image in editor:', imageUrl.substring(0, 100) + '...');
+
+      setIsLoadingImage(true);
+      setImageLoadError(null);
+      setOriginalImage(null);
+
+      loadImageForEditing(imageUrl)
+        .then((img) => {
+          console.log('✅ Image loaded successfully in editor:', {
+            dimensions: `${img.width}x${img.height}`,
+            url: imageUrl.substring(0, 100) + '...',
+            isExternal: !imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')
+          });
+          setOriginalImage(img);
+          setCanvasSize({ width: img.width, height: img.height });
+          setIsLoadingImage(false);
+          setImageLoadError(null);
+        })
+        .catch((error) => {
+          console.error('❌ Failed to load image in editor:', error);
+          setIsLoadingImage(false);
+          setImageLoadError('Failed to load image for editing. The image may be from an external source.');
+          setOriginalImage(null);
+        });
+    } else {
+      setIsLoadingImage(false);
+      setImageLoadError(null);
+      setOriginalImage(null);
     }
   }, [imageUrl, isOpen]);
 
@@ -189,9 +268,11 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = canvasSize.width;
-    canvas.height = canvasSize.height;
+    // Set canvas size only if it changed to prevent unnecessary redraws
+    if (canvas.width !== canvasSize.width || canvas.height !== canvasSize.height) {
+      canvas.width = canvasSize.width;
+      canvas.height = canvasSize.height;
+    }
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -254,7 +335,7 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       
       // Draw resize handles with enhanced visibility - different sizes for corners vs edges
       const cornerHandleSize = 24; // Much larger corner handles for diagonal resize
-      const edgeHandleSize = 14; // Smaller edge handles
+      const edgeHandleSize = 18; // Larger edge handles for better visibility
       
       // Add a stronger shadow for better visibility
       ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
@@ -326,15 +407,21 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       edgeHandles.forEach(handle => {
         const isHovered = hoveredHandle === handle.type;
         
-        // Only draw edge handles when they're being hovered
-        if (isHovered) {
-          const currentSize = edgeHandleSize + 6;
-          const adjustedX = handle.x - 3;
-          const adjustedY = handle.y - 3;
+        // Always draw edge handles for better usability
+        {
+          const currentSize = isHovered ? edgeHandleSize + 6 : edgeHandleSize;
+          const adjustedX = isHovered ? handle.x - 3 : handle.x;
+          const adjustedY = isHovered ? handle.y - 3 : handle.y;
           
-          ctx.fillStyle = '#1d4ed8'; // Darker blue for hover
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 3;
+          if (isHovered) {
+            ctx.fillStyle = '#1d4ed8'; // Darker blue for hover
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+          } else {
+            ctx.fillStyle = '#3b82f6'; // Lighter blue for normal state
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+          }
           
           // Draw rounded rectangle
           const radius = 2;
@@ -432,8 +519,44 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     );
     setOverlayLayers(newLayers);
     addHistory(newLayers);
-  }, [selectedLayer, overlayLayers, addHistory]);
-
+    }, [selectedLayer, overlayLayers, addHistory]);
+  
+  // Throttled update function for smooth dragging/resizing
+  const updateSelectedLayerThrottled = useCallback((updates: Partial<OverlayLayer>) => {
+    if (!selectedLayer) return;
+    
+    // Store the pending update
+    pendingUpdateRef.current = { ...pendingUpdateRef.current, ...updates };
+    
+    // Cancel any pending animation frame
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
+    // Schedule update on next animation frame for smooth 60fps updates
+    animationFrameRef.current = requestAnimationFrame(() => {
+      const now = performance.now();
+      
+      // Throttle to ~60fps (16ms) for smooth performance
+      if (now - lastUpdateTimeRef.current >= 16) {
+        if (pendingUpdateRef.current) {
+          updateSelectedLayer(pendingUpdateRef.current);
+          pendingUpdateRef.current = null;
+          lastUpdateTimeRef.current = now;
+        }
+      } else {
+        // Re-schedule if we're updating too frequently
+        animationFrameRef.current = requestAnimationFrame(() => {
+          if (pendingUpdateRef.current) {
+            updateSelectedLayer(pendingUpdateRef.current);
+            pendingUpdateRef.current = null;
+            lastUpdateTimeRef.current = performance.now();
+          }
+        });
+      }
+    });
+  }, [selectedLayer, updateSelectedLayer]);
+  
   const deleteLayer = useCallback((layerId: string) => {
     const newLayers = overlayLayers.filter(layer => layer.id !== layerId);
     setOverlayLayers(newLayers);
@@ -461,46 +584,332 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   }, [overlayLayers, addHistory]);
 
   const exportEditedImage = useCallback((format: 'png' | 'jpeg' | 'webp' = 'png', quality: number = 1) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!originalImage) return;
 
     const mimeType = `image/${format}`;
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const editedImageData: EditedImageData = {
-          blob,
-          url: URL.createObjectURL(blob),
-          overlayLayers: overlayLayers,
-          originalName: imageName,
-          format,
-          quality
-        };
-        onSave(editedImageData);
-        onClose();
-      }
-    }, mimeType, quality);
-  }, [overlayLayers, imageName, onSave, onClose]);
+    
+    console.log('📤 Exporting edited image:', {
+      format,
+      quality,
+      overlayCount: overlayLayers.length,
+      canvasSize: `${canvasSize.width}x${canvasSize.height}`
+    });
+    
+    // Create a clean export canvas without resize handles or selection borders
+    const exportCanvas = document.createElement('canvas');
+    const exportCtx = exportCanvas.getContext('2d');
+    
+    if (!exportCtx) {
+      console.error('❌ Could not get export canvas context');
+      setImageLoadError('Failed to export edited image. Please try again.');
+      return;
+    }
+
+    // Set canvas size
+    exportCanvas.width = canvasSize.width;
+    exportCanvas.height = canvasSize.height;
+
+    // Clear canvas
+    exportCtx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    // Draw original image
+    exportCtx.drawImage(originalImage, 0, 0, canvasSize.width, canvasSize.height);
+
+    // Draw overlay layers in order of z-index (without selection borders or handles)
+    const sortedLayers = [...overlayLayers]
+      .filter(layer => layer.visible)
+      .sort((a, b) => a.zIndex - b.zIndex);
+
+    let loadedCount = 0;
+    const totalLayers = sortedLayers.length;
+
+    if (totalLayers === 0) {
+      // No overlays, export immediately
+      exportCanvas.toBlob((blob) => {
+        if (blob) {
+          console.log('✅ Image exported successfully:', {
+            size: `${(blob.size / 1024).toFixed(2)} KB`,
+            type: blob.type
+          });
+          
+          const editedImageData: EditedImageData = {
+            blob,
+            url: URL.createObjectURL(blob),
+            overlayLayers: overlayLayers,
+            originalName: imageName,
+            format,
+            quality
+          };
+          onSave(editedImageData);
+          onClose();
+        } else {
+          console.error('❌ Failed to create blob from canvas');
+          setImageLoadError('Failed to export edited image. Please try again.');
+        }
+      }, mimeType, quality);
+      return;
+    }
+
+    // Load and draw each overlay layer
+    sortedLayers.forEach(layer => {
+      const templateImg = new window.Image();
+      templateImg.crossOrigin = 'anonymous';
+      templateImg.onload = () => {
+        exportCtx.save();
+        
+        // Set opacity
+        exportCtx.globalAlpha = layer.opacity;
+        
+        // Translate to center point for rotation
+        const centerX = layer.x + layer.width / 2;
+        const centerY = layer.y + layer.height / 2;
+        exportCtx.translate(centerX, centerY);
+        
+        // Rotate
+        exportCtx.rotate((layer.rotation * Math.PI) / 180);
+        
+        // Draw template image
+        exportCtx.drawImage(
+          templateImg,
+          -layer.width / 2,
+          -layer.height / 2,
+          layer.width,
+          layer.height
+        );
+        
+        exportCtx.restore();
+        
+        loadedCount++;
+        
+        // Export when all layers are loaded
+        if (loadedCount === totalLayers) {
+          exportCanvas.toBlob((blob) => {
+            if (blob) {
+              console.log('✅ Image exported successfully:', {
+                size: `${(blob.size / 1024).toFixed(2)} KB`,
+                type: blob.type,
+                layersIncluded: totalLayers
+              });
+              
+              const editedImageData: EditedImageData = {
+                blob,
+                url: URL.createObjectURL(blob),
+                overlayLayers: overlayLayers,
+                originalName: imageName,
+                format,
+                quality
+              };
+              onSave(editedImageData);
+              onClose();
+            } else {
+              console.error('❌ Failed to create blob from canvas');
+              setImageLoadError('Failed to export edited image. Please try again.');
+            }
+          }, mimeType, quality);
+        }
+      };
+      
+      templateImg.onerror = () => {
+        console.error('❌ Failed to load template image for export:', layer.templateUrl);
+        loadedCount++;
+        
+        // Continue export even if some layers fail
+        if (loadedCount === totalLayers) {
+          exportCanvas.toBlob((blob) => {
+            if (blob) {
+              console.log('✅ Image exported successfully (some layers failed):', {
+                size: `${(blob.size / 1024).toFixed(2)} KB`,
+                type: blob.type
+              });
+              
+              const editedImageData: EditedImageData = {
+                blob,
+                url: URL.createObjectURL(blob),
+                overlayLayers: overlayLayers,
+                originalName: imageName,
+                format,
+                quality
+              };
+              onSave(editedImageData);
+              onClose();
+            } else {
+              console.error('❌ Failed to create blob from canvas');
+              setImageLoadError('Failed to export edited image. Please try again.');
+            }
+          }, mimeType, quality);
+        }
+      };
+      
+      templateImg.src = layer.templateUrl;
+    });
+  }, [originalImage, overlayLayers, canvasSize, imageName, onSave, onClose]);
 
   const addTemplateOverlay = (template: TemplateImage) => {
-    const newLayer: OverlayLayer = {
-      id: `layer_${Date.now()}`,
-      templateId: template.id,
-      templateUrl: template.url,
-      name: template.name,
-      x: canvasSize.width * 0.1, // Start at 10% from left
-      y: canvasSize.height * 0.1, // Start at 10% from top
-      width: canvasSize.width * 0.3, // 30% of canvas width
-      height: canvasSize.height * 0.3, // 30% of canvas height
-      rotation: 0,
-      opacity: 1,
-      visible: true,
-      zIndex: overlayLayers.length
+    // Load the template image to get its original dimensions
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      console.log('📐 Template image loaded:', {
+        name: template.name,
+        originalSize: `${img.width}x${img.height}`,
+        aspectRatio: (img.width / img.height).toFixed(2)
+      });
+
+      // Calculate optimal size while maintaining aspect ratio
+      const originalAspectRatio = img.width / img.height;
+      
+      // Set a more generous size (40% of canvas width or height, whichever is smaller)
+      // Ensure overlays are visible and usable
+      const maxSize = Math.min(canvasSize.width, canvasSize.height) * 0.40;
+      
+      // Also set a minimum size to ensure overlays are never too small
+      const minSize = 150; // Minimum 150px for usability
+      
+      let overlayWidth, overlayHeight;
+      
+      // If the image is wider than it is tall
+      if (originalAspectRatio > 1) {
+        // Start with maxSize but ensure it's at least minSize
+        overlayWidth = Math.max(Math.min(maxSize, img.width), minSize);
+        overlayHeight = overlayWidth / originalAspectRatio;
+        
+        // If height becomes too small, adjust based on minimum height
+        if (overlayHeight < minSize / 2) {
+          overlayHeight = minSize / 2;
+          overlayWidth = overlayHeight * originalAspectRatio;
+        }
+      } else {
+        // If the image is taller than it is wide or square
+        overlayHeight = Math.max(Math.min(maxSize, img.height), minSize);
+        overlayWidth = overlayHeight * originalAspectRatio;
+        
+        // If width becomes too small, adjust based on minimum width
+        if (overlayWidth < minSize / 2) {
+          overlayWidth = minSize / 2;
+          overlayHeight = overlayWidth / originalAspectRatio;
+        }
+      }
+
+      // Center the overlay on the canvas
+      const x = (canvasSize.width - overlayWidth) / 2;
+      const y = (canvasSize.height - overlayHeight) / 2;
+
+      const newLayer: OverlayLayer = {
+        id: `layer_${Date.now()}`,
+        templateId: template.id,
+        templateUrl: template.url,
+        name: template.name,
+        x: x,
+        y: y,
+        width: overlayWidth,
+        height: overlayHeight,
+        rotation: 0,
+        opacity: 1,
+        visible: true,
+        zIndex: overlayLayers.length
+      };
+
+      console.log('✅ Overlay added with preserved aspect ratio:', {
+        name: template.name,
+        originalSize: `${img.width}x${img.height}`,
+        overlaySize: `${overlayWidth.toFixed(0)}x${overlayHeight.toFixed(0)}`,
+        aspectRatioPreserved: Math.abs(originalAspectRatio - (overlayWidth / overlayHeight)) < 0.01,
+        position: `${x.toFixed(0)}, ${y.toFixed(0)}`,
+        maxSize: maxSize.toFixed(0),
+        minSize: minSize,
+        canvasSize: `${canvasSize.width}x${canvasSize.height}`
+      });
+
+      const newLayers = [...overlayLayers, newLayer];
+      setOverlayLayers(newLayers);
+      setSelectedLayer(newLayer.id);
+      addHistory(newLayers);
     };
 
-    const newLayers = [...overlayLayers, newLayer];
-    setOverlayLayers(newLayers);
-    setSelectedLayer(newLayer.id);
-    addHistory(newLayers);
+    img.onerror = () => {
+      console.error('❌ Failed to load template image:', template.url);
+      
+      // Fallback to original behavior if image fails to load
+      const newLayer: OverlayLayer = {
+        id: `layer_${Date.now()}`,
+        templateId: template.id,
+        templateUrl: template.url,
+        name: template.name,
+        x: canvasSize.width * 0.1,
+        y: canvasSize.height * 0.1,
+        width: canvasSize.width * 0.3,
+        height: canvasSize.height * 0.3,
+        rotation: 0,
+        opacity: 1,
+        visible: true,
+        zIndex: overlayLayers.length
+      };
+
+      const newLayers = [...overlayLayers, newLayer];
+      setOverlayLayers(newLayers);
+      setSelectedLayer(newLayer.id);
+      addHistory(newLayers);
+    };
+
+    img.src = template.url;
+  };
+
+  // Add template overlay at original size (1:1 scale)
+  const addTemplateOverlayOriginalSize = (template: TemplateImage) => {
+    // Load the template image to get its original dimensions
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      console.log('📐 Template image loaded at original size:', {
+        name: template.name,
+        originalSize: `${img.width}x${img.height}`,
+        aspectRatio: (img.width / img.height).toFixed(2)
+      });
+
+      // Use original dimensions (1:1 scale)
+      const overlayWidth = img.width;
+      const overlayHeight = img.height;
+
+      // Center the overlay on the canvas
+      const x = (canvasSize.width - overlayWidth) / 2;
+      const y = (canvasSize.height - overlayHeight) / 2;
+
+      const newLayer: OverlayLayer = {
+        id: `layer_${Date.now()}`,
+        templateId: template.id,
+        templateUrl: template.url,
+        name: `${template.name} (Original Size)`,
+        x: x,
+        y: y,
+        width: overlayWidth,
+        height: overlayHeight,
+        rotation: 0,
+        opacity: 1,
+        visible: true,
+        zIndex: overlayLayers.length
+      };
+
+      console.log('✅ Overlay added at original size:', {
+        name: template.name,
+        originalSize: `${img.width}x${img.height}`,
+        overlaySize: `${overlayWidth}x${overlayHeight}`,
+        scale: '1:1',
+        position: `${x.toFixed(0)}, ${y.toFixed(0)}`
+      });
+
+      const newLayers = [...overlayLayers, newLayer];
+      setOverlayLayers(newLayers);
+      setSelectedLayer(newLayer.id);
+      addHistory(newLayers);
+    };
+
+    img.onerror = () => {
+      console.error('❌ Failed to load template image for original size:', template.url);
+    };
+
+    img.src = template.url;
   };
 
   // Template upload functionality
@@ -658,8 +1067,8 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   };
 
   const getResizeHandle = (x: number, y: number, layer: OverlayLayer): string | null => {
-    const cornerHitArea = 36; // Much larger hit area for diagonal corners
-    const edgeHitArea = 20; // Smaller hit area for edges
+    const cornerHitArea = 48; // Even larger hit area for diagonal corners
+    const edgeHitArea = 32; // Larger hit area for edges
     
     // Check corner handles first (diagonal resize) - prioritize these with larger hit areas
     const corners = [
@@ -821,8 +1230,8 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       // Set resize preview for visual feedback
       setResizePreview({ x: newX, y: newY, width: newWidth, height: newHeight });
       
-      // Update the layer in real-time
-      updateSelectedLayer({ x: newX, y: newY, width: newWidth, height: newHeight });
+        // Update the layer with throttling for smooth performance
+        updateSelectedLayerThrottled({ x: newX, y: newY, width: newWidth, height: newHeight });
       
     } else if (isDragging && selectedLayer) {
       // Handle dragging
@@ -831,7 +1240,7 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
         const newX = Math.max(0, Math.min(canvasSize.width - selectedLayerData.width, coords.x - dragOffset.x));
         const newY = Math.max(0, Math.min(canvasSize.height - selectedLayerData.height, coords.y - dragOffset.y));
         
-        updateSelectedLayer({ x: newX, y: newY });
+          updateSelectedLayerThrottled({ x: newX, y: newY });
       }
     } else {
       // Update cursor and hover states based on what's under the mouse
@@ -839,25 +1248,37 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       if (layer && selectedLayer === layer.id) {
         const handle = getResizeHandle(coords.x, coords.y, layer);
         if (handle) {
-          canvas.style.cursor = getResizeCursor(handle);
+          const newCursor = getResizeCursor(handle);
+          if (canvas.style.cursor !== newCursor) {
+            canvas.style.cursor = newCursor;
+          }
           // Update hovered handle for visual feedback
           if (hoveredHandle !== handle) {
             setHoveredHandle(handle);
           }
         } else {
-          canvas.style.cursor = 'grab';
+          // Over the selected layer but not on a handle - show grab cursor
+          if (canvas.style.cursor !== 'grab') {
+            canvas.style.cursor = 'grab';
+          }
           // Clear hovered handle when not over a handle
           if (hoveredHandle) {
             setHoveredHandle(null);
           }
         }
       } else if (layer) {
-        canvas.style.cursor = 'grab';
+        // Over a different layer - show grab cursor
+        if (canvas.style.cursor !== 'grab') {
+          canvas.style.cursor = 'grab';
+        }
         if (hoveredHandle) {
           setHoveredHandle(null);
         }
       } else {
-        canvas.style.cursor = 'default';
+        // Not over any layer - show default cursor
+        if (canvas.style.cursor !== 'default') {
+          canvas.style.cursor = 'default';
+        }
         if (hoveredHandle) {
           setHoveredHandle(null);
         }
@@ -866,6 +1287,18 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   };
 
   const handleCanvasMouseUp = () => {
+    // Ensure any pending updates are applied immediately
+    if (pendingUpdateRef.current) {
+      updateSelectedLayer(pendingUpdateRef.current);
+      pendingUpdateRef.current = null;
+    }
+    
+    // Cancel any pending animation frames
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
     if (isDragging) {
       setIsDragging(false);
       setDragOffset({ x: 0, y: 0 });
@@ -1015,6 +1448,15 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
   }, [selectedLayer, overlayLayers, canvasSize, isOpen, undo, redo, exportEditedImage, onClose, deleteLayer, duplicateLayer, updateSelectedLayer]);
+
+  // Cleanup animation frames on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   // Add double-click to fit layer to content
   const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1446,14 +1888,64 @@ export const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
                           </div>
                         </div>
                       )}
-                      {/* Canvas Loading Overlay */}
-                      {!originalImage && (
+                      {/* Canvas Loading/Error Overlay */}
+                      {(isLoadingImage || imageLoadError || !originalImage) && (
                         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
-                          <div className="text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
-                            <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                              Loading image...
-                            </p>
+                          <div className="text-center p-4">
+                            {isLoadingImage ? (
+                              <>
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
+                                <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
+                                  Loading image...
+                                </p>
+                                <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  Trying different sizes if needed
+                                </p>
+                              </>
+                            ) : imageLoadError ? (
+                              <>
+                                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                                  <ImageIcon className="w-6 h-6 text-red-500" />
+                                </div>
+                                <p className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                                  Failed to load image
+                                </p>
+                                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} max-w-xs`}>
+                                  {imageLoadError}
+                                </p>
+                                <Button
+                                  onClick={() => {
+                                    setImageLoadError(null);
+                                    setIsLoadingImage(true);
+                                    // Trigger reload by updating the effect dependency
+                                    const img = new window.Image();
+                                    img.crossOrigin = 'anonymous';
+                                    img.onload = () => {
+                                      setOriginalImage(img);
+                                      setCanvasSize({ width: img.width, height: img.height });
+                                      setIsLoadingImage(false);
+                                    };
+                                    img.onerror = () => {
+                                      setIsLoadingImage(false);
+                                      setImageLoadError('Image still cannot be loaded');
+                                    };
+                                    img.src = imageUrl;
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-3"
+                                >
+                                  Try Again
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
+                                <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
+                                  Preparing image...
+                                </p>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}

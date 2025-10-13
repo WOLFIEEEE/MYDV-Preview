@@ -2535,7 +2535,7 @@ function MyStockContent() {
                                     {item.media?.images && item.media.images.length > 0 ? (
                                       <div className="relative w-12 h-8 rounded-md overflow-hidden shadow-sm ring-1 ring-white/20 hover:ring-blue-400/50 transition-all duration-300 hover:scale-105">
                                         <Image 
-                                          src={item.media.images[0].href} 
+                                          src={item.media.images[0].href?.replace('{resize}', 'w200h150') || item.media.images[0].href} 
                                           alt={`${getVehicleProperty(item, 'make')} ${getVehicleProperty(item, 'model')}`}
                                           fill
                                           className="object-cover"
