@@ -37,6 +37,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { PREDEFINED_FINANCE_COMPANIES } from '@/lib/financeCompanies';
 import Image from 'next/image';
 import SignatureCapture from "../shared/SignatureCapture";
+import AddressFormSection from "@/components/ui/AddressFormSection";
 
 interface DynamicInvoiceFormProps {
   invoiceData: ComprehensiveInvoiceData;
@@ -347,7 +348,6 @@ export default function DynamicInvoiceForm({
 
   // Optimized helper function to update nested data (prevents unnecessary re-renders)
   const updateNestedData = useCallback((path: string, value: string | number | boolean | object | null) => {
-    console.log(value)
     // Check if the value has actually changed to prevent unnecessary updates
     const keys = path.split('.');
     let current: any = invoiceData;
@@ -1015,7 +1015,9 @@ export default function DynamicInvoiceForm({
 
   // Memoized change handlers to prevent re-renders
   const createChangeHandler = useCallback((path: string) => {
+    console.log('path', path)
     return (value: string) => {
+      console.log({value})
       // Handle empty string as 0 for numeric fields
       if (value === '' || value === null || value === undefined) {
         updateNestedData(path, 0);
@@ -1405,53 +1407,10 @@ export default function DynamicInvoiceForm({
 
                 <Separator />
 
-                <div className="space-y-4">
-                  <h4 className="font-medium flex items-center">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Address Information
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormInput
-                      label="Address Line 1"
-                      value={invoiceData.customer.address.firstLine}
-                      onChange={(value) => updateNestedData('customer.address.firstLine', value)}
-                      className="md:col-span-2"
-                    />
-
-                    <FormInput
-                      label="Address Line 2"
-                      value={invoiceData.customer.address.secondLine || ''}
-                      onChange={(value) => updateNestedData('customer.address.secondLine', value)}
-                      className="md:col-span-2"
-                    />
-
-                    <FormInput
-                      label="City"
-                      value={invoiceData.customer.address.city || ''}
-                      onChange={(value) => updateNestedData('customer.address.city', value)}
-                    />
-
-                    <FormInput
-                      label="County"
-                      value={invoiceData.customer.address.county || ''}
-                      onChange={(value) => updateNestedData('customer.address.county', value)}
-                    />
-
-                    <FormInput
-                      label="Post Code"
-                      value={invoiceData.customer.address.postCode}
-                      onChange={(value) => updateNestedData('customer.address.postCode', value)}
-                      required
-                    />
-
-                    <FormInput
-                      label="Country"
-                      value={invoiceData.customer.address.country}
-                      onChange={(value) => updateNestedData('customer.address.country', value)}
-                    />
-                  </div>
-                </div>
+                <AddressFormSection
+                  address={invoiceData.customer.address}
+                  onAddressChange={(field: string, value: string) => updateNestedData(`customer.address.${field}`, value)}
+                />
 
                 <Separator />
 
@@ -1884,7 +1843,7 @@ export default function DynamicInvoiceForm({
                           highlight={true}
                           label="Deposit Date (Finance)"
                           value={invoiceData.payment?.breakdown?.depositDate || ''}
-                          onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
+                          onChange={createChangeHandler('payment.breakdown.depositDate')}
                           type="date"
                           icon={Calendar}
                         />
@@ -1973,7 +1932,7 @@ export default function DynamicInvoiceForm({
                     <FormInput
                       label="Deposit Date"
                       value={invoiceData.payment?.breakdown?.depositDate || ''}
-                      onChange={createChangeHandler('payment.breakdown.depositDate')}
+                      onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
                       type="date"
                       icon={Calendar}
                     />
