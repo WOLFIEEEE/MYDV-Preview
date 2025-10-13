@@ -1490,6 +1490,63 @@ export default function DynamicInvoiceForm({
                 </div>
               </CardContent>
             </Card>
+
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-purple-100/80 border-indigo-300/50 shadow-purple-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <PenTool className="h-5 w-5 mr-2" />
+                  Customer Signature & IDD Acceptance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+
+                {/* Customer Available for Signature - input_116 */}
+                <div className="space-y-2">
+                  <label className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'
+                    }`}>
+                    Customer Available for Signature
+                  </label>
+                  <select
+                    value={availableForFinalSignature}
+                    onChange={(e) => setAvailableForFinalSignature(e.target.value)}
+                    className={`w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${isDarkMode
+                        ? 'border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500'
+                        : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
+                      }`}
+                  >
+                    <option value="">-</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+
+                {availableForFinalSignature === 'Yes' && (
+                  <div className="space-y-2">
+                    <label className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'
+                      }`}>
+                      Customer Signature
+                    </label>
+                    <SignatureCapture
+                      value={invoiceData.signature?.customerSignature}
+                      onChange={signature => updateNestedData('signature.customerSignature', signature)}
+                      // onChange={(signature) => handleInputChange('customerSignature', signature)}
+                      width={400}
+                      height={200}
+                    />
+                  </div>
+                )}
+
+                {availableForFinalSignature === 'Yes' && (
+                  <FormInput
+                    label="Date of Signature"
+                    value={invoiceData.signature?.dateOfSignature || ''}
+                    onChange={(value) => updateNestedData('signature.dateOfSignature', value)}
+                    type="date"
+                    icon={Calendar}
+                  />
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Finance Company */}
@@ -3314,66 +3371,6 @@ export default function DynamicInvoiceForm({
                     className="w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 border-gray-200 bg-white text-gray-900 hover:border-gray-300"
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Signature & IDD */}
-          <TabsContent value="signature" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
-            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-fuchsia-100/80 border-pink-300/50 shadow-fuchsia-200/40'}`}>
-              <CardHeader>
-                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  <PenTool className="h-5 w-5 mr-2" />
-                  Customer Signature & IDD Acceptance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-
-                {/* Customer Available for Signature - input_116 */}
-                <div className="space-y-2">
-                  <label className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'
-                    }`}>
-                    Customer Available for Signature
-                  </label>
-                  <select
-                    value={availableForFinalSignature}
-                    onChange={(e) => setAvailableForFinalSignature(e.target.value)}
-                    className={`w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${isDarkMode
-                        ? 'border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500'
-                        : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
-                      }`}
-                  >
-                    <option value="">-</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                </div>
-
-                {availableForFinalSignature === 'Yes' && (
-                  <div className="space-y-2">
-                    <label className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'
-                      }`}>
-                      Customer Signature
-                    </label>
-                    <SignatureCapture
-                      value={invoiceData.signature?.customerSignature}
-                      onChange={signature => updateNestedData('signature.customerSignature', signature)}
-                      // onChange={(signature) => handleInputChange('customerSignature', signature)}
-                      width={400}
-                      height={200}
-                    />
-                  </div>
-                )}
-
-                {availableForFinalSignature === 'Yes' && (
-                  <FormInput
-                    label="Date of Signature"
-                    value={invoiceData.signature?.dateOfSignature || ''}
-                    onChange={(value) => updateNestedData('signature.dateOfSignature', value)}
-                    type="date"
-                    icon={Calendar}
-                  />
-                )}
               </CardContent>
             </Card>
           </TabsContent>
