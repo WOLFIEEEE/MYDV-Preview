@@ -1369,7 +1369,8 @@ function DynamicInvoiceEditorContent() {
       }
       
       // Fallback to old flow (fetch from database) if no form data
-      if (!saleId && !stockId) {
+      // Skip validation for vehicle_finder source as it provides data via URL parameters
+      if (!saleId && !stockId && source !== 'vehicle_finder') {
         setError('Missing required parameters. Please provide either saleId or stockId, or submit form data.');
         return;
       }
@@ -1500,6 +1501,155 @@ function DynamicInvoiceEditorContent() {
         return;
       }
       
+      // PRIORITY 3: Handle vehicle data from vehicle finder
+      if (source === 'vehicle_finder') {
+        console.log('🚗 [EDITOR] Loading vehicle data from vehicle finder');
+        
+        try {
+          // Extract vehicle data from URL parameters
+          const vehicleData = {
+            vehicleRegistration: urlParams.get('vehicleRegistration') || '',
+            make: urlParams.get('make') || '',
+            model: urlParams.get('model') || '',
+            derivative: urlParams.get('derivative') || '',
+            derivativeId: urlParams.get('derivativeId') || '',
+            mileage: urlParams.get('mileage') || '',
+            colour: urlParams.get('colour') || '',
+            fuelType: urlParams.get('fuelType') || '',
+            engineSize: urlParams.get('engineSize') || '',
+            engineNumber: urlParams.get('engineNumber') || '',
+            vin: urlParams.get('vin') || '',
+            firstRegDate: urlParams.get('firstRegDate') || '',
+            year: urlParams.get('year') || '',
+            bodyType: urlParams.get('bodyType') || '',
+            transmissionType: urlParams.get('transmissionType') || '',
+            doors: urlParams.get('doors') || '',
+            seats: urlParams.get('seats') || '',
+            enginePowerBHP: urlParams.get('enginePowerBHP') || '',
+            owners: urlParams.get('owners') || '',
+            emissionClass: urlParams.get('emissionClass') || '',
+            retailValue: urlParams.get('retailValue') || '',
+            partExchangeValue: urlParams.get('partExchangeValue') || '',
+            tradeValue: urlParams.get('tradeValue') || '',
+            privateValue: urlParams.get('privateValue') || ''
+          };
+          
+          console.log('🔍 [EDITOR] Vehicle data from URL:', vehicleData);
+          
+          // Convert date format from DD/MM/YYYY to YYYY-MM-DD for HTML date input
+          const convertDateFormat = (dateStr: string): string => {
+            if (!dateStr) return '';
+            
+            // Handle DD/MM/YYYY format (from UK date format)
+            const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (ddmmyyyyMatch) {
+              const [, day, month, year] = ddmmyyyyMatch;
+              return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+            
+            // Handle YYYY-MM-DD format (already correct)
+            const yyyymmddMatch = dateStr.match(/^\d{4}-\d{2}-\d{2}$/);
+            if (yyyymmddMatch) {
+              return dateStr;
+            }
+            
+            // Try to parse other formats
+            try {
+              const date = new Date(dateStr);
+              if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+              }
+            } catch (error) {
+              console.warn('Failed to parse date:', dateStr);
+            }
+            
+            return '';
+          };
+          
+          const formattedFirstRegDate = convertDateFormat(vehicleData.firstRegDate);
+          console.log('📅 [EDITOR] Date conversion:', {
+            original: vehicleData.firstRegDate,
+            formatted: formattedFirstRegDate
+          });
+          
+          // Create form data with vehicle information
+          const formData: InvoiceFormData = {
+            // Vehicle data
+            vehicleRegistration: vehicleData.vehicleRegistration,
+            make: vehicleData.make,
+            model: vehicleData.model,
+            derivative: vehicleData.derivative,
+            derivativeId: vehicleData.derivativeId,
+            mileage: vehicleData.mileage,
+            colour: vehicleData.colour,
+            fuelType: vehicleData.fuelType,
+            engineCapacity: vehicleData.engineSize,
+            engineNumber: vehicleData.engineNumber,
+            vin: vehicleData.vin,
+            firstRegDate: formattedFirstRegDate,
+            
+            // Additional vehicle details
+            bodyType: vehicleData.bodyType,
+            transmissionType: vehicleData.transmissionType,
+            doors: vehicleData.doors ? parseInt(vehicleData.doors) : undefined,
+            seats: vehicleData.seats ? parseInt(vehicleData.seats) : undefined,
+            enginePowerBHP: vehicleData.enginePowerBHP ? parseInt(vehicleData.enginePowerBHP) : undefined,
+            owners: vehicleData.owners ? parseInt(vehicleData.owners) : undefined,
+            emissionClass: vehicleData.emissionClass,
+            
+            // Pricing data from valuations
+            salePrice: vehicleData.retailValue ? parseFloat(vehicleData.retailValue) : undefined,
+            partExchangeValue: vehicleData.partExchangeValue ? parseFloat(vehicleData.partExchangeValue) : undefined,
+            tradeValue: vehicleData.tradeValue ? parseFloat(vehicleData.tradeValue) : undefined,
+            
+            // Default values for required fields (use URL parameters if provided)
+            saleType: urlParams.get('saleType') || 'Retail',
+            invoiceTo: urlParams.get('invoiceTo') || 'Customer',
+            invoiceNumber: `INV-${Date.now()}`,
+            dateOfSale: new Date().toISOString().split('T')[0],
+            
+            // Stock data structure
+            stockData: {
+              vehicle: {
+                make: vehicleData.make,
+                model: vehicleData.model,
+                derivative: vehicleData.derivative,
+                odometerReadingMiles: vehicleData.mileage,
+                engineSize: vehicleData.engineSize,
+                engineNumber: vehicleData.engineNumber,
+                vin: vehicleData.vin,
+                firstRegistrationDate: formattedFirstRegDate,
+                colour: vehicleData.colour,
+                fuelType: vehicleData.fuelType
+              }
+            }
+          };
+          
+          // Convert form data to ComprehensiveInvoiceData format and fetch database data
+          console.log('🔄 [EDITOR] Converting vehicle finder data and fetching database info...');
+          const invoiceData = await convertFormDataToInvoiceDataWithDB(formData);
+          
+          console.log('✅ [EDITOR] VEHICLE FINDER DATA CONVERSION COMPLETE:', {
+            saleType: invoiceData.saleType,
+            invoiceType: invoiceData.invoiceType,
+            vehicleReg: invoiceData.vehicle.registration,
+            vehicleMake: invoiceData.vehicle.make,
+            vehicleModel: invoiceData.vehicle.model,
+            companyName: invoiceData.companyInfo.name,
+            hasTerms: !!(invoiceData.terms.basicTerms || invoiceData.terms.checklistTerms)
+          });
+          
+          setInvoiceData(invoiceData);
+          console.log('✅ [EDITOR] Invoice data loaded from vehicle finder successfully');
+          return;
+        } catch (error) {
+          console.error('❌ Error processing vehicle finder data:', error);
+          setError(`Failed to process vehicle data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          setLoading(false);
+          return;
+        }
+      }
+      
       console.log('📊 Using database fetch (old flow)');
       const params = new URLSearchParams();
       if (saleId) params.append('saleId', saleId);
@@ -1590,7 +1740,10 @@ function DynamicInvoiceEditorContent() {
 
   // Save invoice data to database (wrapped in useCallback to prevent recreating on every render)
   const saveInvoiceData = useCallback(async (): Promise<boolean> => {
-    if (!invoiceData || !stockId) return false;
+    if (!invoiceData) return false;
+    
+    // For vehicle finder invoices, use a placeholder stockId since they don't have real stock entries
+    const effectiveStockId = stockId || `vehicle-finder-${invoiceData.vehicle.registration}-${Date.now()}`;
     
     try {
       const response = await fetch('/api/invoices/save', {
@@ -1599,7 +1752,7 @@ function DynamicInvoiceEditorContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          stockId,
+          stockId: effectiveStockId,
           invoiceData,
         }),
       });
@@ -1619,7 +1772,7 @@ function DynamicInvoiceEditorContent() {
       alert(`Error saving invoice data: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
-  }, [invoiceData, stockId]);
+  }, [invoiceData, stockId, source]);
 
   // Auto-save effect: Trigger save when coming from invoice form
   useEffect(() => {
@@ -1629,7 +1782,7 @@ function DynamicInvoiceEditorContent() {
       // 2. Invoice data is loaded
       // 3. Not currently loading
       // 4. Haven't triggered auto-save yet
-      // 5. Have stockId
+      // 5. Have stockId (for form submissions) or be from vehicle_finder (which doesn't need stockId)
       if (source === 'form' && invoiceData && !loading && !autoSaveTriggered && stockId) {
         console.log(`🎯 [EDITOR] Auto-triggering save for form submission...`);
         setAutoSaveTriggered(true); // Mark as triggered to prevent duplicate saves

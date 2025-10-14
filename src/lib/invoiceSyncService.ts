@@ -80,7 +80,7 @@ export class InvoiceSyncService {
   /**
    * Synchronize customer data with CRM
    */
-  private async syncCustomer(): Promise<string | undefined> {
+  async syncCustomer(): Promise<string | undefined> {
     console.log('👤 Syncing customer data...');
 
     if (!this.invoiceData.customer) {
@@ -473,6 +473,41 @@ export async function syncInvoiceData(
   stockId: string,
   invoiceData: ComprehensiveInvoiceData
 ): Promise<InvoiceSyncResult> {
-  const syncService = new InvoiceSyncService(dealerId, stockId, invoiceData);
-  return await syncService.sync();
+  // Check if this is a vehicle finder invoice (placeholder stockId)
+  const isVehicleFinderInvoice = stockId.startsWith('vehicle-finder-');
+  
+  if (isVehicleFinderInvoice) {
+    console.log('🚗 Vehicle finder invoice detected - performing limited sync (CRM only)');
+    
+    // For vehicle finder invoices, only sync customer data (CRM)
+    // Skip sales details and vehicle checklist sync as there's no real stock entry
+    const syncService = new InvoiceSyncService(dealerId, stockId, invoiceData);
+    
+    try {
+      // Only sync customer data
+      const customerId = await syncService.syncCustomer();
+      
+      console.log('✅ Vehicle finder invoice sync completed (CRM only)');
+      return {
+        success: true,
+        customerId,
+        saleDetailsId: undefined, // Not applicable for vehicle finder
+        errors: [],
+        warnings: ['Sales details and vehicle checklist sync skipped for vehicle finder invoice']
+      };
+      
+    } catch (error) {
+      console.error('❌ Vehicle finder invoice sync failed:', error);
+      return {
+        success: false,
+        errors: [`Vehicle finder sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`],
+        warnings: []
+      };
+    }
+  } else {
+    // Regular stock-based invoice - perform full sync
+    console.log('📦 Stock-based invoice detected - performing full sync');
+    const syncService = new InvoiceSyncService(dealerId, stockId, invoiceData);
+    return await syncService.sync();
+  }
 }
