@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     })
     
     // Generate invoice ID if not provided
-    const invoiceId = formData.invoiceNumber || `INV-${Date.now()}`
+    const invoiceId = formData.invoiceNumber || `INV-${formData.vehicleRegistration || 'DRAFT'}-${Date.now()}`
     
     // Prepare invoice data for database
     const invoiceData = {

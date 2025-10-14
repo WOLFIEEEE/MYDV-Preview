@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate invoice number if not provided
-    const finalInvoiceNumber = invoiceNumber || `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const finalInvoiceNumber = invoiceNumber || `INV-${vehicleRegistration || stockId}-${Date.now()}`;
 
     // Check if record already exists
     const existingRecord = await db

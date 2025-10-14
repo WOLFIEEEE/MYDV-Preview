@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { customers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getCityAndCountyFromPostcode } from '@/lib/postcodeUtils';
 
 interface SaleDetailsData {
   firstName?: string;
@@ -75,6 +76,16 @@ export async function autoCreateCustomerFromSaleDetails(
 
     // Create new customer from sales details
     console.log('🆕 Auto-create customer: Creating new customer from sales details');
+    
+    // Auto-populate city and county from postcode
+    let city = null;
+    let county = null;
+    if (saleDetailsData.addressPostCode) {
+      const postcodeData = getCityAndCountyFromPostcode(saleDetailsData.addressPostCode);
+      city = postcodeData.city || null;
+      county = postcodeData.county || null;
+    }
+    
     const newCustomer = await db
       .insert(customers)
       .values({
@@ -85,6 +96,8 @@ export async function autoCreateCustomerFromSaleDetails(
         phone: saleDetailsData.contactNumber || null,
         addressLine1: saleDetailsData.addressFirstLine || null,
         postcode: saleDetailsData.addressPostCode || null,
+        city: city,
+        county: county,
         country: 'United Kingdom',
         marketingConsent: saleDetailsData.salesMarketingConsent || false,
         salesConsent: saleDetailsData.salesMarketingConsent || false,

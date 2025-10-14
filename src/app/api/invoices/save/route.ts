@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Ensure invoiceNumber is never null or undefined
-    const invoiceNumber = invoiceData.invoiceNumber || `INV-${stockId}-${Date.now()}`;
+    const invoiceNumber = invoiceData.invoiceNumber || `INV-${invoiceData.vehicle?.registration || stockId}-${Date.now()}`;
     
     console.log('🔍 Invoice save debug:', {
       originalInvoiceNumber: invoiceData.invoiceNumber,

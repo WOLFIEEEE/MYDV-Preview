@@ -1,8 +1,9 @@
 import { db } from '@/lib/db';
-import { customers, saleDetails, dealers } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { customers } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { autoCreateCustomerFromSaleDetails } from '@/lib/customerAutoCreate';
-import { createSaleDetails, getSaleDetailsByStockId, updateSaleDetails } from '@/lib/stockActionsDb';
+import { createSaleDetails, getSaleDetailsByStockId, updateSaleDetails, getVehicleChecklistByStockId, updateVehicleChecklist, createVehicleChecklist } from '@/lib/stockActionsDb';
+import { getCityAndCountyFromPostcode } from '@/lib/postcodeUtils';
 
 // Import the ComprehensiveInvoiceData interface
 import type { ComprehensiveInvoiceData } from '@/app/api/invoice-data/route';
@@ -44,6 +45,9 @@ export class InvoiceSyncService {
       
       // Step 2: Sync sales details
       const saleDetailsId = await this.syncSalesDetails(customerId);
+
+      // Step 3: Sync vehicle checklist
+      await this.syncVehicleChecklist();
 
       const result: InvoiceSyncResult = {
         success: this.errors.length === 0,
@@ -134,7 +138,7 @@ export class InvoiceSyncService {
    */
   private async updateExistingCustomer(customerId: string, customerData: ComprehensiveInvoiceData['customer']): Promise<void> {
     try {
-      const updateData: any = {};
+      const updateData: Record<string, any> = {};
       let hasUpdates = false;
 
       // Update address fields if they exist and are more complete
@@ -142,6 +146,22 @@ export class InvoiceSyncService {
         updateData.addressLine2 = customerData.address.secondLine;
         hasUpdates = true;
       }
+      
+      // Auto-populate city and county from postcode if needed
+      const postCode = customerData.address?.postCode;
+      if (postCode && (!customerData.address?.city || !customerData.address?.county)) {
+        const { city, county } = getCityAndCountyFromPostcode(postCode);
+        
+        if (city && !customerData.address?.city) {
+          updateData.city = city;
+          hasUpdates = true;
+        }
+        if (county && !customerData.address?.county) {
+          updateData.county = county;
+          hasUpdates = true;
+        }
+      }
+      
       if (customerData.address?.city) {
         updateData.city = customerData.address.city;
         hasUpdates = true;
@@ -228,13 +248,13 @@ export class InvoiceSyncService {
   /**
    * Prepare sales details data from invoice data
    */
-  private prepareSalesDetailsData(customerId?: string): any {
+  private prepareSalesDetailsData(customerId?: string): Record<string, any> {
     const invoice = this.invoiceData;
     
     // Aggregate multiple payments
     const paymentTotals = this.aggregatePayments();
 
-    const saleDetailsData: any = {
+    const saleDetailsData: Record<string, any> = {
       // Link to customer if available
       customerId: customerId || null,
       
@@ -302,7 +322,7 @@ export class InvoiceSyncService {
 
     // Remove undefined values to prevent overwriting existing data
     return Object.fromEntries(
-      Object.entries(saleDetailsData).filter(([_, value]) => value !== undefined)
+      Object.entries(saleDetailsData).filter(([, value]) => value !== undefined)
     );
   }
 
@@ -366,6 +386,74 @@ export class InvoiceSyncService {
       depositAmount,
       partExAmount
     };
+  }
+
+  /**
+   * Synchronize vehicle checklist data
+   */
+  private async syncVehicleChecklist(): Promise<void> {
+    console.log('📋 Syncing vehicle checklist...');
+
+    if (!this.invoiceData.checklist) {
+      this.warnings.push('No checklist data found in invoice');
+      return;
+    }
+
+    try {
+      const checklist = this.invoiceData.checklist;
+      
+      // Check if checklist already exists
+      const existingChecklist = await getVehicleChecklistByStockId(this.stockId, this.dealerId);
+
+      const checklistData = {
+        numberOfKeys: checklist.numberOfKeys || '2',
+        userManual: checklist.userManual || 'Not Present',
+        serviceBook: checklist.serviceHistoryRecord || 'Unknown',
+        wheelLockingNut: checklist.wheelLockingNut || 'Not Present',
+        cambeltChainConfirmation: checklist.cambeltChainConfirmation || 'No',
+        
+        // Update metadata with additional checklist fields
+        metadata: {
+          mileage: checklist.mileage,
+          vehicleInspectionTestDrive: checklist.vehicleInspectionTestDrive || 'No',
+          dealerPreSaleCheck: checklist.dealerPreSaleCheck || 'No',
+          fuelType: checklist.fuelType || 'Petrol',
+          serviceHistory: checklist.serviceHistory || 'Not Available',
+          // Preserve existing metadata if any
+          ...(existingChecklist?.metadata as Record<string, any> || {})
+        },
+        
+        // Calculate completion percentage
+        completionPercentage: checklist.completionPercentage || 0,
+        isComplete: checklist.isComplete || false,
+        
+        updatedAt: new Date()
+      };
+
+      // Remove undefined values
+      const cleanChecklistData = Object.fromEntries(
+        Object.entries(checklistData).filter(([, value]) => value !== undefined)
+      );
+
+      if (Object.keys(cleanChecklistData).length > 1) { // More than just updatedAt
+        if (existingChecklist) {
+          await updateVehicleChecklist(this.stockId, this.dealerId, cleanChecklistData);
+          console.log('✅ Vehicle checklist updated');
+        } else {
+          await createVehicleChecklist({
+            stockId: this.stockId,
+            dealerId: this.dealerId,
+            registration: this.invoiceData.vehicle?.registration,
+            ...cleanChecklistData
+          });
+          console.log('✅ Vehicle checklist created');
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Error syncing vehicle checklist:', error);
+      this.errors.push(`Vehicle checklist sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
