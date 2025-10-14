@@ -12,13 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Receipt, 
-  Car, 
-  User, 
-  Building, 
-  PoundSterling, 
-  FileText, 
+import {
+  Receipt,
+  Car,
+  User,
+  Building,
+  PoundSterling,
+  FileText,
   Download,
   Plus,
   X,
@@ -26,8 +26,12 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  MapPin
+  MapPin,
+  SearchIcon,
+  Filter
 } from "lucide-react";
+import SearchForm from "../vehicle-finder/SearchForm";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface Vehicle {
   stockId: string;
@@ -108,7 +112,7 @@ interface InvoiceData {
   dueDate: string;
   invoiceTitle?: string;
   invoiceType: 'purchase' | 'standard'; // Invoice type - purchase requires delivery address
-  
+
   // Vehicle Information
   selectedVehicle?: Vehicle;
   customVehicle: {
@@ -125,7 +129,7 @@ interface InvoiceData {
     colour: string;
     mileage: string;
   };
-  
+
   // Customer Information
   selectedCustomer?: Customer;
   customCustomer: {
@@ -141,10 +145,10 @@ interface InvoiceData {
     postcode: string;
     country: string;
   };
-  
+
   // Delivery Address
   deliveryAddress: DeliveryAddress;
-  
+
   // Invoice Items
   items: Array<{
     id: string;
@@ -158,29 +162,29 @@ interface InvoiceData {
     total: number; // Total after discount but before VAT
     totalWithVat?: number; // Total including VAT for this item
   }>;
-  
+
   // Discount Settings
   discountMode: 'global' | 'individual'; // Discount calculation mode
   globalDiscountType: 'percentage' | 'fixed'; // Global discount type
   globalDiscountValue: number | string; // Global discount value
   globalDiscountAmount: number; // Calculated global discount amount
-  
+
   // VAT Settings
   vatMode: 'global' | 'individual'; // VAT calculation mode
   globalVatRate: number; // Global VAT rate
-  
+
   // Payment Settings
   paymentStatus: 'unpaid' | 'partial' | 'paid'; // Payment status
   paidAmount: number; // Calculated paid amount
   outstandingBalance: number; // Remaining balance
   payments: PaymentEntry[]; // Multiple payment entries
-  
+
   // Additional Information
   notes: string;
   terms: string;
   paymentTerms: string;
   paymentInstructions: string;
-  
+
   // Totals
   subtotal: number;
   totalDiscount: number;
@@ -191,6 +195,86 @@ interface InvoiceData {
 
 interface InvoiceGeneratorProps {
   dealerId: string;
+}
+
+interface VehicleInfo {
+  registration: string;
+  make: string;
+  model: string;
+  year: string;
+  fuelType: string;
+  engineSize: string;
+  color: string;
+  mileage: string;
+  co2Emissions: string;
+  taxBand: string;
+  dateOfFirstRegistration: string;
+  // Enhanced fields from API
+  derivative?: string;
+  derivativeId?: string;
+  vehicleType?: string;
+  bodyType?: string;
+  transmissionType?: string;
+  doors?: number;
+  seats?: number;
+  enginePowerBHP?: number;
+  topSpeedMPH?: number;
+  zeroToSixtyMPHSeconds?: number;
+  fuelEconomyCombinedMPG?: number;
+  insuranceGroup?: string;
+  owners?: number;
+  vin?: string;
+  emissionClass?: string;
+  // Additional fields for VehicleDetails component
+  ownershipCondition?: string;
+  engineCapacityCC?: number;
+  startStop?: boolean;
+  gears?: number;
+  drivetrain?: string;
+  cylinders?: number;
+  driveType?: string;
+  features?: Array<{
+    name: string;
+    genericName?: string;
+    type: 'Standard' | 'Optional';
+    category: string;
+    basicPrice: number;
+    vatPrice: number;
+    factoryCodes?: string[];
+    rarityRating?: number | null;
+    valueRating?: number | null;
+  }>;
+  // Valuation data from AutoTrader API
+  valuations?: {
+    retail?: {
+      amountGBP: number;
+      amountExcludingVatGBP?: number | null;
+    };
+    partExchange?: {
+      amountGBP: number;
+      amountExcludingVatGBP?: number | null;
+    };
+    trade?: {
+      amountGBP: number;
+      amountExcludingVatGBP?: number | null;
+    };
+    private?: {
+      amountGBP: number;
+    };
+  };
+  // Index signature to allow additional properties
+  [key: string]: unknown;
+}
+interface VehicleResult {
+  id: number;
+  make: string;
+  model: string;
+  year: string;
+  variant: string;
+  fuelType: string;
+  engineSize: string;
+  estimatedPrice: string;
+  availability: string;
 }
 
 export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
@@ -205,14 +289,20 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  
+  const [vehicleData, setVehicleData] = useState<VehicleInfo | VehicleResult[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isTaxonomyDialogOpen, setIsTaxonomyDialogOpen] = useState(false);
+
+  const { isDarkMode } = useTheme();
+
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
     invoiceNumber: `INV-${Date.now()}`,
     invoiceDate: new Date().toISOString().split('T')[0],
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     invoiceTitle: 'INVOICE',
     invoiceType: 'standard',
-    
+
     customVehicle: {
       registration: '',
       make: '',
@@ -227,7 +317,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       colour: '',
       mileage: ''
     },
-    
+
     customCustomer: {
       title: '',
       firstName: '',
@@ -241,7 +331,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       postcode: '',
       country: 'United Kingdom'
     },
-    
+
     // Delivery Address
     deliveryAddress: {
       addressLine1: '',
@@ -251,7 +341,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       postcode: '',
       country: 'United Kingdom'
     },
-    
+
     items: [{
       id: '1',
       description: 'Vehicle Sale',
@@ -264,28 +354,28 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       total: 0,
       totalWithVat: 0
     }],
-    
+
     // Discount Settings
     discountMode: 'global',
     globalDiscountType: 'percentage',
     globalDiscountValue: '',
     globalDiscountAmount: 0,
-    
+
     // VAT Settings
     vatMode: 'global',
     globalVatRate: 20,
-    
+
     // Payment Settings
     paymentStatus: 'unpaid',
     paidAmount: 0,
     outstandingBalance: 0,
     payments: [],
-    
+
     notes: '',
     terms: 'Payment due within 30 days of invoice date.',
     paymentTerms: '30 days',
     paymentInstructions: '',
-    
+
     subtotal: 0,
     totalDiscount: 0,
     subtotalAfterDiscount: 0,
@@ -335,7 +425,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       setFilteredVehicles(vehicles);
     } else {
       const query = vehicleSearchQuery.toLowerCase();
-      const filtered = vehicles.filter(vehicle => 
+      const filtered = vehicles.filter(vehicle =>
         vehicle.registration.toLowerCase().includes(query) ||
         vehicle.make.toLowerCase().includes(query) ||
         vehicle.model.toLowerCase().includes(query) ||
@@ -352,7 +442,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       setFilteredCustomers(customers);
     } else {
       const query = customerSearchQuery.toLowerCase();
-      const filtered = customers.filter(customer => 
+      const filtered = customers.filter(customer =>
         customer.firstName.toLowerCase().includes(query) ||
         customer.lastName.toLowerCase().includes(query) ||
         customer.email.toLowerCase().includes(query) ||
@@ -368,7 +458,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     const subtotal = invoiceData.items.reduce((sum, item) => sum + (item.total || 0), 0);
     let totalDiscount = 0;
     let vatAmount = 0;
-    
+
     // Calculate discounts
     if (invoiceData.discountMode === 'global') {
       // Global discount calculation
@@ -381,9 +471,9 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       // Individual discount calculation (sum of item discounts)
       totalDiscount = invoiceData.items.reduce((sum, item) => sum + (item.discountAmount || 0), 0);
     }
-    
+
     const subtotalAfterDiscount = subtotal - totalDiscount;
-    
+
     // Calculate VAT
     if (invoiceData.vatMode === 'global') {
       // Global VAT calculation
@@ -392,9 +482,9 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       // Individual VAT calculation (sum of item VAT amounts)
       vatAmount = invoiceData.items.reduce((sum, item) => sum + (item.vatAmount || 0), 0);
     }
-    
+
     const total = subtotalAfterDiscount + vatAmount;
-    
+
     // Calculate payments from actual payment entries
     const paidAmount = invoiceData.payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
     const outstandingBalance = Math.max(0, total - paidAmount);
@@ -472,6 +562,175 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     }
   };
 
+  const handleRegistrationSearch = async (registration: string, mileage: string) => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // Call the real vehicle API
+      const params = new URLSearchParams({
+        registration: registration.toUpperCase(),
+        odometerReadingMiles: mileage,
+        features: 'true',
+        motTests: 'true',
+        history: 'true',
+        valuations: 'true'
+      });
+
+      const response = await fetch(`/api/vehicles?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      // Debug: Log full API response structure
+      console.log('🔍 Full API Response:', {
+        success: data.success,
+        hasData: !!data.data,
+        hasVehicle: !!data.data?.vehicle,
+        hasValuations: !!data.data?.valuations,
+        vehicleKeys: data.data?.vehicle ? Object.keys(data.data.vehicle) : [],
+        dataKeys: data.data ? Object.keys(data.data) : [],
+      });
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to fetch vehicle data');
+      }
+
+      if (data.success && data.data?.vehicle) {
+        const vehicle = data.data.vehicle;
+        const valuations = data.data.valuations; // Extract valuations from the same level as vehicle
+
+        // Debug: Log features data in detail
+        console.log('🎯 Vehicle API Response - Features Analysis:', {
+          hasFeatures: !!vehicle.features,
+          featuresType: typeof vehicle.features,
+          featuresLength: vehicle.features?.length || 0,
+          featuresIsArray: Array.isArray(vehicle.features),
+          allVehicleKeys: Object.keys(vehicle)
+        });
+
+        if (vehicle.features && vehicle.features.length > 0) {
+          console.log('📋 Sample features:', vehicle.features.slice(0, 3));
+        } else {
+          console.log('❌ No features found in vehicle data');
+        }
+
+        // Transform API response to match our interface
+        const transformedData = {
+          registration: vehicle.registration || registration.toUpperCase(),
+          make: vehicle.make || 'Unknown',
+          model: vehicle.model || 'Unknown',
+          year: vehicle.firstRegistrationDate ? new Date(vehicle.firstRegistrationDate).getFullYear().toString() : 'Unknown',
+          fuelType: vehicle.fuelType || 'Unknown',
+          engineSize: vehicle.badgeEngineSizeLitres ? `${vehicle.badgeEngineSizeLitres}L` : (vehicle.engineCapacityCC ? `${vehicle.engineCapacityCC}cc` : 'Unknown'),
+          color: vehicle.colour || 'Unknown',
+          mileage: mileage || 'Not specified',
+          co2Emissions: vehicle.co2EmissionGPKM ? `${vehicle.co2EmissionGPKM} g/km` : 'Unknown',
+          taxBand: vehicle.insuranceGroup || 'Unknown',
+          dateOfFirstRegistration: vehicle.firstRegistrationDate ? new Date(vehicle.firstRegistrationDate).toLocaleDateString('en-GB') : 'Unknown',
+          // Enhanced fields
+          derivative: vehicle.derivative,
+          derivativeId: vehicle.derivativeId,
+          vehicleType: vehicle.vehicleType,
+          bodyType: vehicle.bodyType,
+          transmissionType: vehicle.transmissionType,
+          doors: vehicle.doors,
+          seats: vehicle.seats,
+          enginePowerBHP: vehicle.enginePowerBHP,
+          topSpeedMPH: vehicle.topSpeedMPH,
+          zeroToSixtyMPHSeconds: vehicle.zeroToSixtyMPHSeconds,
+          fuelEconomyCombinedMPG: vehicle.fuelEconomyNEDCCombinedMPG || vehicle.fuelEconomyWLTPCombinedMPG,
+          insuranceGroup: vehicle.insuranceGroup,
+          owners: vehicle.owners,
+          vin: vehicle.vin,
+          emissionClass: vehicle.emissionClass,
+          // Additional fields for VehicleDetails component
+          ownershipCondition: vehicle.ownershipCondition,
+          engineCapacityCC: vehicle.engineCapacityCC,
+          startStop: vehicle.startStop,
+          gears: vehicle.gears,
+          drivetrain: vehicle.drivetrain,
+          cylinders: vehicle.cylinders,
+          driveType: vehicle.driveType,
+          // Features data for VehicleFeatures component
+          features: vehicle.features || [],
+          // Valuation data from AutoTrader API (extracted from data.data.valuations)
+          valuations: valuations || null
+        };
+
+        // Debug: Log transformed data features and valuations
+        console.log('🔄 Transformed Data - Features:', {
+          hasFeatures: !!transformedData.features,
+          featuresLength: transformedData.features?.length || 0,
+          featuresType: typeof transformedData.features,
+          transformedDataKeys: Object.keys(transformedData),
+          derivativeId: vehicle.derivativeId
+        });
+
+        // Debug: Log valuation data
+        console.log('💰 Valuation Data Analysis:', {
+          hasValuations: !!valuations,
+          valuationsType: typeof valuations,
+          valuationsKeys: valuations ? Object.keys(valuations) : [],
+          retailValue: valuations?.retail?.amountGBP,
+          privateValue: valuations?.private?.amountGBP,
+          partExchangeValue: valuations?.partExchange?.amountGBP,
+          tradeValue: valuations?.trade?.amountGBP,
+          rawValuations: valuations
+        });
+
+        // If no features from vehicle API but we have derivativeId, fetch features separately
+        if ((!vehicle.features || vehicle.features.length === 0) && vehicle.derivativeId) {
+          console.log('🔍 No features from vehicle API, fetching from taxonomy API with derivativeId:', vehicle.derivativeId);
+
+          try {
+            const featuresParams = new URLSearchParams({
+              derivativeId: vehicle.derivativeId,
+              effectiveDate: new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+            });
+
+            const featuresResponse = await fetch(`/api/taxonomy/features?${featuresParams.toString()}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (featuresResponse.ok) {
+              const featuresData = await featuresResponse.json();
+              console.log('🎯 Taxonomy Features Response:', {
+                success: featuresData.success,
+                featuresCount: featuresData.data?.length || 0
+              });
+
+              if (featuresData.success && featuresData.data && Array.isArray(featuresData.data)) {
+                transformedData.features = featuresData.data;
+                console.log('✅ Added features from taxonomy API:', featuresData.data.length, 'features');
+              }
+            } else {
+              console.log('⚠️ Failed to fetch features from taxonomy API');
+            }
+          } catch (featuresError) {
+            console.error('❌ Error fetching features from taxonomy API:', featuresError);
+          }
+        }
+
+        setVehicleData(transformedData);
+      } else {
+        throw new Error('No vehicle data found');
+      }
+    } catch (error) {
+      console.error('Vehicle search error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch vehicle data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // This function is now handled by the memoized calculateTotals above
 
   const handleVehicleSelect = (stockId: string) => {
@@ -484,16 +743,16 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
             const quantity = Number(item.quantity) || 1;
             const unitPrice = price;
             const discount = Number(item.discount) || 0;
-            
+
             // Calculate subtotal before discount
             const itemSubtotal = quantity * unitPrice;
-            
+
             // Calculate discount amount
             const discountAmount = itemSubtotal * (discount / 100);
-            
+
             // Calculate total after discount (but before VAT)
             const itemTotal = itemSubtotal - discountAmount;
-            
+
             // Calculate VAT if in individual mode
             let vatAmount = 0;
             let totalWithVat = itemTotal;
@@ -501,7 +760,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               vatAmount = itemTotal * ((item.vatRate || prev.globalVatRate) / 100);
               totalWithVat = itemTotal + vatAmount;
             }
-            
+
             return {
               ...item,
               unitPrice,
@@ -513,7 +772,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
           }
           return item;
         });
-        
+
         return {
           ...prev,
           selectedVehicle: vehicle,
@@ -546,7 +805,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       total: 0,
       totalWithVat: 0
     };
-    
+
     setInvoiceData(prev => ({
       ...prev,
       items: [...prev.items, newItem]
@@ -555,7 +814,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
 
   const removeInvoiceItem = (itemId: string) => {
     if (invoiceData.items.length <= 1) return; // Keep at least one item
-    
+
     setInvoiceData(prev => ({
       ...prev,
       items: prev.items.filter(item => item.id !== itemId)
@@ -567,25 +826,25 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       const updatedItems = prev.items.map(item => {
         if (item.id === itemId) {
           const updatedItem = { ...item, [field]: value };
-          
+
           // Recalculate item totals
           if (field === 'quantity' || field === 'unitPrice' || field === 'discount' || field === 'vatRate') {
             const quantity = Number(updatedItem.quantity) || 1;
             const unitPrice = Number(updatedItem.unitPrice) || 0;
             const discount = Number(updatedItem.discount) || 0;
             const vatRate = Number(updatedItem.vatRate) || 0;
-            
+
             // Calculate subtotal before discount
             const itemSubtotal = quantity * unitPrice;
-            
+
             // Calculate discount amount
             const discountAmount = itemSubtotal * (discount / 100);
             updatedItem.discountAmount = discountAmount;
-            
+
             // Calculate total after discount (but before VAT)
             const itemTotal = itemSubtotal - discountAmount;
             updatedItem.total = itemTotal;
-            
+
             // Calculate VAT for individual items if in individual mode
             if (prev.vatMode === 'individual') {
               const itemVatAmount = itemTotal * (vatRate / 100);
@@ -593,37 +852,37 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               updatedItem.totalWithVat = itemTotal + itemVatAmount;
             }
           }
-          
+
           return updatedItem;
         }
         return item;
       });
-      
+
       return {
         ...prev,
         items: updatedItems
       };
     });
   };
-  
+
   const toggleDiscountMode = () => {
     setInvoiceData(prev => ({
       ...prev,
       discountMode: prev.discountMode === 'global' ? 'individual' : 'global'
     }));
   };
-  
+
   const toggleVatMode = () => {
     setInvoiceData(prev => {
       const newVatMode = prev.vatMode === 'global' ? 'individual' : 'global';
-      
+
       if (newVatMode === 'individual') {
         // Convert to individual VAT mode - apply current global VAT rate to all items
         const updatedItems = prev.items.map(item => {
           const itemTotal = item.total || 0; // Already includes discount
           const itemVatAmount = itemTotal * (prev.globalVatRate / 100);
           const itemTotalWithVat = itemTotal + itemVatAmount;
-          
+
           return {
             ...item,
             vatRate: item.vatRate || prev.globalVatRate,
@@ -631,7 +890,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
             totalWithVat: itemTotalWithVat
           };
         });
-        
+
         return {
           ...prev,
           vatMode: newVatMode,
@@ -646,11 +905,11 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       }
     });
   };
-  
+
   const updatePaymentStatus = (status: 'unpaid' | 'partial' | 'paid') => {
     setInvoiceData(prev => {
       let newPayments = [...prev.payments];
-      
+
       // Auto-add a payment entry for partial or full payment if none exist
       if ((status === 'partial' || status === 'paid') && newPayments.length === 0) {
         const newPayment: PaymentEntry = {
@@ -662,7 +921,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
         };
         newPayments = [newPayment];
       }
-      
+
       return {
         ...prev,
         paymentStatus: status,
@@ -670,7 +929,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       };
     });
   };
-  
+
 
   // Payment management functions
   const addPayment = () => {
@@ -681,7 +940,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       date: new Date().toISOString().split('T')[0],
       reference: ''
     };
-    
+
     setInvoiceData(prev => ({
       ...prev,
       payments: [...prev.payments, newPayment]
@@ -691,7 +950,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
   const updatePayment = (id: string, field: keyof PaymentEntry, value: string | number) => {
     setInvoiceData(prev => ({
       ...prev,
-      payments: prev.payments.map(payment => 
+      payments: prev.payments.map(payment =>
         payment.id === id ? { ...payment, [field]: value } : payment
       )
     }));
@@ -807,7 +1066,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
         dueDate: invoiceData.dueDate,
         invoiceTitle: invoiceData.invoiceTitle || 'INVOICE',
         invoiceType: invoiceData.invoiceType,
-        customerName: useCustomerDatabase 
+        customerName: useCustomerDatabase
           ? `${invoiceData.selectedCustomer?.firstName || ''} ${invoiceData.selectedCustomer?.lastName || ''}`.trim()
           : `${invoiceData.customCustomer.firstName || ''} ${invoiceData.customCustomer.lastName || ''}`.trim(),
         customerEmail: useCustomerDatabase ? invoiceData.selectedCustomer?.email : invoiceData.customCustomer.email,
@@ -892,7 +1151,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     try {
       // First, save the invoice to the database
       await saveInvoiceToDatabase();
-      
+
       // Then generate the PDF
       // Prepare invoice data for preview
       const invoicePreviewData = {
@@ -928,10 +1187,10 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
 
       // Store invoice data in sessionStorage for the preview page
       sessionStorage.setItem('invoicePreviewData', JSON.stringify(invoicePreviewData));
-      
+
       // Navigate to the invoice preview page
       router.push('/store-owner/settings/invoice-preview');
-      
+
     } catch (error) {
       console.error('Error preparing invoice preview:', error);
       alert(`Failed to prepare invoice preview: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
@@ -975,9 +1234,59 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
         </CardHeader>
       </Card>
 
+      <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-0 shadow-xl">
+        <CardHeader className="pb-6 pt-6">
+          <div className="w-full mx-auto">
+            {/* Search Methods */}
+            <div className="space-y-8 mb-8">
+              {/* Compact Vehicle Search */}
+              <div className={`p-6 rounded-xl border-2 transition-all duration-300 ${isDarkMode
+                  ? 'bg-gradient-to-br from-slate-800 to-slate-700 border-slate-600'
+                  : 'bg-gradient-to-br from-white to-blue-50/30 border-gray-200'
+                }`}>
+                <div className="flex items-center mb-4">
+                  <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 mr-4 shadow-lg">
+                    <SearchIcon className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Create Vehicle Invoice
+                    </h3>
+                    <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
+                      Invoicing vehicles without adding them to your stock
+                    </p>
+                  </div>
+                </div>
+
+                <SearchForm
+                  onSearch={handleRegistrationSearch}
+                  isLoading={isLoading}
+                  error={error}
+                />
+              </div>
+            </div>
+
+            {/* Search Tips */}
+            {!vehicleData && !isLoading && (
+              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-slate-800/50' : 'bg-blue-50'
+                } border ${isDarkMode ? 'border-slate-700' : 'border-blue-200'}`}>
+                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  💡 Quick Tips
+                </h4>
+                <div className="text-sm">
+                  <div className={isDarkMode ? 'text-white' : 'text-gray-700'}>
+                    <strong>Registration:</strong> Enter UK reg (e.g., AB12 CDE) for instant vehicle data
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+      </Card>
+
       {/* Invoice Configuration */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Basic Invoice Information */}
         <Card className="shadow-lg border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-6 pt-6">
@@ -1089,10 +1398,10 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Discount and VAT Configuration */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Discount Settings */}
         <Card className="shadow-lg border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-6 pt-6">
@@ -1146,7 +1455,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                 <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="text-sm font-medium">Global Discount Preview:</div>
                   <div className="text-sm text-slate-600">
-                    {invoiceData.globalDiscountType === 'percentage' 
+                    {invoiceData.globalDiscountType === 'percentage'
                       ? `${Number(invoiceData.globalDiscountValue) || 0}% = £${((invoiceData.subtotal * (Number(invoiceData.globalDiscountValue) || 0)) / 100).toFixed(2)}`
                       : `£${(Number(invoiceData.globalDiscountValue) || 0).toFixed(2)}`
                     }
@@ -1167,7 +1476,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
             )}
           </CardContent>
         </Card>
-        
+
         {/* VAT Settings */}
         <Card className="shadow-lg border-slate-200 dark:border-slate-700">
           <CardHeader className="pb-6 pt-6">
@@ -1231,7 +1540,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Payment Settings */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-700">
         <CardHeader className="pb-6 pt-6">
@@ -1274,7 +1583,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               Fully Paid
             </Button>
           </div>
-          
+
           {invoiceData.paymentStatus === 'partial' && (
             <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
               {/* Payment Management */}
@@ -1291,7 +1600,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                     Add Payment
                   </Button>
                 </div>
-                
+
                 {invoiceData.payments.map((payment) => (
                   <div key={payment.id} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-700 rounded border">
                     <Select
@@ -1338,7 +1647,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                     </Button>
                   </div>
                 ))}
-                
+
                 {invoiceData.payments.length > 0 && (
                   <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded text-xs">
                     <div className="font-medium text-green-800 dark:text-green-300 mb-1">Payment Breakdown:</div>
@@ -1404,7 +1713,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               </div>
             </div>
           )}
-          
+
           {invoiceData.paymentStatus === 'paid' && (
             <div className="space-y-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
@@ -1429,7 +1738,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                     Add Payment
                   </Button>
                 </div>
-                
+
                 {invoiceData.payments.map((payment) => (
                   <div key={payment.id} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-700 rounded border">
                     <Select
@@ -1476,7 +1785,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                     </Button>
                   </div>
                 ))}
-                
+
                 {invoiceData.payments.length > 0 && (
                   <div className="p-2 bg-green-100 dark:bg-green-800/30 rounded text-xs">
                     <div className="font-medium text-green-800 dark:text-green-300 mb-1">Payment Breakdown:</div>
@@ -1504,7 +1813,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               </div>
             </div>
           )}
-          
+
           {invoiceData.paymentStatus === 'unpaid' && (
             <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
               <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
@@ -1528,67 +1837,67 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               Delivery Address
             </CardTitle>
           </CardHeader>
-        <CardContent className="space-y-4 pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <Label htmlFor="deliveryAddress1">Address Line 1</Label>
-              <Input
-                id="deliveryAddress1"
-                value={invoiceData.deliveryAddress.addressLine1 || ''}
-                onChange={(e) => updateDeliveryAddress('addressLine1', e.target.value)}
-                placeholder="Delivery address line 1"
-              />
+          <CardContent className="space-y-4 pb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <Label htmlFor="deliveryAddress1">Address Line 1</Label>
+                <Input
+                  id="deliveryAddress1"
+                  value={invoiceData.deliveryAddress.addressLine1 || ''}
+                  onChange={(e) => updateDeliveryAddress('addressLine1', e.target.value)}
+                  placeholder="Delivery address line 1"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="deliveryAddress2">Address Line 2 (Optional)</Label>
+                <Input
+                  id="deliveryAddress2"
+                  value={invoiceData.deliveryAddress.addressLine2 || ''}
+                  onChange={(e) => updateDeliveryAddress('addressLine2', e.target.value)}
+                  placeholder="Apartment, suite, etc."
+                />
+              </div>
+              <div>
+                <Label htmlFor="deliveryCity">City</Label>
+                <Input
+                  id="deliveryCity"
+                  value={invoiceData.deliveryAddress.city || ''}
+                  onChange={(e) => updateDeliveryAddress('city', e.target.value)}
+                  placeholder="City"
+                />
+              </div>
+              <div>
+                <Label htmlFor="deliveryCounty">County</Label>
+                <Input
+                  id="deliveryCounty"
+                  value={invoiceData.deliveryAddress.county || ''}
+                  onChange={(e) => updateDeliveryAddress('county', e.target.value)}
+                  placeholder="County"
+                />
+              </div>
+              <div>
+                <Label htmlFor="deliveryPostcode">Postcode</Label>
+                <Input
+                  id="deliveryPostcode"
+                  value={invoiceData.deliveryAddress.postcode || ''}
+                  onChange={(e) => updateDeliveryAddress('postcode', e.target.value)}
+                  placeholder="Postcode"
+                />
+              </div>
+              <div>
+                <Label htmlFor="deliveryCountry">Country</Label>
+                <Input
+                  id="deliveryCountry"
+                  value={invoiceData.deliveryAddress.country || ''}
+                  onChange={(e) => updateDeliveryAddress('country', e.target.value)}
+                  placeholder="Country"
+                />
+              </div>
             </div>
-            <div className="md:col-span-2">
-              <Label htmlFor="deliveryAddress2">Address Line 2 (Optional)</Label>
-              <Input
-                id="deliveryAddress2"
-                value={invoiceData.deliveryAddress.addressLine2 || ''}
-                onChange={(e) => updateDeliveryAddress('addressLine2', e.target.value)}
-                placeholder="Apartment, suite, etc."
-              />
-            </div>
-            <div>
-              <Label htmlFor="deliveryCity">City</Label>
-              <Input
-                id="deliveryCity"
-                value={invoiceData.deliveryAddress.city || ''}
-                onChange={(e) => updateDeliveryAddress('city', e.target.value)}
-                placeholder="City"
-              />
-            </div>
-            <div>
-              <Label htmlFor="deliveryCounty">County</Label>
-              <Input
-                id="deliveryCounty"
-                value={invoiceData.deliveryAddress.county || ''}
-                onChange={(e) => updateDeliveryAddress('county', e.target.value)}
-                placeholder="County"
-              />
-            </div>
-            <div>
-              <Label htmlFor="deliveryPostcode">Postcode</Label>
-              <Input
-                id="deliveryPostcode"
-                value={invoiceData.deliveryAddress.postcode || ''}
-                onChange={(e) => updateDeliveryAddress('postcode', e.target.value)}
-                placeholder="Postcode"
-              />
-            </div>
-            <div>
-              <Label htmlFor="deliveryCountry">Country</Label>
-              <Input
-                id="deliveryCountry"
-                value={invoiceData.deliveryAddress.country || ''}
-                onChange={(e) => updateDeliveryAddress('country', e.target.value)}
-                placeholder="Country"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       )}
-      
+
       {/* Vehicle Selection */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-700">
         <CardHeader className="pb-6 pt-6">
@@ -1627,7 +1936,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                   />
                 </div>
               </div>
-              
+
               {vehicleSearchQuery && (
                 <div className="max-h-60 overflow-y-auto border rounded-lg">
                   {filteredVehicles.length > 0 ? (
@@ -1667,13 +1976,13 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                   )}
                 </div>
               )}
-              
+
               {!vehicleSearchQuery && vehicles.length > 0 && (
                 <div className="text-sm text-slate-500 dark:text-slate-400">
                   {vehicles.length} vehicles available. Start typing to search...
                 </div>
               )}
-              
+
               {invoiceData.selectedVehicle && (
                 <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
@@ -1831,7 +2140,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                   />
                 </div>
               </div>
-              
+
               {customerSearchQuery && (
                 <div className="max-h-60 overflow-y-auto border rounded-lg">
                   {filteredCustomers.length > 0 ? (
@@ -1871,13 +2180,13 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                   )}
                 </div>
               )}
-              
+
               {!customerSearchQuery && customers.length > 0 && (
                 <div className="text-sm text-slate-500 dark:text-slate-400">
                   {customers.length} customers available. Start typing to search...
                 </div>
               )}
-              
+
               {invoiceData.selectedCustomer && (
                 <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -2046,7 +2355,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                   </Button>
                 )}
               </div>
-              
+
               <div className={`grid gap-4 ${invoiceData.discountMode === 'individual' && invoiceData.vatMode === 'individual' ? 'grid-cols-1 md:grid-cols-6' : invoiceData.discountMode === 'individual' || invoiceData.vatMode === 'individual' ? 'grid-cols-1 md:grid-cols-5' : 'grid-cols-1 md:grid-cols-4'}`}>
                 <div className="md:col-span-2">
                   <Label>Description</Label>
@@ -2108,7 +2417,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex justify-end">
                 <div className="text-right space-y-1">
                   <div className="text-sm text-slate-600">
@@ -2134,9 +2443,9 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               </div>
             </div>
           ))}
-          
+
           <Separator />
-          
+
           <div className="flex justify-end">
             <div className="w-80 space-y-2">
               <div className="flex justify-between">
@@ -2146,10 +2455,10 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               {invoiceData.totalDiscount > 0 && (
                 <div className="flex justify-between text-red-600">
                   <span>
-                    Discount {invoiceData.discountMode === 'global' 
-                      ? `(${invoiceData.globalDiscountType === 'percentage' 
-                          ? `${Number(invoiceData.globalDiscountValue) || 0}%` 
-                          : `£${Number(invoiceData.globalDiscountValue) || 0}`})` 
+                    Discount {invoiceData.discountMode === 'global'
+                      ? `(${invoiceData.globalDiscountType === 'percentage'
+                        ? `${Number(invoiceData.globalDiscountValue) || 0}%`
+                        : `£${Number(invoiceData.globalDiscountValue) || 0}`})`
                       : '(Item-wise)'}:
                   </span>
                   <span>-£{(Number(invoiceData.totalDiscount) || 0).toFixed(2)}</span>
@@ -2161,8 +2470,8 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               </div>
               <div className="flex justify-between">
                 <span>
-                  VAT {invoiceData.vatMode === 'global' 
-                    ? `(${invoiceData.globalVatRate}%)` 
+                  VAT {invoiceData.vatMode === 'global'
+                    ? `(${invoiceData.globalVatRate}%)`
                     : '(Item-wise)'}:
                 </span>
                 <span>£{(Number(invoiceData.vatAmount) || 0).toFixed(2)}</span>
@@ -2193,7 +2502,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               rows={3}
             />
           </div>
-          
+
           <div>
             <Label htmlFor="terms">Terms & Conditions</Label>
             <Textarea
@@ -2204,7 +2513,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               rows={4}
             />
           </div>
-          
+
           <div>
             <Label htmlFor="paymentInstructions">Payment Instructions</Label>
             <Textarea
