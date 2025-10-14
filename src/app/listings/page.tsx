@@ -438,10 +438,7 @@ function ListingsManagementContent() {
             return false;
           }
         } else if (selectedChannelFilters.includes('capped')) {
-          const isCapped = !ADVERTISING_CHANNELS.some(channel => 
-            channelStatus[vehicle.stockId]?.[channel.id] === true
-          );
-          if (!isCapped) {
+          if (vehicle.adverts?.retailAdverts?.autotraderAdvert?.status?.toLowerCase() !== 'capped') {
             return false;
           }
         } else {
@@ -1168,7 +1165,7 @@ function ListingsManagementContent() {
 
             <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-200 hover:scale-105 ${
               selectedChannelFilters.includes('capped')
-                ? 'bg-red-500 text-white border-transparent shadow-md'
+                ? 'bg-yellow-500 text-white border-transparent shadow-md'
                 : isDarkMode
                   ? 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700'
                   : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
@@ -1204,9 +1201,10 @@ function ListingsManagementContent() {
                   const lifecycleState = vehicle.adverts?.retailAdverts?.autotraderAdvert?.status;
                   if (lifecycleState?.toLowerCase() !== 'capped') return false;
                   
-                  return !ADVERTISING_CHANNELS.some(channel => 
-                    channelStatus[vehicle.stockId]?.[channel.id] === true
-                  );
+                  // return !ADVERTISING_CHANNELS.some(channel => 
+                  //   channelStatus[vehicle.stockId]?.[channel.id] === true
+                  // );
+                  return true
                 }).length : 0}
               </span>
             </label>
@@ -1262,6 +1260,17 @@ function ListingsManagementContent() {
                       Channel: {channel.name}
                     </span>
                   ) : null;
+                })}
+                {selectedChannelFilters.map(channelId => {
+                  if (channelId === 'capped') {
+                    return (
+                      <span key={channelId} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        isDarkMode ? 'bg-yellow-600/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        Capped
+                      </span>
+                    );
+                  }
                 })}
               </div>
               <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
