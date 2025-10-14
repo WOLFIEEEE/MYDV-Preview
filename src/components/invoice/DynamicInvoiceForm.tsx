@@ -30,7 +30,8 @@ import {
   Trash2,
   PenTool,
   Upload,
-  QrCode
+  QrCode,
+  Search
 } from "lucide-react";
 import { ComprehensiveInvoiceData } from "@/app/api/invoice-data/route";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -38,6 +39,7 @@ import { PREDEFINED_FINANCE_COMPANIES } from '@/lib/financeCompanies';
 import Image from 'next/image';
 import SignatureCapture from "../shared/SignatureCapture";
 import AddressFormSection from "@/components/ui/AddressFormSection";
+import CustomerSearchInput from "../shared/CustomerSearchInput";
 
 interface DynamicInvoiceFormProps {
   invoiceData: ComprehensiveInvoiceData;
@@ -1028,6 +1030,42 @@ export default function DynamicInvoiceForm({
   // }, [updateNestedData]);  
   // const isSignatureAvailable = invoiceData.customerAvailableSignature === 'Yes'
 
+  // Customer search and selection handler
+  const handleCustomerSelect = useCallback((customer: any) => {
+    // Map customer data to invoice data structure
+    const customerUpdates = {
+      customer: {
+        title: invoiceData.customer.title || '', // Keep existing title if set
+        firstName: customer.firstName || '',
+        middleName: invoiceData.customer.middleName || '', // Keep existing middle name
+        lastName: customer.lastName || '',
+        contact: {
+          phone: customer.phone || '',
+          email: customer.email || ''
+        },
+        address: {
+          firstLine: customer.addressLine1 || '',
+          secondLine: customer.addressLine2 || '',
+          city: customer.city || '',
+          county: customer.county || '',
+          postCode: customer.postcode || '',
+          country: customer.country || 'United Kingdom'
+        },
+        flags: {
+          vulnerabilityMarker: invoiceData.customer.flags?.vulnerabilityMarker || false,
+          gdprConsent: customer.gdprConsent || false,
+          salesMarketingConsent: customer.marketingConsent || false
+        }
+      }
+    };
+
+    // Update the invoice data with selected customer information
+    onUpdate({
+      ...invoiceData,
+      ...customerUpdates
+    });
+  }, [invoiceData, onUpdate]);
+
 
   return (
     <div className="safari-form-container">
@@ -1390,6 +1428,23 @@ export default function DynamicInvoiceForm({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Customer Search */}
+                <div className="space-y-2">
+                  <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                    Search Existing Customer
+                  </Label>
+                  <CustomerSearchInput
+                    onCustomerSelect={handleCustomerSelect}
+                    placeholder="Search by name or email to auto-fill customer details..."
+                    className="w-full"
+                  />
+                  <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Start typing to search and select an existing customer, or fill in the details manually below.
+                  </p>
+                </div>
+
+                <Separator />
+
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <FormInput
                     label="Title"
