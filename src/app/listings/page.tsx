@@ -437,6 +437,13 @@ function ListingsManagementContent() {
           if (!isNotAdvertised) {
             return false;
           }
+        } else if (selectedChannelFilters.includes('capped')) {
+          const isCapped = !ADVERTISING_CHANNELS.some(channel => 
+            channelStatus[vehicle.stockId]?.[channel.id] === true
+          );
+          if (!isCapped) {
+            return false;
+          }
         } else {
           // Check for specific channel matches
           const hasMatchingChannel = selectedChannelFilters.some(channelId => {
@@ -1151,6 +1158,51 @@ function ListingsManagementContent() {
                 {stockData ? stockData.filter((vehicle: StockItem) => {
                   const lifecycleState = vehicle.lifecycleState || vehicle.metadata?.lifecycleState;
                   if (lifecycleState?.toLowerCase() !== 'forecourt') return false;
+                  
+                  return !ADVERTISING_CHANNELS.some(channel => 
+                    channelStatus[vehicle.stockId]?.[channel.id] === true
+                  );
+                }).length : 0}
+              </span>
+            </label>
+
+            <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-200 hover:scale-105 ${
+              selectedChannelFilters.includes('capped')
+                ? 'bg-red-500 text-white border-transparent shadow-md'
+                : isDarkMode
+                  ? 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+            }`}>
+              <input
+                type="checkbox"
+                checked={selectedChannelFilters.includes('capped')}
+                onChange={() => handleChannelFilterToggle('capped')}
+                className="sr-only"
+              />
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                selectedChannelFilters.includes('capped')
+                  ? 'bg-white border-white'
+                  : isDarkMode
+                    ? 'border-gray-400'
+                    : 'border-gray-300'
+              }`}>
+                {selectedChannelFilters.includes('capped') && (
+                  <Check className="w-3 h-3 text-gray-800" />
+                )}
+              </div>
+              <span className="text-sm font-medium">
+                CAPPED Advertisements
+              </span>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                selectedChannelFilters.includes('capped')
+                  ? 'bg-white/20 text-white'
+                  : isDarkMode
+                    ? 'bg-gray-600 text-gray-300'
+                    : 'bg-gray-200 text-gray-600'
+              }`}>
+                {stockData ? stockData.filter((vehicle: StockItem) => {
+                  const lifecycleState = vehicle.adverts?.retailAdverts?.autotraderAdvert?.status;
+                  if (lifecycleState?.toLowerCase() !== 'capped') return false;
                   
                   return !ADVERTISING_CHANNELS.some(channel => 
                     channelStatus[vehicle.stockId]?.[channel.id] === true
