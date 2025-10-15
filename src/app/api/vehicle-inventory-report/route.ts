@@ -243,6 +243,7 @@ export async function GET(request: NextRequest) {
           amountPaidInCash,
           amountPaidInPartExchange,
           amountPaidInTotal,
+          salePrice, // Add sale price after amount paid in total
           daysInStock: calculateDaysInStock(),
           transportIn: costs?.transportIn ? parseFloat(costs.transportIn) : 0,
           transportOut: costs?.transportOut ? parseFloat(costs.transportOut) : 0,
