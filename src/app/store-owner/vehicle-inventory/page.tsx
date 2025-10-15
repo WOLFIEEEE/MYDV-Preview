@@ -409,7 +409,7 @@ export default function VehicleInventoryPage() {
       'Deposit Amount', 'Deposit Date', 'Email Address', 'Contact Number', 'First Name', 'Last Name', 'Date of Collection / Delivery',
       'Warranty Price Post Discount', 'Delivery Price', 'Total Finance Add-On', 'Total Customer Add-On', 'Date of Sale', 'Month of Sale', 'Quarter (sale)',
       'Amount Paid by Finance', 'Amount Paid by BACS / Card', 'Amount Paid in Cash',
-      'Amount Paid in Part Exchange', 'Amount Paid in Total', 'Sale Price', 'Days in Stock', 'Transport In',
+      'Amount Paid in Part Exchange', 'Amount Paid in Total', 'Vehicle Sale Price', 'Days in Stock', 'Transport In',
       'Transport Out', 'MOT', 'Service VATABLE', 'Parts VATABLE', 'Repairs VATABLE',
       'Dents VATABLE', 'Bodyshop VATABLE', 'Service NON-VATABLE', 'Parts NON-VATABLE',
       'Repairs NON-VATABLE', 'Dents NON-VATABLE', 'Bodyshop NON-VATABLE', 'Outlay on Vehicle',
@@ -945,7 +945,7 @@ export default function VehicleInventoryPage() {
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Amount Paid in Cash</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Amount Paid in Part Exchange</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Amount Paid in Total</th>
-                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Sale Price</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Vehicle Sale Price</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Days in Stock</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Transport In</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Transport Out</th>
