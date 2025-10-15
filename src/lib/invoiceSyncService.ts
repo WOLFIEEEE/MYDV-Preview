@@ -212,14 +212,29 @@ export class InvoiceSyncService {
     try {
       // Check if sales details already exist
       const existingSaleDetails = await getSaleDetailsByStockId(this.stockId, this.dealerId);
+      console.log('📊 [SYNC] Existing sale details found:', !!existingSaleDetails);
 
       // Prepare sales details data
       const saleDetailsData = this.prepareSalesDetailsData(customerId);
+      
+      console.log('📝 [SYNC] Prepared sales details data:', {
+        deliveryType: saleDetailsData.deliveryType,
+        deliveryPrice: saleDetailsData.deliveryPrice,
+        deliveryDate: saleDetailsData.deliveryDate,
+        stockId: this.stockId,
+        dealerId: this.dealerId
+      });
 
       let result;
       if (existingSaleDetails) {
         console.log('📝 Updating existing sales details');
         result = await updateSaleDetails(this.stockId, this.dealerId, saleDetailsData);
+        console.log('✅ [SYNC] Sales details updated. Result:', {
+          id: result?.id,
+          deliveryType: result?.deliveryType,
+          deliveryPrice: result?.deliveryPrice,
+          deliveryDate: result?.deliveryDate
+        });
       } else {
         console.log('🆕 Creating new sales details');
         result = await createSaleDetails({
@@ -227,6 +242,12 @@ export class InvoiceSyncService {
           dealerId: this.dealerId,
           saleDate: this.invoiceData.sale?.date ? new Date(this.invoiceData.sale.date) : new Date(),
           ...saleDetailsData
+        });
+        console.log('✅ [SYNC] Sales details created. Result:', {
+          id: result?.id,
+          deliveryType: result?.deliveryType,
+          deliveryPrice: result?.deliveryPrice,
+          deliveryDate: result?.deliveryDate
         });
       }
 
@@ -297,11 +318,39 @@ export class InvoiceSyncService {
       warrantyType: invoice.warranty?.type || 'none',
       warrantyPrice: (invoice.pricing?.warrantyPricePostDiscount !== undefined ? invoice.pricing.warrantyPricePostDiscount : (invoice.pricing?.warrantyPrice ?? 0)).toString(),
       
-      // Delivery information
+      // Delivery information - always use discounted delivery price
       deliveryType: invoice.delivery?.type || 'collection',
-      deliveryPrice: (invoice.pricing?.deliveryCostPostDiscount !== undefined ? invoice.pricing.deliveryCostPostDiscount : (invoice.pricing?.deliveryCost ?? invoice.delivery?.cost ?? 0)).toString(),
+      deliveryPrice: (() => {
+        // PRIORITY ORDER: 
+        // 1. Use invoice.delivery.postDiscountCost (most accurate)
+        // 2. Fall back to invoice.pricing.deliveryCostPostDiscount
+        // 3. Fall back to original costs
+        const deliveryPostDiscount = invoice.delivery?.postDiscountCost;
+        const pricingPostDiscount = invoice.pricing?.deliveryCostPostDiscount;
+        const originalCost = invoice.delivery?.cost ?? invoice.pricing?.deliveryCost ?? 0;
+        
+        const finalPrice = deliveryPostDiscount !== undefined 
+          ? deliveryPostDiscount 
+          : (pricingPostDiscount !== undefined ? pricingPostDiscount : originalCost);
+        
+        console.log('🚚 [SYNC] Delivery Price Calculation (FIXED):', {
+          deliveryPostDiscount,
+          pricingPostDiscount,
+          originalCost,
+          finalPrice,
+          deliveryType: invoice.delivery?.type || 'collection',
+          dataSource: deliveryPostDiscount !== undefined ? 'invoice.delivery' : 
+                     (pricingPostDiscount !== undefined ? 'invoice.pricing' : 'original')
+        });
+        
+        return finalPrice.toString();
+      })(),
       deliveryDate: invoice.delivery?.date ? new Date(invoice.delivery.date) : undefined,
       deliveryAddress: invoice.delivery?.address,
+      
+      // Add-on totals calculation
+      totalFinanceAddOn: this.calculateTotalFinanceAddOns().toString(),
+      totalCustomerAddOn: this.calculateTotalCustomerAddOns().toString(),
       
       // Status flags from invoice
       documentationComplete: invoice.status?.documentationComplete || false,
@@ -462,6 +511,74 @@ export class InvoiceSyncService {
   private getFirstPaymentDate(payments: Array<{ amount: number; date: string }>): Date | undefined {
     const validPayment = payments.find(p => p.date && p.date.trim() !== '' && p.amount > 0);
     return validPayment?.date ? new Date(validPayment.date) : undefined;
+  }
+
+  /**
+   * Calculate total finance add-ons (post-discount values)
+   */
+  private calculateTotalFinanceAddOns(): number {
+    const invoice = this.invoiceData;
+    let total = 0;
+
+    // Static finance add-ons (addon1 and addon2)
+    const financeAddon1Cost = invoice.addons?.finance?.addon1?.postDiscountCost ?? 
+                             invoice.addons?.finance?.addon1?.cost ?? 0;
+    const financeAddon2Cost = invoice.addons?.finance?.addon2?.postDiscountCost ?? 
+                             invoice.addons?.finance?.addon2?.cost ?? 0;
+    
+    total += financeAddon1Cost + financeAddon2Cost;
+
+    // Dynamic finance add-ons
+    if (invoice.addons?.finance?.dynamicAddons) {
+      let dynamicAddons = invoice.addons.finance.dynamicAddons;
+      
+      // Convert object format to array if needed
+      if (!Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+        dynamicAddons = Object.values(dynamicAddons);
+      }
+      
+      if (Array.isArray(dynamicAddons)) {
+        total += dynamicAddons.reduce((sum: number, addon: any) => {
+          return sum + (addon.postDiscountCost ?? addon.cost ?? 0);
+        }, 0);
+      }
+    }
+
+    return total;
+  }
+
+  /**
+   * Calculate total customer add-ons (post-discount values)
+   */
+  private calculateTotalCustomerAddOns(): number {
+    const invoice = this.invoiceData;
+    let total = 0;
+
+    // Static customer add-ons (addon1 and addon2)
+    const customerAddon1Cost = invoice.addons?.customer?.addon1?.postDiscountCost ?? 
+                              invoice.addons?.customer?.addon1?.cost ?? 0;
+    const customerAddon2Cost = invoice.addons?.customer?.addon2?.postDiscountCost ?? 
+                              invoice.addons?.customer?.addon2?.cost ?? 0;
+    
+    total += customerAddon1Cost + customerAddon2Cost;
+
+    // Dynamic customer add-ons
+    if (invoice.addons?.customer?.dynamicAddons) {
+      let dynamicAddons = invoice.addons.customer.dynamicAddons;
+      
+      // Convert object format to array if needed
+      if (!Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+        dynamicAddons = Object.values(dynamicAddons);
+      }
+      
+      if (Array.isArray(dynamicAddons)) {
+        total += dynamicAddons.reduce((sum: number, addon: any) => {
+          return sum + (addon.postDiscountCost ?? addon.cost ?? 0);
+        }, 0);
+      }
+    }
+
+    return total;
   }
 }
 

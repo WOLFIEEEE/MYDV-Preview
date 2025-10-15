@@ -933,6 +933,9 @@ export default function VehicleInventoryPage() {
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Last Name</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Date of Collection / Delivery</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Warranty Price Post Discount</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Delivery Price</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Total Finance Add-On</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Total Customer Add-On</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Date of Sale</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Month of Sale</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Quarter (sale)</th>
@@ -1008,6 +1011,9 @@ export default function VehicleInventoryPage() {
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.lastName}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.dateOfCollectionDelivery}</td>
                           <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{item.warrantyPricePostDiscount.toFixed(2)}</td>
+                          <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{(item.deliveryPrice || 0).toFixed(2)}</td>
+                          <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{(item.totalFinanceAddOn || 0).toFixed(2)}</td>
+                          <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{(item.totalCustomerAddOn || 0).toFixed(2)}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.dateOfSale}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.monthOfSale}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.quarterSale}</td>

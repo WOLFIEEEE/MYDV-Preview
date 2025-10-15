@@ -143,6 +143,15 @@ export async function POST(request: NextRequest) {
 
     // Sync with CRM and Sales Details (non-blocking)
     console.log('🔄 Starting post-invoice sync...');
+    console.log('📊 [SAVE API] Invoice data structure for sync:', {
+      stockId,
+      dealerId,
+      deliveryInfo: updatedInvoiceData.delivery,
+      pricingInfo: updatedInvoiceData.pricing,
+      hasDelivery: !!updatedInvoiceData.delivery,
+      hasPricing: !!updatedInvoiceData.pricing
+    });
+    
     try {
       const syncResult = await syncInvoiceData(dealerId, stockId, updatedInvoiceData);
       

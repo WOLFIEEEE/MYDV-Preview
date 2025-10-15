@@ -673,6 +673,10 @@ export const saleDetails = pgTable('sale_details', {
   // Additional Notes
   notes: text('notes'),
   
+  // Add-on Totals (for tracking total finance and customer add-ons)
+  totalFinanceAddOn: decimal('total_finance_add_on', { precision: 10, scale: 2 }),
+  totalCustomerAddOn: decimal('total_customer_add_on', { precision: 10, scale: 2 }),
+  
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

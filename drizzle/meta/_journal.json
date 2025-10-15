@@ -57,6 +57,20 @@
       "when": 1760331296769,
       "tag": "0007_great_tenebrous",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1760552986983,
+      "tag": "0008_sloppy_iron_fist",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1760554730401,
+      "tag": "0009_tough_patch",
+      "breakpoints": true
     }
   ]
 }
