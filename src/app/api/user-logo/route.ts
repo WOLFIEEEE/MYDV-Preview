@@ -55,10 +55,10 @@ export async function GET(request: NextRequest) {
       // Use admin-assigned logo ONLY
       logoUrl = adminLogo[0].logoPublicUrl;
       logoSource = 'admin';
-      console.log('🎨 Using admin-assigned logo for dealer:', dealerId);
+      console.log('🎨 Using admin-assigned logo for dealer:', dealerId, 'URL:', logoUrl);
     } else {
       // No admin logo - return null (no logo will be shown)
-      console.log('❌ No admin-assigned logo for dealer:', dealerId);
+      console.log('❌ No admin-assigned logo for dealer:', dealerId, 'Dealer name:', dealerName);
     }
 
     // Get company name for store name display
@@ -74,13 +74,17 @@ export async function GET(request: NextRequest) {
       storeName = companyInfo[0].companyName;
     }
 
+    const responseData = {
+      logo: logoUrl,
+      storeName: storeName,
+      source: logoSource // 'admin' or 'none'
+    };
+
+    console.log('📤 Returning logo data for dealer:', dealerId, responseData);
+
     return NextResponse.json({
       success: true,
-      data: {
-        logo: logoUrl,
-        storeName: storeName,
-        source: logoSource // 'admin' or 'none'
-      }
+      data: responseData
     });
 
   } catch (error) {
