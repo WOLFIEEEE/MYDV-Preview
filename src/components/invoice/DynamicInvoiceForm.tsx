@@ -1550,6 +1550,25 @@ export default function DynamicInvoiceForm({
               </CardHeader>
               <CardContent className="space-y-4">
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* IDD Acceptance - Only show for Finance Company Retail sales */}
+                  {invoiceData.saleType !== 'Trade' && invoiceData.invoiceTo === 'Finance Company' && (
+                    <FormSelect
+                      label="Customer has accepted the IDD"
+                      value={invoiceData.customerAcceptedIdd || 'N/A'}
+                      onChange={(value) => updateNestedData('customerAcceptedIdd', value)}
+                      options={[
+                        'N/A',
+                        'Yes',
+                      'No',
+                      'On Collection',
+                      'Customer Decided Against Finance'
+                    ]}
+                    icon={CheckCircle}
+                  />
+                  )}
+                </div>
+
                 {/* Customer Available for Signature - input_116 */}
                 <div className="space-y-2">
                   <label className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'
