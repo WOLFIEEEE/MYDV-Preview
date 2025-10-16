@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { dealers, dealerLogos, companySettings } from '@/db/schema';
+import { dealers, dealerLogos, companySettings, teamMembers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -11,28 +11,58 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // First, get the dealer ID from the dealers table using clerk user ID
-    const dealer = await db
-      .select({
-        id: dealers.id,
-        name: dealers.name
-      })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, userId))
+    // Get dealer ID (supports team member credential delegation)
+    let dealerId: string;
+    let dealerName: string;
+    
+    // First check if user is a team member
+    const teamMemberResult = await db
+      .select({ storeOwnerId: teamMembers.storeOwnerId })
+      .from(teamMembers)
+      .where(eq(teamMembers.clerkUserId, userId))
       .limit(1);
+    
+    if (teamMemberResult.length > 0) {
+      // User is a team member - use store owner's dealer ID
+      dealerId = teamMemberResult[0].storeOwnerId;
+      console.log('👥 Team member detected - using store owner dealer ID for logo:', dealerId);
+      
+      // Get dealer name for the store owner
+      const storeOwnerDealer = await db
+        .select({
+          name: dealers.name
+        })
+        .from(dealers)
+        .where(eq(dealers.id, dealerId))
+        .limit(1);
+      
+      dealerName = storeOwnerDealer.length > 0 ? storeOwnerDealer[0].name : 'Store';
+    } else {
+      // User is not a team member - get their own dealer record
+      const dealer = await db
+        .select({
+          id: dealers.id,
+          name: dealers.name
+        })
+        .from(dealers)
+        .where(eq(dealers.clerkUserId, userId))
+        .limit(1);
 
-    if (dealer.length === 0) {
-      return NextResponse.json({ 
-        success: true, 
-        data: { 
-          logo: null, 
-          storeName: null 
-        } 
-      });
+      if (dealer.length === 0) {
+        console.log('❌ No dealer record found for user:', userId);
+        return NextResponse.json({ 
+          success: true, 
+          data: { 
+            logo: null, 
+            storeName: null 
+          } 
+        });
+      }
+
+      dealerId = dealer[0].id;
+      dealerName = dealer[0].name;
+      console.log('🏢 Store owner detected - using own dealer ID for logo:', dealerId);
     }
-
-    const dealerId = dealer[0].id;
-    const dealerName = dealer[0].name;
 
     // ONLY use admin-assigned logos - nothing else
     const adminLogo = await db
