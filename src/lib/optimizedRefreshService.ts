@@ -17,44 +17,83 @@ class OptimizedRefreshService {
   private static refreshPromises = new Map<string, Promise<void>>();
 
   /**
-   * Start background refresh - returns immediately with cached data
-   * UI gets instant feedback while refresh happens in background
+   * Start FORCED refresh - ALWAYS fetches fresh data from AutoTrader
+   * GUARANTEES fresh data when user explicitly clicks refresh button
+   * This bypasses cache to ensure user sees latest data immediately
    */
   static async startBackgroundRefresh(options: StockQueryOptions): Promise<{
-    immediate: any; // Cached data returned instantly
+    immediate: any; // Fresh data from AutoTrader (NOT cached)
     refreshId: string;
     isRefreshing: boolean;
   }> {
     const refreshId = `${options.dealerId}-${options.advertiserId}`;
     
-    // Return cached data immediately
-    const cachedData = await StockCacheService.getStockData(options);
+    console.log('🔄 FORCE REFRESH: Bypassing cache to fetch fresh data from AutoTrader...');
     
-    // Start background refresh if not already running
-    if (!this.refreshPromises.has(refreshId)) {
-      console.log('🚀 Starting background refresh for:', refreshId);
-      
+    // Mark as refreshing
+    this.refreshStatus.set(refreshId, {
+      isRefreshing: true,
+      progress: 0,
+      lastUpdated: new Date().toISOString()
+    });
+    
+    // ALWAYS fetch fresh data from AutoTrader when user clicks refresh
+    // This GUARANTEES fresh data - no cache served
+    const updateProgress = (current: number, total: number, estimatedTime?: number) => {
       this.refreshStatus.set(refreshId, {
         isRefreshing: true,
-        progress: 0,
+        progress: Math.round((current / total) * 100),
+        currentPage: current,
+        totalPages: total,
+        estimatedTimeRemaining: estimatedTime,
         lastUpdated: new Date().toISOString()
       });
-
-      const refreshPromise = this.performBackgroundRefresh(options, refreshId);
-      this.refreshPromises.set(refreshId, refreshPromise);
-      
-      // Clean up when done
-      refreshPromise.finally(() => {
-        this.refreshPromises.delete(refreshId);
-        this.refreshStatus.delete(refreshId);
-      });
-    }
-
-    return {
-      immediate: cachedData,
-      refreshId,
-      isRefreshing: this.refreshStatus.get(refreshId)?.isRefreshing || false
     };
+    
+    try {
+      // Force fresh fetch from AutoTrader with progress tracking
+      const freshData = await StockCacheService.forceRefreshStockDataWithProgress(options, updateProgress);
+      
+      console.log('✅ FORCE REFRESH COMPLETE: Fresh data fetched from AutoTrader');
+      
+      // Trigger cross-page sync to update all pages
+      const { crossPageSyncService } = await import('./crossPageSyncService');
+      await crossPageSyncService.triggerStockRefresh(options.dealerId, 'force-refresh');
+      
+      // Clean up refresh status
+      this.refreshPromises.delete(refreshId);
+      this.refreshStatus.set(refreshId, {
+        isRefreshing: false,
+        progress: 100,
+        lastUpdated: new Date().toISOString()
+      });
+      
+      return {
+        immediate: freshData, // Fresh data from AutoTrader
+        refreshId,
+        isRefreshing: false
+      };
+      
+    } catch (error) {
+      console.error('❌ FORCE REFRESH FAILED:', error);
+      
+      this.refreshStatus.set(refreshId, {
+        isRefreshing: false,
+        progress: 0,
+        lastUpdated: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      // Fall back to cached data if force refresh fails
+      console.warn('⚠️ Falling back to cached data due to refresh error');
+      const cachedData = await StockCacheService.getStockData(options);
+      
+      return {
+        immediate: cachedData,
+        refreshId,
+        isRefreshing: false
+      };
+    }
   }
 
   /**
@@ -64,50 +103,8 @@ class OptimizedRefreshService {
     return this.refreshStatus.get(refreshId) || null;
   }
 
-  /**
-   * Perform the actual refresh in background with progress updates
-   */
-  private static async performBackgroundRefresh(
-    options: StockQueryOptions, 
-    refreshId: string
-  ): Promise<void> {
-    const startTime = Date.now();
-    
-    try {
-      // Update status with progress tracking
-      const updateProgress = (current: number, total: number, estimatedTime?: number) => {
-        this.refreshStatus.set(refreshId, {
-          isRefreshing: true,
-          progress: Math.round((current / total) * 100),
-          currentPage: current,
-          totalPages: total,
-          estimatedTimeRemaining: estimatedTime,
-          lastUpdated: new Date().toISOString()
-        });
-      };
-
-      // Perform the actual refresh with progress callbacks
-      const refreshResult = await StockCacheService.forceRefreshStockDataWithProgress(options, updateProgress);
-      
-      console.log(`✅ Background refresh completed in ${Date.now() - startTime}ms`);
-      
-      // Verify database was properly updated
-      await this.verifyDatabaseUpdate(options, refreshResult);
-      
-      // Trigger cross-page sync after successful database update
-      const { crossPageSyncService } = await import('./crossPageSyncService');
-      await crossPageSyncService.triggerStockRefresh(options.dealerId, 'background-refresh');
-      
-    } catch (error) {
-      console.error('❌ Background refresh failed:', error);
-      this.refreshStatus.set(refreshId, {
-        isRefreshing: false,
-        progress: 0,
-        lastUpdated: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  }
+  // REMOVED: performBackgroundRefresh method
+  // Now refresh happens synchronously in startBackgroundRefresh to guarantee fresh data
 
   /**
    * Verify database was properly updated with fresh data
@@ -167,3 +164,4 @@ class OptimizedRefreshService {
 }
 
 export { OptimizedRefreshService, type RefreshStatus };
+
