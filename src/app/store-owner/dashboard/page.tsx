@@ -30,7 +30,8 @@ import {
   ShoppingCart,
   PoundSterling,
   Receipt,
-  ChevronDown
+  ChevronDown,
+  X
 } from "lucide-react";
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
@@ -70,6 +71,8 @@ export default function EnhancedStoreOwnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showRefreshSkeleton, setShowRefreshSkeleton] = useState(false); // Show skeleton during forced refresh
+  const [refreshError, setRefreshError] = useState<string | null>(null); // Track refresh errors
   const [userRole, setUserRole] = useState<string>('');
   const [userType, setUserType] = useState<string>('');
   const [initializationComplete, setInitializationComplete] = useState(false); // FIXED: Prevent multiple initializations
@@ -420,11 +423,13 @@ export default function EnhancedStoreOwnerDashboard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    console.log('🔄 Dashboard refresh triggered - forcing fresh AutoTrader data fetch');
+    setShowRefreshSkeleton(true); // Show skeleton loading - hide old data
+    setRefreshError(null); // Clear any previous errors
+    console.log('🔄 Dashboard refresh - fetching fresh data from AutoTrader...');
     
     try {
-      // Call the new refresh API to force fresh data from AutoTrader
-      console.log('📡 Calling stock refresh API...');
+      // Force refresh from AutoTrader API - GUARANTEED FRESH DATA
+      console.log('📡 Calling stock refresh API to fetch fresh data from AutoTrader...');
       const refreshResponse = await fetch('/api/stock/refresh', {
         method: 'POST',
         headers: {
@@ -436,7 +441,8 @@ export default function EnhancedStoreOwnerDashboard() {
       });
 
       if (!refreshResponse.ok) {
-        throw new Error(`Refresh failed: ${refreshResponse.status}`);
+        const errorData = await refreshResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || `Refresh failed with status: ${refreshResponse.status}`);
       }
 
       const refreshData = await refreshResponse.json();
@@ -499,21 +505,26 @@ export default function EnhancedStoreOwnerDashboard() {
       console.log('🔄 Refreshing dashboard analytics with fresh data...');
       await refetchAnalytics();
       console.log('✅ Dashboard analytics refreshed with fresh data');
+      setRefreshError(null); // Clear any errors
       
     } catch (error) {
       console.error('❌ Error during stock refresh:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to refresh data from AutoTrader';
+      setRefreshError(errorMessage);
       
       // Fallback to regular analytics refresh if stock refresh fails
       try {
-        console.log('🔄 Falling back to analytics refresh only...');
+        console.log('⚠️ Falling back to cached analytics data...');
         await refetchAnalytics();
-        console.log('✅ Dashboard analytics refreshed (fallback)');
+        console.log('✅ Dashboard analytics refreshed (fallback - using cached data)');
       } catch (fallbackError) {
         console.error('❌ Fallback refresh also failed:', fallbackError);
       }
+    } finally {
+      setRefreshing(false);
+      // Delay hiding skeleton slightly to show the data has loaded
+      setTimeout(() => setShowRefreshSkeleton(false), 300);
     }
-    
-    setRefreshing(false);
   };
 
   // Authentication error state - show error screen if auth test fails
@@ -533,6 +544,31 @@ export default function EnhancedStoreOwnerDashboard() {
       <>
         <Header />
         <DashboardSkeleton />
+        <Footer />
+      </>
+    );
+  }
+
+  // Show skeleton loading during FORCED REFRESH (user clicked refresh button)
+  // This provides clean loading experience - no stale data shown
+  if (showRefreshSkeleton) {
+    return (
+      <>
+        <Header />
+        <div className="pt-16 min-h-screen bg-slate-50 dark:bg-slate-900">
+          <div className="container mx-auto max-w-full px-4 lg:px-6 xl:px-8 py-4">
+            {/* Refresh message banner */}
+            <div className="mb-6 p-4 rounded-lg border bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/50 text-blue-700 dark:text-blue-300 flex items-center gap-3">
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              <div>
+                <p className="font-semibold">Refreshing from AutoTrader...</p>
+                <p className="text-sm opacity-80">Fetching latest vehicle data and updating analytics (this may take 8-12 seconds)</p>
+              </div>
+            </div>
+            
+            <DashboardSkeleton showWelcomeHeader={false} />
+          </div>
+        </div>
         <Footer />
       </>
     );
@@ -603,6 +639,43 @@ export default function EnhancedStoreOwnerDashboard() {
         {/* Enhanced Professional Header */}
         <section className="w-full">
           <div className="container mx-auto max-w-full px-4 lg:px-6 xl:px-8 py-4">
+            
+            {/* Refresh Error Notification - Shows when refresh fails but cached data is displayed */}
+            {refreshError && (
+              <div className="mb-6 p-4 rounded-lg border bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-700/50 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600 dark:text-red-400" />
+                  <div>
+                    <p className="font-semibold text-red-700 dark:text-red-300">
+                      Refresh Failed
+                    </p>
+                    <p className="text-sm text-red-600/80 dark:text-red-400/80">
+                      {refreshError} - Showing cached data instead. Please try refreshing again later.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/30"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                    Try Again
+                  </Button>
+                  <button
+                    onClick={() => setRefreshError(null)}
+                    className="p-1 rounded-md transition-colors hover:bg-red-100 text-red-600 dark:hover:bg-red-900/30 dark:text-red-400"
+                    aria-label="Dismiss error"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Welcome Header Section - Full Width */}
             <div className="w-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 dark:from-slate-900 dark:via-slate-800 dark:to-black rounded-2xl shadow-xl border border-slate-600 dark:border-slate-700 mb-2">
               <div className="p-4 md:p-6">

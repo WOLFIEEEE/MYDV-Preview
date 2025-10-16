@@ -1297,8 +1297,8 @@ export class StockCacheService {
         throw new Error('Failed to authenticate with AutoTrader');
       }
       
-      // Fetch all stock data from AutoTrader with automatic retry on token expiration
-      const stockData = await this.fetchAllStockFromAutoTraderWithRetry(
+      // Fetch all stock data from AutoTrader with parallel processing for better performance
+      const stockData = await this.fetchAllStockFromAutoTraderParallel(
         tokenResult.access_token,
         options.advertiserId,
         userEmail
@@ -1606,7 +1606,7 @@ export class StockCacheService {
     
     const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     const pageSize = 100;
-    const maxConcurrent = 3; // Fetch 3 pages simultaneously
+    const maxConcurrent = 6; // Fetch 6 pages simultaneously for better performance
     const startTime = Date.now();
     
     // Get circuit breaker
@@ -1666,9 +1666,9 @@ export class StockCacheService {
         // Continue with other batches - don't fail entire refresh
       }
       
-      // Small delay between batches to be respectful to the API
+      // Small delay between batches to be respectful to the API (reduced from 100ms to 50ms)
       if (i + maxConcurrent < remainingPages.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
     
@@ -2311,9 +2311,9 @@ export class StockCacheService {
       
       console.log(`🔄 Bulk operations: ${toUpdate.length} updates, ${toInsert.length} inserts`);
       
-      // Bulk insert new entries
+      // Bulk insert new entries with larger batch size for better performance
       if (toInsert.length > 0) {
-        const batchSize = 50;
+        const batchSize = 100; // Increased from 50 to 100 for faster inserts
         for (let i = 0; i < toInsert.length; i += batchSize) {
           const batch = toInsert.slice(i, i + batchSize);
           
@@ -2334,13 +2334,14 @@ export class StockCacheService {
         }
       }
 
-      // Bulk update existing entries
+      // Bulk update existing entries with optimized batch processing
       if (toUpdate.length > 0) {
-        const batchSize = 25;
+        const batchSize = 50; // Increased from 25 to 50 for faster updates
         for (let i = 0; i < toUpdate.length; i += batchSize) {
           const batch = toUpdate.slice(i, i + batchSize);
           
-          for (const entry of batch) {
+          // Process updates in parallel for better performance
+          await Promise.all(batch.map(async (entry) => {
             try {
               await db
                 .update(stockCache)
@@ -2382,7 +2383,7 @@ export class StockCacheService {
             } catch (updateError) {
               console.error(`❌ Failed to update ${entry.stockId}:`, updateError);
             }
-          }
+          }));
           
           console.log(`💾 Updated batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(toUpdate.length / batchSize)}`);
         }

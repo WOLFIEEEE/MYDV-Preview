@@ -87,6 +87,8 @@ function MyStockContent() {
   const [yearRange, setYearRange] = useState({ min: "", max: "" });
   const [mileageRange, setMileageRange] = useState({ min: "", max: "" });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showRefreshSkeleton, setShowRefreshSkeleton] = useState(false); // Show skeleton during forced refresh
+  const [refreshError, setRefreshError] = useState<string | null>(null); // Track refresh errors
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showTestDriveForm, setShowTestDriveForm] = useState(false);
@@ -464,10 +466,12 @@ function MyStockContent() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    console.log('🔄 MyStock: Starting optimized refresh - immediate UI update with background sync');
+    setShowRefreshSkeleton(true); // Show skeleton loading - hide old data
+    setRefreshError(null); // Clear any previous errors
+    console.log('🔄 MyStock: Force refresh - fetching fresh data from AutoTrader...');
     
     try {
-      // Step 1: Force refresh from AutoTrader API and update cache
+      // Force refresh from AutoTrader API - GUARANTEED FRESH DATA
       console.log('📡 Calling stock refresh API to fetch fresh data from AutoTrader...');
       const refreshResponse = await fetch('/api/stock/refresh', {
         method: 'POST',
@@ -480,7 +484,8 @@ function MyStockContent() {
       });
 
       if (!refreshResponse.ok) {
-        throw new Error(`Refresh failed: ${refreshResponse.status}`);
+        const errorData = await refreshResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || `Refresh failed with status: ${refreshResponse.status}`);
       }
 
       const refreshData = await refreshResponse.json();
@@ -490,20 +495,31 @@ function MyStockContent() {
         forceRefresh: refreshData.data?.cache?.forceRefresh
       });
 
-      // Step 2: Trigger cross-page synchronization
+      // Trigger cross-page synchronization
       console.log('🔄 Triggering cross-page sync to update all stock-related pages...');
       if (user?.id) {
         await crossPageSyncService.triggerStockRefresh(user.id, 'mystock-refresh');
       }
       
-      console.log('✅ Refresh completed successfully - all pages will update automatically');
+      // Also trigger local refetch to update UI with fresh data
+      await refetch();
+      
+      console.log('✅ Refresh completed successfully - displaying fresh data!');
+      setRefreshError(null); // Clear any errors
       
     } catch (error) {
       console.error('❌ Error during refresh:', error);
-      // Still try to refetch in case of partial success
+      const errorMessage = error instanceof Error ? error.message : 'Failed to refresh data from AutoTrader';
+      setRefreshError(errorMessage);
+      
+      // Still try to refetch cached data as fallback
+      console.log('⚠️ Falling back to cached data...');
       await refetch();
+      
     } finally {
       setIsRefreshing(false);
+      // Delay hiding skeleton slightly to show the data has loaded
+      setTimeout(() => setShowRefreshSkeleton(false), 300);
     }
   };
 
@@ -1164,6 +1180,43 @@ function MyStockContent() {
     );
   }
 
+  // Show skeleton loading during FORCED REFRESH (user clicked refresh button)
+  // This provides clean loading experience - no stale data shown
+  if (showRefreshSkeleton) {
+    return (
+      <>
+        <Header />
+        <div className={`min-h-screen transition-all duration-500 ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
+            : 'bg-gradient-to-br from-slate-50 via-white to-blue-50'
+        }`}>
+          <div className="pt-16">
+            <section className="relative py-12 px-2">
+              <div className="max-w-[2140px] mx-auto">
+                {/* Refresh message banner */}
+                <div className={`mb-6 p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-blue-900/20 border-blue-700/50 text-blue-300' 
+                    : 'bg-blue-50 border-blue-200 text-blue-700'
+                } flex items-center gap-3`}>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <div>
+                    <p className="font-semibold">Refreshing from AutoTrader...</p>
+                    <p className="text-sm opacity-80">Fetching latest vehicle data (this may take 8-12 seconds)</p>
+                  </div>
+                </div>
+                
+                <StockSkeleton viewMode={viewMode} count={12} />
+              </div>
+            </section>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
   if (error) {
     return (
       <>
@@ -1208,6 +1261,59 @@ function MyStockContent() {
             {/* Enhanced Header Section */}
             <section className="relative py-12 px-2">
               <div className="max-w-[2140px] mx-auto">
+
+              {/* Refresh Error Notification - Shows when refresh fails but cached data is displayed */}
+              {refreshError && (
+                <div className={`mb-6 p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-red-900/20 border-red-700/50' 
+                    : 'bg-red-50 border-red-200'
+                } flex items-center justify-between gap-4`}>
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className={`w-5 h-5 flex-shrink-0 ${
+                      isDarkMode ? 'text-red-400' : 'text-red-600'
+                    }`} />
+                    <div>
+                      <p className={`font-semibold ${
+                        isDarkMode ? 'text-red-300' : 'text-red-700'
+                      }`}>
+                        Refresh Failed
+                      </p>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-red-400/80' : 'text-red-600/80'
+                      }`}>
+                        {refreshError} - Showing cached data instead. Please try refreshing again later.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      size="sm"
+                      variant="outline"
+                      className={isDarkMode 
+                        ? 'border-red-700 text-red-300 hover:bg-red-900/30' 
+                        : 'border-red-300 text-red-700 hover:bg-red-100'
+                      }
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      Try Again
+                    </Button>
+                    <button
+                      onClick={() => setRefreshError(null)}
+                      className={`p-1 rounded-md transition-colors ${
+                        isDarkMode 
+                          ? 'hover:bg-red-900/30 text-red-400' 
+                          : 'hover:bg-red-100 text-red-600'
+                      }`}
+                      aria-label="Dismiss error"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Enhanced Stats Cards - Cool Modern Layout */}
               <div className="relative mb-8">
