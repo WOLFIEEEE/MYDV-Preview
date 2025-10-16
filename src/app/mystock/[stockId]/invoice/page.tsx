@@ -109,6 +109,9 @@ export default function StockInvoicePage() {
     )
   }
 
+  console.log('🧾 Rendering invoice form for stock:', {stockData})
+  console.log('🧾 Sale details for auto-population:', {saleDetailsData})
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />

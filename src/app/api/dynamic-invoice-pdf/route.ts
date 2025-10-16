@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     const filename = `${invoiceData.invoiceNumber}_${invoiceData.vehicle.registration}_${new Date().toISOString().split('T')[0]}.pdf`;
 
     // Return PDF as response with Safari-compatible headers
+    // @ts-ignore
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {

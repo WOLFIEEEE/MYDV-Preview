@@ -232,6 +232,9 @@ export async function GET(request: NextRequest) {
           lastName: sale?.lastName || '',
           dateOfCollectionDelivery: sale?.deliveryDate ? new Date(sale.deliveryDate).toLocaleDateString('en-GB') : '',
           warrantyPricePostDiscount: invoice?.warrantyPrice ? parseFloat(invoice.warrantyPrice) : 0,
+          deliveryPrice: sale?.deliveryPrice ? parseFloat(sale.deliveryPrice) : 0,
+          totalFinanceAddOn: sale?.totalFinanceAddOn ? parseFloat(sale.totalFinanceAddOn) : 0,
+          totalCustomerAddOn: sale?.totalCustomerAddOn ? parseFloat(sale.totalCustomerAddOn) : 0,
           dateOfSale: sale?.saleDate ? new Date(sale.saleDate).toLocaleDateString('en-GB') : '',
           monthOfSale: sale?.saleDate ? getMonthName(sale.saleDate) : '',
           quarterSale: sale?.saleDate ? getQuarter(sale.saleDate) : '',
@@ -240,6 +243,7 @@ export async function GET(request: NextRequest) {
           amountPaidInCash,
           amountPaidInPartExchange,
           amountPaidInTotal,
+          salePrice, // Add sale price after amount paid in total
           daysInStock: calculateDaysInStock(),
           transportIn: costs?.transportIn ? parseFloat(costs.transportIn) : 0,
           transportOut: costs?.transportOut ? parseFloat(costs.transportOut) : 0,

@@ -1,0 +1,1 @@
+ALTER TABLE "sale_details" ADD COLUMN "delivery_discount" numeric(10, 2);

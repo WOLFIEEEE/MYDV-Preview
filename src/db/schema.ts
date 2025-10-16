@@ -523,6 +523,19 @@ export const stockCache = pgTable('stock_cache', {
   yearMileageIdx: index('idx_stock_cache_year_mileage').on(table.yearOfManufacture, table.odometerReadingMiles),
   staleIdx: index('idx_stock_cache_stale').on(table.isStale),
 }))
+// Temporary Invoice Data Storage - For handling form data between pages
+export const tempInvoiceData = pgTable('temp_invoice_data', {
+  id: serial('id').primaryKey(),
+  tempId: varchar('temp_id', { length: 100 }).notNull().unique(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  data: jsonb('data').notNull(), // Store the complete invoice form data
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(), // Auto-cleanup after 24 hours
+}, (table) => ({
+  tempIdIdx: index('idx_temp_invoice_data_temp_id').on(table.tempId),
+  userIdIdx: index('idx_temp_invoice_data_user_id').on(table.userId),
+  expiresAtIdx: index('idx_temp_invoice_data_expires_at').on(table.expiresAt),
+}))
 
 // Stock Cache Sync Log - Track synchronization operations
 export const stockCacheSyncLog = pgTable('stock_cache_sync_log', {
@@ -659,6 +672,10 @@ export const saleDetails = pgTable('sale_details', {
   
   // Additional Notes
   notes: text('notes'),
+  
+  // Add-on Totals (for tracking total finance and customer add-ons)
+  totalFinanceAddOn: decimal('total_finance_add_on', { precision: 10, scale: 2 }),
+  totalCustomerAddOn: decimal('total_customer_add_on', { precision: 10, scale: 2 }),
   
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),

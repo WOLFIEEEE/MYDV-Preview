@@ -786,7 +786,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                 </div>
               </div>
 
-              <div>
+              {/* <div>
                 <label className={labelClass}>
                   <Shield className="inline h-4 w-4 mr-2" />
                   Warranty Type
@@ -806,7 +806,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
 
             </div>
           </Card>

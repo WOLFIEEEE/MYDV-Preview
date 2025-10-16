@@ -30,6 +30,8 @@ export default function StockDetailView() {
   const stockId = params.stockId as string;
   const { isDarkMode } = useTheme();
   const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [saleDetailsData, setSaleDetailsData] = useState<any | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
 
   // Use React Query for caching stock detail data
   // RACE CONDITION FIX: Check user?.id to ensure Clerk is fully initialized
@@ -49,7 +51,30 @@ export default function StockDetailView() {
     }
   }, [isLoaded, isSignedIn, router]);
 
-  if (!isLoaded || loading) {
+  useEffect(() => {
+      const loadData = async () => {
+  
+        try {
+          // Load sale details data (if exists)
+          const saleDetailsResponse = await fetch(`/api/stock-actions/sale-details?stockId=${stockId}`)
+          if (saleDetailsResponse.ok) {
+            const saleDetailsResult = await saleDetailsResponse.json()
+            if (saleDetailsResult.success && saleDetailsResult.data) {
+              console.log('📋 Sale details loaded for auto-population:', saleDetailsResult.data)
+              setSaleDetailsData(saleDetailsResult.data)
+            }
+          }
+        } catch (error) {
+          console.error('Error loading data:', error)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+  
+      loadData()
+    }, [stockId])
+
+  if (!isLoaded || loading || isLoading) {
     return (
       <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <Header />
@@ -273,6 +298,7 @@ export default function StockDetailView() {
           onOpenDocuments={() => setShowDocumentModal(true)}
           registration={registration}
           vehicleTitle={vehicleTitle}
+          saleDetailsData={saleDetailsData}
         />
       </div>
       
