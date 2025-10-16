@@ -4,7 +4,34 @@ import { db } from '@/lib/db';
 import { storeConfig } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
+import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 // Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
+
+// ============================================
+// AUTHENTICATION FLOW (Team Member Support)
+// ============================================
+// This API uses the PROPER authentication flow using getStoreConfigForUser helper:
+//
+// 1. Get clerkUserId from auth() - identifies the authenticated user ✅
+// 2. Use getStoreConfigForUser(userId, email) helper which:
+//    a) First checks if user is a TEAM MEMBER ✅
+//       - If yes: Gets store owner's dealer ID from teamMembers table
+//       - Then gets store owner's email from dealers table
+//       - Finally gets store config using store owner's email
+//    b) If not team member: Gets store config directly by clerkUserId ✅
+// 3. Use the returned storeOwnerEmail for AutoTrader authentication ✅
+//
+// This ensures:
+// ✅ Team members use their store owner's credentials (proper delegation)
+// ✅ Store owners use their own credentials
+// ✅ Consistent with StockCacheService and other AutoTrader APIs
+// ✅ Proper user isolation and security
+//
+// Example flow:
+// Team Member → teamMembers.storeOwnerId → dealers.email → storeConfig → AutoTrader API
+// Store Owner → storeConfig (direct) → AutoTrader API
+//
+// ============================================
 
 // Server-side cache for AutoTrader limits with TTL
 interface CachedLimits {
@@ -72,80 +99,45 @@ export async function GET() {
     
     console.log('🔄 Cache miss or expired, fetching fresh data...');
 
-    // Get user email from Clerk
-    const clerkSecretKey = process.env.CLERK_SECRET_KEY;
-    if (!clerkSecretKey) {
-      console.error('❌ AutoTrader Limits API: CLERK_SECRET_KEY not configured');
-      return NextResponse.json(
-        { success: false, error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    const user = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${clerkSecretKey}`,
-      },
-    });
-
-    if (!user.ok) {
-      console.error('❌ AutoTrader Limits API: Failed to fetch user from Clerk:', user.status);
-      return NextResponse.json(
-        { success: false, error: 'Failed to get user information' },
-        { status: 500 }
-      );
-    }
-
-    const userData = await user.json();
-    const userEmail = userData.email_addresses?.[0]?.email_address;
-
-    if (!userEmail) {
-      console.error('❌ AutoTrader Limits API: No email found for user');
-      return NextResponse.json(
-        { success: false, error: 'User email not found' },
-        { status: 400 }
-      );
-    }
-
-    console.log('✅ AutoTrader Limits API: User email found:', userEmail);
-
-    // Get AutoTrader token for API calls
-    console.log('🔑 AutoTrader Limits API: Getting AutoTrader token...');
-    const authResult = await getAutoTraderToken(userEmail);
-    if (!authResult.success) {
-      console.error('❌ AutoTrader Limits API: AutoTrader authentication failed:', authResult.error);
-      return NextResponse.json(
-        { success: false, error: 'Failed to authenticate with AutoTrader - Please check your API credentials' },
-        { status: 401 }
-      );
-    }
-
-    console.log('✅ AutoTrader Limits API: AutoTrader token obtained');
-
-    // Get store configuration to get advertiser ID
+    // Get store configuration using the proper helper (handles both store owners and team members)
     console.log('🏪 AutoTrader Limits API: Getting store configuration...');
-    const storeConfigResult = await db
-      .select({
-        advertisementId: storeConfig.advertisementId,
-        additionalAdvertisementIds: storeConfig.additionalAdvertisementIds
-      })
+    
+    // We need a temporary email to pass to getStoreConfigForUser
+    // It will be overridden by the store owner's email if user is a team member
+    const tempResult = await db
+      .select({ email: storeConfig.email })
       .from(storeConfig)
-      .where(eq(storeConfig.email, userEmail))
+      .where(eq(storeConfig.clerkUserId, userId))
       .limit(1);
-
-    if (storeConfigResult.length === 0) {
-      console.error('❌ AutoTrader Limits API: No store configuration found for email:', userEmail);
+    
+    const userEmail = tempResult.length > 0 ? tempResult[0].email : '';
+    
+    // Use the proper helper that handles team members
+    const configResult = await getStoreConfigForUser(userId, userEmail);
+    
+    if (!configResult.success || !configResult.storeConfig) {
+      console.error('❌ AutoTrader Limits API: Failed to get store configuration:', configResult.error);
       return NextResponse.json(
-        { success: false, error: 'Store configuration not found - Please contact support' },
+        { success: false, error: configResult.error || 'Store configuration not found - Please contact support' },
         { status: 404 }
       );
     }
 
-    let advertiserId = storeConfigResult[0].advertisementId;
+    let advertiserId = configResult.storeConfig.advertisementId;
+    const storeOwnerEmail = configResult.storeOwnerEmail;
+    
     if (!advertiserId) {
       console.error('❌ AutoTrader Limits API: No advertiser ID configured');
       return NextResponse.json(
         { success: false, error: 'Advertiser ID not configured - Please contact support' },
+        { status: 400 }
+      );
+    }
+
+    if (!storeOwnerEmail) {
+      console.error('❌ AutoTrader Limits API: No email found for authentication');
+      return NextResponse.json(
+        { success: false, error: 'Store owner email not found - Please contact support' },
         { status: 400 }
       );
     }
@@ -164,6 +156,20 @@ export async function GET() {
     }
 
     console.log('✅ AutoTrader Limits API: Final advertiser ID:', advertiserId);
+    console.log('✅ AutoTrader Limits API: Using email for auth:', storeOwnerEmail);
+
+    // Get AutoTrader token for API calls (using store owner's email for auth)
+    console.log('🔑 AutoTrader Limits API: Getting AutoTrader token...');
+    const authResult = await getAutoTraderToken(storeOwnerEmail);
+    if (!authResult.success) {
+      console.error('❌ AutoTrader Limits API: AutoTrader authentication failed:', authResult.error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to authenticate with AutoTrader - Please check your API credentials' },
+        { status: 401 }
+      );
+    }
+
+    console.log('✅ AutoTrader Limits API: AutoTrader token obtained');
 
     // Fetch advertiser data with allowances from AutoTrader API
     const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
