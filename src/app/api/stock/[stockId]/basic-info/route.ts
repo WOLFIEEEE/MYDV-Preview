@@ -43,15 +43,15 @@ export async function GET(
     }
 
     const stock = stockRecord[0];
-    const vehicleData = stock.vehicleData || {};
+    const vehicleData = (stock.vehicleData as Record<string, unknown>) || {};
     
     // Extract basic vehicle information
     const basicInfo = {
       stockId: stock.stockId,
-      registration: vehicleData.registration || vehicleData.plate || 'N/A',
-      make: vehicleData.make || 'Unknown',
-      model: vehicleData.model || 'Unknown',
-      year: vehicleData.yearOfManufacture || vehicleData.year || 'Unknown',
+      registration: (vehicleData.registration as string) || (vehicleData.plate as string) || 'N/A',
+      make: (vehicleData.make as string) || 'Unknown',
+      model: (vehicleData.model as string) || 'Unknown',
+      year: (vehicleData.yearOfManufacture as string) || (vehicleData.year as string) || 'Unknown',
       dealerName: stock.dealer.name || 'Unknown Dealer'
     };
 
