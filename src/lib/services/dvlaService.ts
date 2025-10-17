@@ -75,7 +75,7 @@ async function fetchDVLAData(registration: string): Promise<{ success: boolean; 
         
         // Handle specific error cases that shouldn't be retried
         if (response.status === 404) {
-          return { success: false, error: 'Vehicle not found in DVLA database' };
+          return { success: false, error: 'N/A' };
         } else if (response.status === 403) {
           return { success: false, error: 'API access denied' };
         } else if (response.status === 429) {

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     if (dvlaRecord.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'No DVLA data found for this registration',
+        error: 'N/A',
         registration: registration.toUpperCase()
       }, { status: 404 });
     }

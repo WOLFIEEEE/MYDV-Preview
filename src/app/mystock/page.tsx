@@ -2432,21 +2432,18 @@ function MyStockContent() {
                             const motExpiryDate = item.motExpiryDate || item.vehicle?.motExpiryDate;
                             const daysLeft = calculateMOTExpiryDays(motExpiryDate as string);
                             
-                            if (motStatus || motExpiryDate) {
-                              return (
-                                <div className={`flex items-center gap-1 ${
-                                  isDarkMode ? 'text-white' : 'text-slate-600'
-                                }`}>
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  <span className={`text-xs ${getMOTStatusColor(daysLeft)}`}>
-                                    MOT: {motStatus || 'Unknown'} {motExpiryDate && `(${formatMOTExpiry(motExpiryDate as string)})`}
-                                  </span>
-                                </div>
-                              );
-                            }
-                            return null;
+                            return (
+                              <div className={`flex items-center gap-1 ${
+                                isDarkMode ? 'text-white' : 'text-slate-600'
+                              }`}>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className={`text-xs ${motStatus && motExpiryDate ? getMOTStatusColor(daysLeft) : 'text-gray-500'}`}>
+                                  MOT: {motStatus || 'N/A'} {motExpiryDate ? `(${formatMOTExpiry(motExpiryDate as string)})` : '(N/A)'}
+                                </span>
+                              </div>
+                            );
                           })()}
                           
                           <div className={`flex items-center gap-1 ${
@@ -3026,7 +3023,7 @@ function MyStockContent() {
                                     
                                     return (
                                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMOTStatusBgColor(daysLeft, isDarkMode)} ${getMOTStatusColor(daysLeft)}`}>
-                                        {motStatus || 'Unknown'}
+                                        {motStatus || 'N/A'}
                                       </span>
                                     );
                                   })()}

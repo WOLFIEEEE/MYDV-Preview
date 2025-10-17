@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       // Handle specific DVLA error codes
       let errorMessage = 'Failed to fetch vehicle data from DVLA';
       if (dvlaResponse.status === 404) {
-        errorMessage = 'Vehicle not found in DVLA database';
+        errorMessage = 'N/A';
       } else if (dvlaResponse.status === 400) {
         errorMessage = 'Invalid registration number';
       } else if (dvlaResponse.status === 429) {
