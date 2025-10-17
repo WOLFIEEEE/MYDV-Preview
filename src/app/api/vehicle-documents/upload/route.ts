@@ -3,32 +3,121 @@ import { auth } from '@clerk/nextjs/server';
 import { uploadFileToStorage, generateStorageFileName, VEHICLE_DOCUMENTS_BUCKET } from '@/lib/storage';
 import { createOrGetDealer } from '@/lib/database';
 import { db } from '@/lib/db';
-import { vehicleDocuments, documentAccessLog } from '@/db/schema';
+import { vehicleDocuments, documentAccessLog, stockCache, dealers } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+
+// Helper function to get dealer info from stockId for QR code uploads
+async function getDealerFromStockId(stockId: string): Promise<{ success: boolean; dealer?: typeof dealers.$inferSelect; error?: string }> {
+  try {
+    console.log('🔍 Getting dealer info from stockId for documents:', stockId);
+    
+    // Find the stock record and its associated dealer
+    const stockRecord = await db
+      .select({
+        dealerId: stockCache.dealerId,
+        dealer: dealers
+      })
+      .from(stockCache)
+      .innerJoin(dealers, eq(stockCache.dealerId, dealers.id))
+      .where(and(
+        eq(stockCache.stockId, stockId),
+        eq(stockCache.isStale, false) // Only active stock
+      ))
+      .limit(1);
+    
+    if (stockRecord.length === 0) {
+      return {
+        success: false,
+        error: 'Stock not found or no longer active'
+      };
+    }
+    
+    console.log('✅ Found dealer for stock documents:', stockRecord[0].dealer.id);
+    return {
+      success: true,
+      dealer: stockRecord[0].dealer
+    };
+  } catch (error) {
+    console.error('❌ Error getting dealer from stockId for documents:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Unauthorized' 
-      }, { status: 401 });
+    // Parse form data first to check for QR code upload
+    const formData = await request.formData();
+    const uploadSource = formData.get('uploadSource') as string || 'manual';
+    const stockId = formData.get('stockId') as string || null;
+    const registration = formData.get('registration') as string;
+    
+    let dealer;
+    let isQRUpload = false;
+    let userId: string | null = null;
+    
+    // Check if this is a QR code upload (unauthenticated)
+    if (uploadSource === 'qr_code' && stockId) {
+      console.log('📱 QR Code document upload detected for stockId:', stockId);
+      isQRUpload = true;
+      
+      // Get dealer info from stockId
+      const dealerResult = await getDealerFromStockId(stockId);
+      if (!dealerResult.success) {
+        return NextResponse.json({ 
+          success: false, 
+          message: dealerResult.error || 'Could not find associated dealer for this stock' 
+        }, { status: 400 });
+      }
+      dealer = dealerResult.dealer;
+    } else {
+      // Regular authenticated upload
+      const authResult = await auth();
+      userId = authResult.userId;
+      if (!userId) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Unauthorized' 
+        }, { status: 401 });
+      }
+      
+      // Get or create dealer record
+      dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
     }
 
-    // Get or create dealer record
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Validation - for QR uploads, try to get registration from stock data if not provided
+    let finalRegistration = registration;
     
-    // Parse form data
-    const formData = await request.formData();
-    const registration = formData.get('registration') as string;
-    const stockId = formData.get('stockId') as string || null;
-    const uploadSource = formData.get('uploadSource') as string || 'manual';
-
-    // Validation
-    if (!registration) {
+    if (!finalRegistration && isQRUpload && stockId) {
+      // Try to get registration from the stock data we already have
+      try {
+        const stockRecord = await db
+          .select({
+            vehicleData: stockCache.vehicleData
+          })
+          .from(stockCache)
+          .where(and(
+            eq(stockCache.stockId, stockId),
+            eq(stockCache.isStale, false)
+          ))
+          .limit(1);
+        
+        if (stockRecord.length > 0) {
+          const vehicleData = (stockRecord[0].vehicleData as Record<string, unknown>) || {};
+          finalRegistration = (vehicleData.registration as string) || (vehicleData.plate as string) || stockId.slice(-8);
+          console.log('📋 Got registration from stock data:', finalRegistration);
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not get registration from stock data:', error);
+      }
+    }
+    
+    if (!finalRegistration) {
       return NextResponse.json({ 
         success: false, 
-        message: 'Registration is required' 
+        message: 'Registration is required for document upload' 
       }, { status: 400 });
     }
 
@@ -110,7 +199,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate unique filename for storage
-        const supabaseFileName = generateStorageFileName(file.name, 'vehicle-documents', dealer.id);
+        const supabaseFileName = generateStorageFileName(file.name, 'vehicle-documents', dealer!.id);
         
         // Upload to Supabase storage
         const { publicUrl, error: uploadError } = await uploadFileToStorage(
@@ -127,9 +216,9 @@ export async function POST(request: NextRequest) {
 
         // Save document record to database
         const documentRecord = await db.insert(vehicleDocuments).values({
-          dealerId: dealer.id,
+          dealerId: dealer!.id,
           stockId,
-          registration: registration.toUpperCase(),
+          registration: finalRegistration.toUpperCase(),
           documentName,
           documentType,
           description: description || '',
@@ -140,30 +229,32 @@ export async function POST(request: NextRequest) {
           mimeType: file.type,
           tags: [],
           isRequired: false,
-          isVerified: true, // Mark as verified upon upload
-          verifiedBy: userId,
-          verifiedAt: new Date(),
+          isVerified: !isQRUpload, // QR uploads need manual verification
+          verifiedBy: userId || null,
+          verifiedAt: userId ? new Date() : null,
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           documentDate: documentDate ? new Date(documentDate) : null,
-          uploadedBy: userId,
+          uploadedBy: userId || 'qr_upload', // Use placeholder for QR uploads
           uploadSource,
           status: 'active',
           visibility: 'internal'
         }).returning();
 
-        // Log the upload action
-        await db.insert(documentAccessLog).values({
-          documentId: documentRecord[0].id,
-          userId,
-          action: 'upload',
-          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-          userAgent: request.headers.get('user-agent') || 'unknown',
-          metadata: {
-            fileName: file.name,
-            fileSize: file.size,
-            uploadSource
-          }
-        });
+        // Log the upload action (only if we have a userId)
+        if (userId) {
+          await db.insert(documentAccessLog).values({
+            documentId: documentRecord[0].id,
+            userId,
+            action: 'upload',
+            ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+            userAgent: request.headers.get('user-agent') || 'unknown',
+            metadata: {
+              fileName: file.name,
+              fileSize: file.size,
+              uploadSource
+            }
+          });
+        }
 
         uploadedDocuments.push({
           id: documentRecord[0].id,
@@ -175,11 +266,13 @@ export async function POST(request: NextRequest) {
           mimeType: file.type
         });
 
-        console.log(`✅ Successfully uploaded document: ${file.name} for registration: ${registration}`);
+        const uploadTypeText = isQRUpload ? 'QR code' : 'authenticated';
+        console.log(`✅ Successfully uploaded document via ${uploadTypeText}: ${file.name} for registration: ${registration}`);
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`Error processing file ${file.name}:`, error);
-        errors.push(`Failed to process ${file.name}: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Failed to process ${file.name}: ${errorMessage}`);
       }
     }
 
@@ -194,23 +287,27 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully uploaded ${uploadedDocuments.length} document(s)`,
+      message: isQRUpload 
+        ? `Successfully uploaded ${uploadedDocuments.length} document(s) via QR code for vehicle ${finalRegistration} (Stock: ${stockId})`
+        : `Successfully uploaded ${uploadedDocuments.length} document(s) for vehicle ${finalRegistration}`,
       data: {
         documents: uploadedDocuments,
-        registration,
+        registration: finalRegistration,
         stockId,
         uploadedCount: uploadedDocuments.length,
+        uploadSource: isQRUpload ? 'qr_code' : 'authenticated',
         errorCount: errors.length
       },
       errors: errors.length > 0 ? errors : undefined
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Vehicle document upload error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({
       success: false,
       message: 'Internal server error',
-      error: error.message
+      error: errorMessage
     }, { status: 500 });
   }
 }
