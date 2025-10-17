@@ -2776,7 +2776,7 @@ function MyStockContent() {
                               { key: 'price', label: 'Price', width: 'min-w-[100px]' },
                               { key: 'priceIndicator', label: 'Price Rating', width: 'min-w-[90px]' },
                               { key: 'mileage', label: 'Miles', width: 'min-w-[80px]' },
-                              { key: 'motStatus', label: 'MOT Status', width: 'min-w-[90px]' },
+                              // { key: 'motStatus', label: 'MOT Status', width: 'min-w-[90px]' },
                               { key: 'motExpiry', label: 'MOT Expiry', width: 'min-w-[100px]' },
                               { key: 'lifecycleState', label: 'Status', width: 'min-w-[100px]' },
                               { key: 'daysInStock', label: 'Days', width: 'min-w-[60px]' },
@@ -3011,7 +3011,7 @@ function MyStockContent() {
                                   </td>
 
                                 {/* MOT Status */}
-                                <td className={`p-2 text-xs align-middle border-r ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
+                                {/* <td className={`p-2 text-xs align-middle border-r ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
                                   {(() => {
                                     const motStatus = apiItem.motStatus || apiItem.vehicle?.motStatus;
                                     const motExpiryDate = apiItem.motExpiryDate || apiItem.vehicle?.motExpiryDate;
@@ -3027,7 +3027,7 @@ function MyStockContent() {
                                       </span>
                                     );
                                   })()}
-                                </td>
+                                </td> */}
 
                                 {/* MOT Expiry */}
                                 <td className={`p-2 text-xs align-middle border-r ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
