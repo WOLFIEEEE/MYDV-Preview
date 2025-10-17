@@ -247,7 +247,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
               Invoice:
             </div>
             <div style={{ fontSize: '7px', marginBottom: '6px' }}>
-              {invoiceData.invoiceNumber}
+              INV-{invoiceData.vehicle.registration}
             </div>
             
             <div style={{ fontSize: '7px', fontWeight: 'bold', marginBottom: '1px' }}>
@@ -317,7 +317,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         ) : (
           <div>
             <div style={{ fontSize: '9px', fontWeight: 'bold' }}>
-              {invoiceData.invoiceNumber} - {invoiceData.customer.firstName} {invoiceData.customer.lastName}
+              INV-{invoiceData.vehicle.registration} - {invoiceData.customer.title} {invoiceData.customer.firstName} {invoiceData.customer.lastName}
             </div>
             <div style={{ fontSize: '7px' }}>
               {invoiceData.customer.address.firstLine}
