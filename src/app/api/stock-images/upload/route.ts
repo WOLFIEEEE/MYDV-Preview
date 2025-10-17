@@ -4,39 +4,26 @@ import { uploadFileToStorage, generateStorageFileName, generateQRStorageFileName
 import { createStockImage, createOrGetDealer, getDealerKeys } from '@/lib/database';
 import { getDealerIdForUser } from '@/lib/dealerHelper';
 import { db } from '@/lib/db';
-import { stockCache, dealers } from '@/db/schema';
+import { stockCache, dealers, stockImages } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 
-// Helper function to upload image to AutoTrader and get image ID
-async function uploadImageToAutoTrader(
-  imageUrl: string, 
+// Helper function to upload image directly to AutoTrader from File object
+async function uploadImageDirectlyToAutoTrader(
+  file: File, 
   imageName: string, 
   advertiserId: string, 
   token: string
 ): Promise<{ success: boolean; imageId?: string; error?: string }> {
   try {
-    console.log(`📸 Uploading image to AutoTrader: ${imageName}`);
-    
-    // Fetch the image from Supabase
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      return {
-        success: false,
-        error: `Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`
-      };
-    }
-    
-    const imageBlob = await imageResponse.blob();
-    console.log(`📋 Image details: ${imageName}, ${imageBlob.type}, ${(imageBlob.size / 1024).toFixed(2)} KB`);
-    
-    // Create FormData for AutoTrader upload
     const formData = new FormData();
-    formData.append('file', imageBlob, imageName);
+    formData.append('file', file, imageName);
     
-    // Upload to AutoTrader
     const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
     const uploadUrl = `${baseUrl}/images?advertiserId=${advertiserId}`;
+    
+    console.log(`📤 POST ${uploadUrl}`);
+    console.log(`📦 Payload: FormData with file: ${imageName} (${(file.size / 1024).toFixed(2)}KB)`);
     
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
@@ -49,21 +36,21 @@ async function uploadImageToAutoTrader(
     
     if (uploadResponse.ok) {
       const result = await uploadResponse.json();
-      console.log(`✅ AutoTrader upload success: ${result.imageId}`);
+      console.log(`✅ ${uploadResponse.status} Response: ${JSON.stringify(result)}`);
       return {
         success: true,
         imageId: result.imageId
       };
     } else {
       const errorText = await uploadResponse.text();
-      console.error(`❌ AutoTrader upload failed: ${uploadResponse.status} ${errorText}`);
+      console.error(`❌ ${uploadResponse.status} Error: ${errorText}`);
       return {
         success: false,
         error: `AutoTrader upload failed: ${uploadResponse.status} ${errorText}`
       };
     }
   } catch (error) {
-    console.error('❌ Error uploading to AutoTrader:', error);
+    console.error('❌ AutoTrader upload error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -71,15 +58,152 @@ async function uploadImageToAutoTrader(
   }
 }
 
-// Helper function to get dealer info and registration from stockId for QR code uploads
-async function getDealerAndRegistrationFromStockId(stockId: string): Promise<{ 
+// Parallel upload function - uploads to both Supabase and AutoTrader simultaneously
+async function uploadImageInParallel(
+  file: File,
+  imageName: string,
+  dealer: typeof dealers.$inferSelect,
+  stockId: string,
+  registration: string | undefined,
+  description: string,
+  vehicleType: string | null,
+  imageType: string | null,
+  isDefault: boolean,
+  sortOrder: number,
+  advertiserId: string | null,
+  autoTraderToken: string | null,
+  isQRUpload: boolean
+): Promise<{
+  success: boolean;
+  stockImage?: typeof stockImages.$inferSelect;
+  autoTraderImageId?: string;
+  error?: string;
+}> {
+  try {
+    // Generate storage filename based on upload type
+    let storageFileName: string;
+    let bucketName: string;
+    
+    if (isQRUpload && stockId) {
+      storageFileName = generateQRStorageFileName(file.name, dealer.id, stockId, registration);
+      bucketName = QR_STOCK_IMAGES_BUCKET;
+    } else {
+      storageFileName = generateStorageFileName(file.name, 'stock', dealer.id);
+      bucketName = 'templates';
+    }
+
+    // Create promises for parallel execution
+    const supabaseUploadPromise = uploadFileToStorage(file, storageFileName, bucketName);
+    
+    let autoTraderUploadPromise: Promise<{ success: boolean; imageId?: string; error?: string }> | null = null;
+    
+    // Only upload to AutoTrader if we have credentials
+    if (isQRUpload && autoTraderToken && advertiserId) {
+      autoTraderUploadPromise = uploadImageDirectlyToAutoTrader(
+        file,
+        imageName,
+        advertiserId,
+        autoTraderToken
+      );
+    }
+
+    // Execute uploads in parallel
+    const results = await Promise.allSettled([
+      supabaseUploadPromise,
+      autoTraderUploadPromise
+    ]);
+
+    // Process Supabase result
+    const supabaseResult = results[0];
+    if (supabaseResult.status === 'rejected') {
+      return {
+        success: false,
+        error: `Supabase upload failed: ${supabaseResult.reason}`
+      };
+    }
+
+    const supabaseUploadResult = supabaseResult.value;
+    if (!supabaseUploadResult.success || !supabaseUploadResult.publicUrl) {
+      return {
+        success: false,
+        error: `Supabase upload failed: ${supabaseUploadResult.error}`
+      };
+    }
+
+    // Process AutoTrader result
+    let autoTraderImageId: string | undefined;
+    if (autoTraderUploadPromise && results[1]) {
+      const autoTraderResult = results[1];
+      if (autoTraderResult.status === 'fulfilled' && autoTraderResult.value) {
+        const autoTraderUploadResult = autoTraderResult.value;
+        if (autoTraderUploadResult.success && autoTraderUploadResult.imageId) {
+          autoTraderImageId = autoTraderUploadResult.imageId;
+        }
+      }
+    }
+
+    // Save to database
+    const baseTags = [imageName.toLowerCase(), 'stock'];
+    if (isQRUpload) {
+      baseTags.push('qr_upload', stockId);
+      if (registration && registration !== 'UNKNOWN_REG') {
+        baseTags.push(`reg_${registration.toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
+        baseTags.push('has_registration');
+      } else {
+        baseTags.push('no_registration');
+      }
+      baseTags.push('qr_bucket');
+    } else {
+      baseTags.push('template_bucket');
+    }
+    
+    const stockImageResult = await createStockImage({
+      dealerId: dealer.id,
+      name: imageName,
+      description: description || (isQRUpload ? `Uploaded via QR code for stock ${stockId}${registration ? ` (Registration: ${registration})` : ''}` : ''),
+      fileName: file.name,
+      supabaseFileName: storageFileName,
+      publicUrl: supabaseUploadResult.publicUrl,
+      fileSize: file.size,
+      mimeType: file.type,
+      tags: baseTags,
+      vehicleType: vehicleType,
+      imageType: imageType,
+      isDefault: isDefault,
+      sortOrder: sortOrder
+    });
+
+    if (!stockImageResult.success || !stockImageResult.stockImage) {
+      return {
+        success: false,
+        error: `Database save failed: ${stockImageResult.error}`
+      };
+    }
+
+    return {
+      success: true,
+      stockImage: stockImageResult.stockImage,
+      autoTraderImageId: autoTraderImageId
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+// Helper function to get dealer info, registration, and existing images from stockId for QR code uploads
+async function getDealerAndStockInfoFromStockId(stockId: string): Promise<{ 
   success: boolean; 
   dealer?: typeof dealers.$inferSelect; 
   registration?: string;
+  existingImageIds?: string[];
   error?: string 
 }> {
   try {
-    console.log('🔍 Getting dealer info and registration from stockId:', stockId);
+    console.log(`🔍 Checking stock cache for: ${stockId}`);
     
     // Find the stock record and its associated dealer
     const stockRecord = await db
@@ -87,7 +211,8 @@ async function getDealerAndRegistrationFromStockId(stockId: string): Promise<{
         dealerId: stockCache.dealerId,
         dealer: dealers,
         vehicleData: stockCache.vehicleData,
-        registration: stockCache.registration // Direct registration field
+        registration: stockCache.registration,
+        mediaData: stockCache.mediaData
       })
       .from(stockCache)
       .innerJoin(dealers, eq(stockCache.dealerId, dealers.id))
@@ -106,25 +231,34 @@ async function getDealerAndRegistrationFromStockId(stockId: string): Promise<{
     
     const stock = stockRecord[0];
     const vehicleData = (stock.vehicleData as Record<string, unknown>) || {};
+    const mediaData = (stock.mediaData as Record<string, unknown>) || {};
     
     // Get registration from multiple possible sources
     const registration = stock.registration || 
                         (vehicleData.registration as string) || 
                         (vehicleData.plate as string) || 
                         'UNKNOWN_REG';
+
+    // Extract existing image IDs from mediaData
+    const existingImageIds: string[] = [];
+    if (mediaData.images && Array.isArray(mediaData.images)) {
+      mediaData.images.forEach((image: Record<string, unknown>) => {
+        if (image.imageId && typeof image.imageId === 'string') {
+          existingImageIds.push(image.imageId);
+        }
+      });
+    }
     
-    console.log('✅ Found dealer and registration for stock:', {
-      dealerId: stock.dealer.id,
-      registration: registration
-    });
+    console.log(`📊 Stock ${stockId}: ${existingImageIds.length} existing images [${existingImageIds.join(', ')}]`);
     
     return {
       success: true,
       dealer: stock.dealer,
-      registration: registration
+      registration: registration,
+      existingImageIds: existingImageIds
     };
   } catch (error) {
-    console.error('❌ Error getting dealer and registration from stockId:', error);
+    console.error('❌ Error getting stock info:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -143,22 +277,24 @@ export async function POST(request: NextRequest) {
     let dealer;
     let isQRUpload = false;
     let registration: string | undefined;
+    let existingImageIds: string[] = [];
     
     // Check if this is a QR code upload (unauthenticated)
     if (uploadSource === 'qr_code' && stockId) {
-      console.log('📱 QR Code upload detected for stockId:', stockId);
+      console.log(`📱 QR upload for stock: ${stockId}`);
       isQRUpload = true;
       
-      // Get dealer info and registration from stockId
-      const dealerResult = await getDealerAndRegistrationFromStockId(stockId);
-      if (!dealerResult.success) {
+      // Get dealer info, registration, and existing images from stockId
+      const stockInfoResult = await getDealerAndStockInfoFromStockId(stockId);
+      if (!stockInfoResult.success) {
         return NextResponse.json({ 
           success: false, 
-          message: dealerResult.error || 'Could not find associated dealer for this stock' 
+          message: stockInfoResult.error || 'Could not find associated dealer for this stock' 
         }, { status: 400 });
       }
-      dealer = dealerResult.dealer;
-      registration = dealerResult.registration;
+      dealer = stockInfoResult.dealer;
+      registration = stockInfoResult.registration;
+      existingImageIds = stockInfoResult.existingImageIds || [];
     } else {
       // Regular authenticated upload
       const user = await currentUser();
@@ -243,7 +379,6 @@ export async function POST(request: NextRequest) {
     const uploadedStockImages = [];
     const errors = [];
     const autoTraderImageIds = [];
-    const total = files.length;
 
     // Get AutoTrader credentials if this is for QR upload (to add images to stock)
     let autoTraderToken = null;
@@ -255,32 +390,32 @@ export async function POST(request: NextRequest) {
         const dealerKeysResult = await getDealerKeys(dealer.id);
         if (dealerKeysResult.success && dealerKeysResult.data) {
           advertiserId = dealerKeysResult.data.advertisementId;
+          console.log(`🔑 Dealer keys: advertiserId=${advertiserId}, dealerId=${dealer.id}`);
           
           if (advertiserId) {
             // Get AutoTrader token
             const tokenResult = await getAutoTraderToken(dealer.email);
             if (tokenResult.success && tokenResult.access_token) {
               autoTraderToken = tokenResult.access_token;
-              console.log('🔑 AutoTrader credentials obtained for QR upload');
+              console.log(`🔑 AutoTrader token obtained for ${dealer.email}`);
             } else {
-              console.warn('⚠️ Could not get AutoTrader token, images will only be stored locally');
+              console.warn(`⚠️ Could not get AutoTrader token for ${dealer.email}:`, tokenResult.error);
             }
           } else {
-            console.warn('⚠️ No advertiser ID found, images will only be stored locally');
+            console.warn('⚠️ No advertiser ID found in dealer keys');
           }
+        } else {
+          console.warn('⚠️ Could not get dealer keys:', dealerKeysResult.error);
         }
       } catch (error) {
         console.warn('⚠️ AutoTrader integration failed, continuing with local storage only:', error);
       }
     }
 
-    // Process each file
+    // Process each file using parallel upload
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const progress = Math.round(((i + 1) / total) * 100);
       
-      console.log(`📷 Processing file ${i + 1}/${total}: ${file.name} (${progress}%)`);
-
       try {
         // Validate file
         if (!file.type.startsWith('image/')) {
@@ -293,91 +428,38 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Generate storage filename based on upload type
-        let storageFileName: string;
-        let bucketName: string;
-        
-        if (isQRUpload && stockId) {
-          // Use QR-specific storage with registration-based organization
-          storageFileName = generateQRStorageFileName(file.name, dealer.id, stockId, registration);
-          bucketName = QR_STOCK_IMAGES_BUCKET;
-          console.log(`📱 QR Upload - Using QR bucket with registration: ${registration}`);
-        } else {
-          // Use regular template storage
-          storageFileName = generateStorageFileName(file.name, 'stock', dealer.id);
-          bucketName = 'templates';
-        }
-        
-        // Upload to Supabase Storage
-        const uploadResult = await uploadFileToStorage(file, storageFileName, bucketName);
-        
-        if (!uploadResult.success || !uploadResult.publicUrl) {
-          errors.push(`${file.name}: Upload failed - ${uploadResult.error}`);
-          continue;
-        }
-
-        // Save to database
+        // Generate image name for this file
         const stockImageName = files.length > 1 ? `${imageName} (${i + 1})` : imageName;
         
-        // Create tags based on upload source
-        const baseTags = [imageName.toLowerCase(), 'stock'];
-        if (isQRUpload) {
-          baseTags.push('qr_upload', stockId);
-          // Add registration-based tags for filtering
-          if (registration && registration !== 'UNKNOWN_REG') {
-            baseTags.push(`reg_${registration.toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
-            baseTags.push('has_registration');
-          } else {
-            baseTags.push('no_registration');
-          }
-          // Add bucket identifier for easy filtering
-          baseTags.push('qr_bucket');
-        } else {
-          baseTags.push('template_bucket');
-        }
-        
-        const stockImageResult = await createStockImage({
-          dealerId: dealer.id,
-          name: stockImageName,
-          description: description || (isQRUpload ? `Uploaded via QR code for stock ${stockId}${registration ? ` (Registration: ${registration})` : ''}` : ''),
-          fileName: file.name,
-          supabaseFileName: storageFileName,
-          publicUrl: uploadResult.publicUrl,
-          fileSize: file.size,
-          mimeType: file.type,
-          tags: baseTags,
-          vehicleType: vehicleType,
-          imageType: imageType,
-          isDefault: isDefault,
-          sortOrder: sortOrder + i
-        });
+        // Use parallel upload function
+        const parallelResult = await uploadImageInParallel(
+          file,
+          stockImageName,
+          dealer,
+          stockId,
+          registration,
+          description,
+          vehicleType,
+          imageType,
+          isDefault,
+          sortOrder + i,
+          advertiserId,
+          autoTraderToken,
+          isQRUpload
+        );
 
-        if (stockImageResult.success && stockImageResult.stockImage) {
-          uploadedStockImages.push(stockImageResult.stockImage);
+        if (parallelResult.success && parallelResult.stockImage) {
+          uploadedStockImages.push(parallelResult.stockImage);
           
-          // Upload to AutoTrader if this is a QR upload and we have credentials
-          if (isQRUpload && autoTraderToken && advertiserId) {
-            const autoTraderResult = await uploadImageToAutoTrader(
-              uploadResult.publicUrl,
-              stockImageName,
-              advertiserId,
-              autoTraderToken
-            );
-            
-            if (autoTraderResult.success && autoTraderResult.imageId) {
-              autoTraderImageIds.push(autoTraderResult.imageId);
-              console.log(`✅ Image uploaded to AutoTrader: ${autoTraderResult.imageId}`);
-            } else {
-              console.warn(`⚠️ AutoTrader upload failed for ${file.name}: ${autoTraderResult.error}`);
-              // Don't treat this as a critical error - image is still saved locally
-            }
+          // Track AutoTrader image ID if available
+          if (parallelResult.autoTraderImageId) {
+            autoTraderImageIds.push(parallelResult.autoTraderImageId);
           }
         } else {
-          errors.push(`${file.name}: Database save failed - ${stockImageResult.error}`);
+          errors.push(`${file.name}: ${parallelResult.error || 'Processing failed'}`);
         }
 
-      } catch (error) {
-        console.error(`Error processing ${file.name}:`, error);
+      } catch {
         errors.push(`${file.name}: Processing failed`);
       }
     }
@@ -391,59 +473,63 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const uploadTypeText = isQRUpload ? 'QR code' : 'authenticated';
-    console.log(`✅ Successfully uploaded ${uploadedStockImages.length}/${files.length} stock images via ${uploadTypeText} upload`);
-
     // If we have AutoTrader image IDs and this is a QR upload, update the stock with the new images
     if (isQRUpload && autoTraderImageIds.length > 0 && stockId && advertiserId && autoTraderToken) {
       try {
-        console.log(`🔄 Updating stock ${stockId} with ${autoTraderImageIds.length} new image IDs`);
+        const updatedImageIds = [...existingImageIds, ...autoTraderImageIds];
         
-        // Get current stock data to append new image IDs
+        // Correct payload format for AutoTrader API
+        const mediaPayload = {
+          media: {
+            images: updatedImageIds.map(imageId => ({ imageId }))
+          }
+        };
+        
         const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
         const stockUrl = `${baseUrl}/stock/${stockId}?advertiserId=${advertiserId}`;
         
-        const stockResponse = await fetch(stockUrl, {
+        console.log(`📤 PATCH ${stockUrl}`);
+        console.log(`📦 Payload: ${JSON.stringify(mediaPayload)}`);
+        
+        const patchResponse = await fetch(stockUrl, {
+          method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${autoTraderToken}`,
+            'Content-Type': 'application/json',
             'Accept': 'application/json',
-          }
+          },
+          body: JSON.stringify(mediaPayload)
         });
         
-        if (stockResponse.ok) {
-          const stockData = await stockResponse.json();
-          const currentImageIds = stockData.imageIds || [];
-          const updatedImageIds = [...currentImageIds, ...autoTraderImageIds];
+        if (patchResponse.ok) {
+          const patchResult = await patchResponse.json();
+          console.log(`✅ ${patchResponse.status} Response: ${JSON.stringify(patchResult)}`);
           
-          // PATCH the stock with updated image IDs
-          const patchResponse = await fetch(stockUrl, {
-            method: 'PATCH',
+          // Verify the update by fetching the stock again
+          const verifyResponse = await fetch(stockUrl, {
             headers: {
               'Authorization': `Bearer ${autoTraderToken}`,
-              'Content-Type': 'application/json',
               'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-              imageIds: updatedImageIds
-            })
+            }
           });
           
-          if (patchResponse.ok) {
-            console.log(`✅ Stock ${stockId} updated with new image IDs`);
-          } else {
-            const patchError = await patchResponse.text();
-            console.warn(`⚠️ Failed to update stock with image IDs: ${patchResponse.status} ${patchError}`);
+          if (verifyResponse.ok) {
+            const verifyResult = await verifyResponse.json();
+            const currentImages = verifyResult.media?.images || [];
+            const currentImageIds = currentImages.map((img: Record<string, unknown>) => img.imageId as string).filter(Boolean);
+            console.log(`🔍 Verification - Current images in stock: [${currentImageIds.join(', ')}]`);
+            console.log(`✅ Images successfully ${currentImageIds.length > existingImageIds.length ? 'added' : 'not added'} to stock`);
           }
         } else {
-          console.warn(`⚠️ Could not fetch current stock data: ${stockResponse.status}`);
+          const patchError = await patchResponse.text();
+          console.error(`❌ ${patchResponse.status} Error: ${patchError}`);
         }
       } catch (error) {
-        console.warn('⚠️ Failed to update stock with image IDs:', error);
-        // Don't fail the entire request for this
+        console.error('❌ Stock update error:', error);
       }
     }
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       message: isQRUpload 
         ? `Successfully uploaded ${uploadedStockImages.length} image(s) via QR code for stock ${stockId}${autoTraderImageIds.length > 0 ? ` and added to AutoTrader` : ''}`
@@ -452,8 +538,15 @@ export async function POST(request: NextRequest) {
       count: uploadedStockImages.length,
       errors: errors.length > 0 ? errors : undefined,
       uploadSource: isQRUpload ? 'qr_code' : 'authenticated',
-      autoTraderImageIds: autoTraderImageIds.length > 0 ? autoTraderImageIds : undefined
-    });
+      autoTraderImageIds: autoTraderImageIds.length > 0 ? autoTraderImageIds : undefined,
+      autoTraderImageCount: autoTraderImageIds.length,
+      stockId: isQRUpload ? stockId : undefined,
+      registration: isQRUpload ? registration : undefined
+    };
+
+    console.log(`✅ Uploaded ${uploadedStockImages.length} images. AutoTrader IDs: [${autoTraderImageIds.join(', ')}]`);
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('❌ Stock image upload error:', error);

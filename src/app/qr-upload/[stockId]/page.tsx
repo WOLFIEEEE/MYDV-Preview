@@ -337,6 +337,11 @@ export default function QRUploadPage() {
       const result = await response.json();
 
       if (result.success) {
+        // Log AutoTrader image IDs if available
+        if (result.autoTraderImageIds?.length > 0) {
+          console.log(`✅ AutoTrader IDs: [${result.autoTraderImageIds.join(', ')}] for stock ${result.stockId}`);
+        }
+
         // Step 3: Processing complete
         setUploadProgress(prev => ({
           ...prev,
@@ -355,12 +360,16 @@ export default function QRUploadPage() {
             stepName: 'AutoTrader integration',
             details: `Added ${result.autoTraderImageIds.length} images to AutoTrader listing`
           }));
+          
         }
 
         await new Promise(resolve => setTimeout(resolve, 800)); // Show completion
 
         setUploadStatus('success');
-        setUploadMessage(`Successfully uploaded ${files.length} ${uploadType}(s)! Your files have been added to the vehicle.`);
+        const successMessage = `Successfully uploaded ${files.length} ${uploadType}(s)! Your files have been added to the vehicle.${
+          result.autoTraderImageIds?.length > 0 ? ` (${result.autoTraderImageIds.length} images also added to AutoTrader)` : ''
+        }`;
+        setUploadMessage(successMessage);
         setFiles([]);
         // No auto-redirect - user stays on page
       } else {
