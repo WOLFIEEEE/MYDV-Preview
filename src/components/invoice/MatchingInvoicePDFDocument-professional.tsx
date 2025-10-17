@@ -1,3 +1,19 @@
+/**
+ * Professional Matching Invoice PDF Document
+ * 
+ * Features:
+ * - Multi-page invoice layout with professional styling
+ * - Background image support on all pages (watermark-style)
+ * - Configurable background image opacity and source
+ * - Uses company logo as background by default
+ * - Century Gothic font family throughout
+ * 
+ * Background Image Configuration:
+ * - Set GLOBAL_FORMAT_CONFIG.layout.backgroundImage.enabled to true/false
+ * - Adjust opacity with GLOBAL_FORMAT_CONFIG.layout.backgroundImage.opacity
+ * - Customize default image with GLOBAL_FORMAT_CONFIG.layout.backgroundImage.defaultPath
+ */
+
 import React from 'react';
 import {
   Document,
@@ -25,8 +41,8 @@ const GLOBAL_FORMAT_CONFIG = {
       heading: 7,        // Main headings (section titles, invoice number, etc.)
       subheading: 7,     // Sub-headings and important labels
       normal: 7,         // Regular body text
-      small: 6,          // Small text (footnotes, disclaimers)
-      large: 10,         // Large text (company name, totals)
+      small: 7,          // Small text (footnotes, disclaimers)
+      large: 7,          // Large text (company name, totals)
     },
     weights: {
       normal: 'normal',
@@ -72,6 +88,7 @@ const GLOBAL_FORMAT_CONFIG = {
     logo: {
       height: 80,
       width: 'auto',
+      maxWidth: 120, // Limit maximum width to prevent layout issues with wide logos
     },
     signature: {
       width: 150,
@@ -80,6 +97,16 @@ const GLOBAL_FORMAT_CONFIG = {
     qrCode: {
       width: 60,
       height: 60,
+    },
+    backgroundImage: {
+      enabled: true,       // Enable/disable background image
+      opacity: 0.05,       // Background image opacity (very light)
+      position: 'absolute', // Position type
+      width: '100%',       // Full width
+      height: '100%',      // Full height
+      zIndex: -1,          // Behind all content
+      defaultPath: '/companylogo.png', // Default background image path
+      useCompanyLogo: true, // Use company logo as background if no custom path
     }
   },
 
@@ -336,6 +363,20 @@ const styles = StyleSheet.create({
     fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family,
     lineHeight: GLOBAL_FORMAT_CONFIG.layout.lineHeight.normal,
     color: GLOBAL_FORMAT_CONFIG.colors.primary,
+    position: 'relative', // Enable positioning for background image
+    zIndex: 1, // Ensure content appears above background
+  },
+  
+  // Background image style
+  backgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    opacity: GLOBAL_FORMAT_CONFIG.layout.backgroundImage.opacity,
+    zIndex: -1,
+    objectFit: 'contain',
   },
   
   // Page break control - keep small sections together
@@ -376,6 +417,7 @@ const styles = StyleSheet.create({
   companyLogo: {
     height: GLOBAL_FORMAT_CONFIG.layout.logo.height,
     width: GLOBAL_FORMAT_CONFIG.layout.logo.width,
+    maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
     marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2,
     objectFit: 'contain',
     alignSelf: 'center',
@@ -778,6 +820,35 @@ interface Props {
   invoiceData: ComprehensiveInvoiceData;
 }
 
+/**
+ * Get background image source for PDF pages
+ * 
+ * Determines which background image to use based on configuration.
+ * 
+ * @param customSrc - Optional custom background image path
+ * @param companyLogo - Company logo path from invoice data
+ * @returns Image source URL or null if disabled
+ */
+const getBackgroundImageSrc = (customSrc?: string, companyLogo?: string): string | null => {
+  // Only return image if background image is enabled
+  if (!GLOBAL_FORMAT_CONFIG.layout.backgroundImage.enabled) {
+    return null;
+  }
+
+  // Determine which image to use
+  let imageSrc = customSrc;
+  
+  if (!imageSrc && GLOBAL_FORMAT_CONFIG.layout.backgroundImage.useCompanyLogo && companyLogo) {
+    imageSrc = companyLogo;
+  }
+  
+  if (!imageSrc) {
+    imageSrc = GLOBAL_FORMAT_CONFIG.layout.backgroundImage.defaultPath;
+  }
+
+  return imageSrc || null;
+};
+
 export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: Props) {
   // Helper functions - using global calculation configuration
   const formatCurrency = GLOBAL_CALCULATION_CONFIG.calculations.formatCurrency;
@@ -785,6 +856,29 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-GB');
+  };
+
+  // Get background image source
+  const backgroundImageSrc = getBackgroundImageSrc(undefined, invoiceData.companyInfo.logo);
+  
+  // Create page wrapper component with background
+  const PageWithBackground = ({ children, style }: { children: React.ReactNode; style?: any }) => {
+    const pageStyle = Array.isArray(style) ? style : [style];
+    
+    return (
+      <Page size="A4" style={pageStyle}>
+        {backgroundImageSrc && (
+          <Image
+            style={styles.backgroundImage}
+            src={backgroundImageSrc}
+            fixed
+          />
+        )}
+        <View style={{ position: 'relative', flex: 1 }}>
+          {children}
+        </View>
+      </Page>
+    );
   };
 
   // Helper function to check conditions from JSON template (REMOVED - not used in static layout)
@@ -960,13 +1054,13 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
     // If it has table structure, parse it differently
     if (hasTable) {
       console.log('📊 Using table content renderer');
-      return renderTableContent(htmlContent);
+      return renderTableContent(htmlContent, customFontSize);
     }
     
     // If it has grid classes, parse as grid
     if (hasGrid) {
       console.log('🔲 Using grid content renderer');
-      return renderGridContent(htmlContent);
+      return renderGridContent(htmlContent, customFontSize);
     }
     
     console.log('📝 Using simple HTML stripper for warranty content');
@@ -1081,7 +1175,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                       styles.termsParagraph, 
                       { 
                         fontWeight: 'semibold',
-                        fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading,
+                        fontSize: defaultFontSize,
                         marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap,
                         marginTop: lineIndex === 0 ? 0 : 8
                       }
@@ -1139,7 +1233,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
   };
   
   // Helper function to render table content with multiple tables support
-  const renderTableContent = (htmlContent: string) => {
+  const renderTableContent = (htmlContent: string, customFontSize?: number) => {
+    const defaultFontSize = customFontSize || 7;
     // Process the content before first table with compact styling
     const beforeFirstTable = htmlContent.split(/<h2[^>]*>/i)[0];
     const beforeContent = beforeFirstTable ? renderCompactHTMLContent(beforeFirstTable) : null;
@@ -1245,7 +1340,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {section.tableTitle && (
                   <View style={{ marginTop: 12, marginBottom: 6 }}>
                     <Text style={{ 
-                      fontSize: 7, // Heading size 
+                      fontSize: defaultFontSize, // Heading size 
                       fontWeight: 'semibold', 
                       fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                       textAlign: 'center'
@@ -1267,7 +1362,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     borderBottom: '1px solid #d0d0d0',
                     padding: 4
                   }}>
-                    <Text style={{ fontSize: 7, fontWeight: 'semibold', fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                    <Text style={{ fontSize: defaultFontSize, fontWeight: 'semibold', fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                       {section.header}
                     </Text>
                   </View>
@@ -1289,7 +1384,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                           <View style={{ flexDirection: 'column' }}>
                             {items.map((item, itemIndex) => (
                               <Text key={itemIndex} style={{ 
-                                fontSize: 7, 
+                                fontSize: defaultFontSize, 
                                 marginBottom: 1,
                                 lineHeight: 1.3,
                                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
@@ -1314,7 +1409,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
   };
   
   // Helper function to render grid content with improved layout preservation
-  const renderGridContent = (htmlContent: string) => {
+  const renderGridContent = (htmlContent: string, customFontSize?: number) => {
+    const defaultFontSize = customFontSize || 7;
     // Enhanced regex to capture more grid patterns
     const rowMatches = htmlContent.match(/<div[^>]*(?:row|grid|d-flex|flex)[^>]*>(.*?)<\/div>/gi) || [];
     
@@ -1348,7 +1444,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
       }
       
       // Fallback to simple text extraction with better formatting
-      return renderHTMLContent(htmlContent);
+      return renderHTMLContent(htmlContent, customFontSize);
     }
     
     return (
@@ -1424,7 +1520,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   }}>
                     {lines.map((line, lineIndex) => (
                       <Text key={lineIndex} style={{ 
-                    fontSize: 10,
+                    fontSize: defaultFontSize,
                     color: '#000000',
                         fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                         lineHeight: 1.6,
@@ -1469,15 +1565,25 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
   return (
     <Document>
       {/* Page 1: Invoice Core Section */}
-      <Page size="A4" style={[styles.page, styles.avoidBreak]}>
+      <PageWithBackground style={[styles.page, styles.avoidBreak]}>
+          
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: GLOBAL_FORMAT_CONFIG.spacing.headerGap }}>
             {/* Left Side - Logo and Company Info */}
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
               {/* Logo */}
                 {invoiceData.companyInfo.logo && (
-                <View style={{ marginRight: GLOBAL_FORMAT_CONFIG.spacing.largeGap + 5 }}>
+                <View style={{ 
+                  marginRight: GLOBAL_FORMAT_CONFIG.spacing.largeGap + 5,
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth + 10, // Add some padding
+                  flexShrink: 0 // Prevent shrinking
+                }}>
                     <Image
-                    style={{ height: GLOBAL_FORMAT_CONFIG.layout.logo.height, width: GLOBAL_FORMAT_CONFIG.layout.logo.width, objectFit: 'contain' }}
+                    style={{ 
+                      height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
+                      width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                      maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
+                      objectFit: 'contain' 
+                    }}
                       src={invoiceData.companyInfo.logo}
                     />
                   </View>
@@ -1554,12 +1660,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
           {/* Invoice To Section - No Background */}
           <View style={{ marginBottom: 2 }}>
-            <Text style={{ fontSize: 9, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 4 }}>
+            <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 4 }}>
               INVOICE TO:
             </Text>
             {invoiceData.invoiceTo === 'Finance Company' ? (
               <>
-                <Text style={{ fontSize: 9, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
                   {invoiceData.vehicle?.registration || 'REG'} - {
                     invoiceData.financeCompany?.name === 'Other' 
                       ? (invoiceData.financeCompany?.companyName || 'Finance Company')
@@ -1582,7 +1688,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </>
             ) : (
               <>
-                <Text style={{ fontSize: 9, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
                   {invoiceData.invoiceNumber} - {invoiceData.customer.firstName} {invoiceData.customer.lastName}
                 </Text>
                 <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
@@ -1605,6 +1711,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </>
             )}
           </View>
+
+          {/* Thin grey line separator below customer details */}
+          <View style={{ 
+            height: 1, 
+            backgroundColor: '#d0d0d0', 
+            marginTop: 4, 
+            marginBottom: 4 
+          }} />
 
            {/* Vehicle Information - Proper Table Structure */}
           <View style={styles.contentSection}>
@@ -1921,7 +2035,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
              )}
              
              {/* Delivery Cost */}
-             {invoiceData.delivery?.type === 'Delivery' && ((invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.delivery?.discount ?? 0) > 0) && (
+              {invoiceData.delivery?.type === 'delivery' && ((invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.delivery?.discount ?? 0) > 0) && (
                <View style={{ 
                  flexDirection: 'row', 
                  paddingVertical: 5,
@@ -2125,10 +2239,15 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 I confirm that, when purchasing the above vehicle, I have been advised that this purchase is a Trade-Sale and outside of the scope of the Consumer Protection provisions. Therefore, no warranty or post-sale liabilities will apply. By purchasing this vehicle, I am confirming my understanding of the above, that all of the details listed are correct and providing my consent for these conditions to be applied.
               </Text>
             </View>
-          )}
+            )}
 
           {/* Payment Breakdown Section */}
-          <View style={{ marginTop: 2, marginBottom: 2, borderTop: '1px solid #d0d0d0', paddingTop: 2 }}>
+          <View style={{ 
+            marginTop: 2, 
+            marginBottom: 2, 
+            borderTop: (invoiceData.saleType === 'Trade' || !invoiceData.warranty.level || invoiceData.warranty.level === 'None Selected') ? '1px solid #d0d0d0' : 'none', 
+            paddingTop: 2 
+          }}>
             <View style={{ marginBottom: 4 }}>
               {/* Header Row - Payment Breakdown and Subtotal in same row */}
               <View style={{ flexDirection: 'row', marginBottom: 2 }}>
@@ -2378,7 +2497,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     {/* Vehicle details on new line below */}
                     {(invoiceData.payment?.partExchange?.makeAndModel || invoiceData.payment?.partExchange?.vehicleRegistration) && (
                       <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                        <Text style={{ fontSize: 6, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1, fontStyle: 'italic', color: '#000' }}>
+                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1, fontStyle: 'italic', color: '#000' }}>
                           {invoiceData.payment.partExchange.makeAndModel || ''} {invoiceData.payment.partExchange.makeAndModel && invoiceData.payment.partExchange.vehicleRegistration ? '-' : ''} {invoiceData.payment.partExchange.vehicleRegistration || ''}
                         </Text>
                       </View>
@@ -2472,23 +2591,27 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             {/* Left Column - Payment Information */}
             <View style={{ flex: 1 }}>
               <Text style={{ 
-                fontSize: 9, 
+                fontSize: 7, 
                 fontWeight: 'semibold', 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                 marginBottom: 2
               }}>
                 PAYMENT INFORMATION
               </Text>
-              <Text style={{ fontSize: 8, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+              <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
               {invoiceData.companyInfo.name}
             </Text>
-              <Text style={{ fontSize: 8, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
-                20-63-28
-            </Text>
-              <Text style={{ fontSize: 8, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
-                73828913
-              </Text>
-              <Text style={{ fontSize: 8, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+              {invoiceData.companyInfo.payment?.bankSortCode && (
+                <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+                  {invoiceData.companyInfo.payment.bankSortCode}
+                </Text>
+              )}
+              {invoiceData.companyInfo.payment?.bankAccountNumber && (
+                <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+                  {invoiceData.companyInfo.payment.bankAccountNumber}
+                </Text>
+              )}
+              <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
                 Ref - {invoiceData.invoiceNumber}
             </Text>
             </View>
@@ -2496,36 +2619,47 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             {/* Center Column - Thank You Message */}
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ 
-                fontSize: 9, 
+                fontSize: 7, 
                 fontWeight: 'normal', 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                 textAlign: 'center',
                 lineHeight: 1.3
               }}>
-                Thank you for choosing MWA{'\n'}Autos LTD
+                Thank you for choosing {invoiceData.companyInfo.name}
               </Text>
             </View>
 
             {/* Right Column - QR Code */}
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
-              <View style={{ 
-                width: 40, 
-                height: 40, 
-                border: '1px solid #ddd',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: '#f9f9f9'
-              }}>
-                <Text style={{ 
-                  fontSize: 7, 
-                  fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
-                  textAlign: 'center',
-                  color: '#000',
-                  fontWeight: 'normal'
+              {invoiceData.companyInfo.qrCode ? (
+                <Image
+                  style={{ 
+                    width: 40, 
+                    height: 40,
+                    objectFit: 'contain'
+                  }}
+                  src={invoiceData.companyInfo.qrCode}
+                />
+              ) : (
+                <View style={{ 
+                  width: 40, 
+                  height: 40, 
+                  border: '1px solid #ddd',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: '#f9f9f9'
                 }}>
-                  QR Code{'\n'}Placeholder
-                </Text>
-              </View>
+                  <Text style={{ 
+                    fontSize: 7, 
+                    fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
+                    textAlign: 'center',
+                    color: '#000',
+                    fontWeight: 'normal'
+                  }}>
+                    QR Code{'\n'}Placeholder
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
             </View>
@@ -2537,16 +2671,15 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
           
           {/* Payment Information, Thank You & QR Code - 3 Column Layout */}
          
-
-      </Page>
+      </PageWithBackground>
 
       {/* Page 2: Trade Disclaimer (for Trade Sales) */}
         {shouldShowSection('trade-disclaimer') && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Top information text */}
             <View style={{ marginBottom: 15 }}>
-              <Text style={[styles.pageTitle, { fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal', textAlign: 'left' }]}>
+              <Text style={[styles.pageTitle, { fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal', textAlign: 'left' }]}>
                 This document contains key information provided as part of the sale
               </Text>
             </View>
@@ -2557,6 +2690,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 style={{ 
                   height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
                   width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
                   objectFit: 'contain' 
                 }}
                 src={invoiceData.companyInfo.logo}
@@ -2565,7 +2699,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
                {/* Grey banner header */}
                <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
-              <Text style={[styles.pageTitle, { fontSize: 12, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }]}>
+              <Text style={[styles.pageTitle, { fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }]}>
               TRADE SALE DISCLAIMER
               </Text>
             </View>
@@ -2588,7 +2722,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <Text style={[styles.checklistItem, { textAlign: 'left', fontSize: 10, marginBottom: 0 }]}>
-                  {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                  {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
                 </Text>
                 <Text style={[styles.checklistItem, { textAlign: 'right', fontSize: 10, marginBottom: 0 }]}>
                   {formatDate(invoiceData.delivery.date || '')}
@@ -2600,7 +2734,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             <View style={{ height: 1, backgroundColor: '#cccccc', marginBottom: 10 }} />
 
             {invoiceData.terms.tradeTerms && (
-              <View style={{ marginTop: 30, fontSize: 12 }}>
+              <View style={{ marginTop: 30, fontSize: 10 }}>
                 {renderHTMLContent(invoiceData.terms.tradeTerms , 10)}
               </View>
             )}
@@ -2615,20 +2749,20 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                         src={invoiceData.signature.customerSignature}
                         style={{ width: 150, height: 60, marginBottom: 8 }}
                       />
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
                         Customer Signature
                       </Text>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
                   ) : (
                     <View style={{ alignItems: 'center' }}>
                       <View style={{ width: 150, height: 1, backgroundColor: '#000000', marginBottom: 8 }} />
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
                         Customer Signature
                       </Text>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
@@ -2640,12 +2774,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             
 
           </View>
-        </Page>
+        </PageWithBackground>
         )}
 
       {/* Page 2/3: Vehicle Checklist (for Retail Sales) */}
         {shouldShowSection('checklist') && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Top information text */}
             <View style={{ marginBottom: 15 }}>
@@ -2660,6 +2794,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 style={{ 
                   height: GLOBAL_FORMAT_CONFIG.layout.logo.height, 
                   width: GLOBAL_FORMAT_CONFIG.layout.logo.width, 
+                  maxWidth: GLOBAL_FORMAT_CONFIG.layout.logo.maxWidth,
                   objectFit: 'contain' 
                 }}
                 src={invoiceData.companyInfo.logo}
@@ -2668,7 +2803,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
             {/* Grey banner header */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
-              <Text style={[styles.pageTitle, { fontSize: 9, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }]}>
+              <Text style={[styles.pageTitle, { fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }]}>
                 VEHICLE CHECKLIST
               </Text>
             </View>
@@ -2691,7 +2826,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[styles.checklistItem, { textAlign: 'left' }]}>
-                  {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                  {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
                 </Text>
                 <Text style={[styles.checklistItem, { textAlign: 'right' }]}>
                   {formatDate(invoiceData.delivery.date || '')}
@@ -2743,10 +2878,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               
               <View style={{ flexDirection: 'row', marginBottom: 4 }}>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'right', paddingRight: 8, fontSize: 8 }]}>
-                  SERVICE HISTORY RECORD PRESENT:
+                  SERVICE BOOK:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.serviceHistoryRecord ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.serviceHistoryRecord || 'Not Available'}
                 </Text>
               </View>
               
@@ -2773,7 +2908,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   VEHICLE INSPECTION & TEST DRIVE:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.vehicleInspectionTestDrive ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.vehicleInspectionTestDrive === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
               
@@ -2782,7 +2917,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   DEALER PRE-SALE CHECK:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.dealerPreSaleCheck ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.dealerPreSaleCheck === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
             </View>
@@ -2801,7 +2936,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               <View style={{ marginBottom: 15, paddingHorizontal: 20 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={[styles.checklistItem, { 
-                    fontSize: 9, 
+                    fontSize: 8, 
                     fontWeight: 'semibold', 
                     fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                     textAlign: 'left' 
@@ -2809,7 +2944,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     Customer has accepted the IDD:
                   </Text>
                   <Text style={[styles.checklistItem, { 
-                    fontSize: 9, 
+                    fontSize: 8, 
                     fontWeight: 'normal', 
                     fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                     textAlign: 'right' 
@@ -2832,7 +2967,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
             <View style={{ marginTop: 30 }}>
               {invoiceData.terms.checklistTerms ? (
-                <View>{renderHTMLContent(invoiceData.terms.checklistTerms)}</View>
+                <View>{renderHTMLContent(invoiceData.terms.checklistTerms , 8)}</View>
               ) : (
                 <Text style={styles.termsPlaceholder}>
                   Standard vehicle handover checklist terms apply.
@@ -2851,20 +2986,20 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                         src={invoiceData.signature.customerSignature}
                         style={{ width: 150, height: 60, marginBottom: 8 }}
                       />
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
                         Customer Signature
                       </Text>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
                   ) : (
                     <View style={{ alignItems: 'center' }}>
                       <View style={{ width: 150, height: 1, backgroundColor: '#000000', marginBottom: 8 }} />
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
                         Customer Signature
                       </Text>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
@@ -2873,12 +3008,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               </View>
             </View>
           </View>
-        </Page>
+        </PageWithBackground>
       )}
 
       {/* Page 3/4: Terms and Conditions */}
         {shouldShowSection('standard-terms') && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Grey banner header */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
@@ -2896,12 +3031,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               )}
             </View>
           </View>
-        </Page>
+        </PageWithBackground>
       )}
 
       {/* Page 4/5: In-House Warranty */}
         {shouldShowSection('in-house-warranty') && invoiceData.saleType !== 'Trade' && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
             <View style={styles.avoidBreak}>
             {/* Grey banner header */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
@@ -2913,7 +3048,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {invoiceData.terms?.inHouseWarrantyTerms && invoiceData.terms.inHouseWarrantyTerms.trim() ? (
                   <View>
                     {/* Show that we have content */}
-                    {renderHTMLContent(invoiceData.terms.inHouseWarrantyTerms)}
+                    {renderHTMLContent(invoiceData.terms.inHouseWarrantyTerms , 7)}
                   </View>
                 ) : (
                   <View>
@@ -2951,22 +3086,22 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 )}
                 </View>
                 </View>
-        </Page>
+        </PageWithBackground>
       )}
 
       {/* Page 5/6: External Warranty */}
         {shouldShowSection('external-warranty') && invoiceData.saleType !== 'Trade' && (
-        <Page size="A4" style={styles.page}>
+        <PageWithBackground style={styles.page}>
           <View style={styles.avoidBreak}>
             {/* Grey banner header */}
             <View style={{ backgroundColor: '#f5f5f5', padding: 8, marginBottom: 10 }}>
               <Text style={[styles.pageTitle, { fontSize: 9, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }]}>
-                EXTERNAL WARRANTY — EVOLUTION WARRANTIES
+                EXTERNAL WARRANTY{invoiceData.warranty.name ? ` — ${invoiceData.warranty.name.toUpperCase()}` : ''}
               </Text>
             </View>
             <View style={styles.termsContent}>
               {invoiceData.terms.thirdPartyTerms ? (
-                <View>{renderHTMLContent(invoiceData.terms.thirdPartyTerms)}</View>
+                <View>{renderHTMLContent(invoiceData.terms.thirdPartyTerms, 9)}</View>
               ) : (
                 <View>
                   <Text style={styles.termsParagraph}>
@@ -2975,8 +3110,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 </View>
               )}
             </View>
-        </View>
-      </Page>
+          </View>
+      </PageWithBackground>
       )}
     </Document>
   );

@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { stockCache, dealers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
+import { createStockImage, createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // Helper function to upload image to AutoTrader and get image ID
 async function uploadImageToAutoTrader(
@@ -114,6 +116,20 @@ async function getDealerFromStockId(stockId: string): Promise<{ success: boolean
 export async function POST(request: NextRequest) {
   try {
     // Get form data first to check for QR code upload
+    // Get or create dealer record using enhanced resolution
+    let dealerId: string;
+    const dealerResult = await getDealerIdForUser(user);
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      dealerId = dealerResult.dealerId;
+      console.log(`✅ Enhanced dealer resolution for upload: ${dealerId}`);
+    } else {
+      console.log(`⚠️ Enhanced dealer resolution failed, falling back to createOrGetDealer`);
+      // Fallback to traditional dealer resolution
+      const dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+      dealerId = dealer.id;
+      console.log(`🏢 Fallback dealer resolution for upload: ${dealerId}`);
+    }
     const formData = await request.formData();
     const uploadSource = formData.get('uploadSource') as string;
     const stockId = formData.get('stockId') as string;
@@ -193,6 +209,7 @@ export async function POST(request: NextRequest) {
         message: 'Name is required' 
       }, { status: 400 });
     }
+
     
     // Extract files from form data
     const files: File[] = [];
@@ -242,6 +259,7 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️ AutoTrader integration failed, continuing with local storage only:', error);
       }
     }
+    const total = files.length;
 
     // Process each file
     for (let i = 0; i < files.length; i++) {
@@ -263,7 +281,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate storage filename
-        const storageFileName = generateStorageFileName(file.name, 'stock', dealer.id);
+        const storageFileName = generateStorageFileName(file.name, 'stock', dealerId);
         
         // Upload to Supabase Storage
         const uploadResult = await uploadFileToStorage(file, storageFileName, 'templates');
@@ -283,7 +301,7 @@ export async function POST(request: NextRequest) {
         }
         
         const stockImageResult = await createStockImage({
-          dealerId: dealer.id,
+          dealerId: dealerId,
           name: stockImageName,
           description: description || (isQRUpload ? `Uploaded via QR code for stock ${stockId}` : ''),
           fileName: file.name,

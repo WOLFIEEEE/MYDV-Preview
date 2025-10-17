@@ -233,6 +233,7 @@ interface StepConfig {
   title: string
   component: React.ComponentType<StepProps>
   isVisible: (formData: FormData) => boolean
+  alwaysRender?: boolean // Optional flag to always render component even when not visible
 }
 
 interface StepProps {
@@ -276,7 +277,9 @@ const STEPS: StepConfig[] = [
     id: 'discount-application',
     title: 'Discount Application',
     component: DiscountApplication,
-    isVisible: (formData) => formData.applyDiscounts === 'Yes'
+    isVisible: (formData) => formData.applyDiscounts === 'Yes',
+    // Always run calculations in background even when not visible
+    alwaysRender: true
   },
   {
     id: 'finance-deposits',
@@ -939,147 +942,63 @@ export default function InvoiceForm({ stockData, stockActionsData }: InvoiceForm
     }
   }
 
-  // Form submission - Pass data directly to dynamic editor without saving
+  // Form submission - Pass data directly to dynamic editor with minimal validation
   const handleSubmit = async () => {
-    const debugId = `SUBMIT_${Date.now()}`;
-    console.log(`🚀 [${debugId}] FORM SUBMISSION STARTED`);
-    console.log(`📊 [${debugId}] Current formData at start:`, formData);
-    console.log(`🔍 [${debugId}] FormData keys:`, Object.keys(formData));
-    console.log(`🎯 [${debugId}] Key form values:`, {
-      saleType: formData.saleType,
-      firstName: formData.firstName,
-      surname: formData.surname,
-      vehicleRegistration: formData.vehicleRegistration
-    });
-    
-    // Test sessionStorage availability immediately
-    console.log(`🧪 [${debugId}] Testing sessionStorage availability...`);
-    try {
-      const testKey = `test_${debugId}`;
-      sessionStorage.setItem(testKey, 'test_value');
-      const testRetrieve = sessionStorage.getItem(testKey);
-      sessionStorage.removeItem(testKey);
-      console.log(`✅ [${debugId}] SessionStorage test passed:`, testRetrieve === 'test_value');
-    } catch (storageError) {
-      console.error(`❌ [${debugId}] SessionStorage test failed:`, storageError);
-      alert('SessionStorage is not available. Please check your browser settings.');
-      return;
-    }
-    
     setIsSubmitting(true)
-    console.log(`🔄 [${debugId}] isSubmitting set to true`);
     
     try {
-      console.log(`🔍 [${debugId}] Starting form validation...`);
-      // Validate form data
-      const validationErrors = validateForm(formData)
-      console.log(`📋 [${debugId}] Validation errors:`, validationErrors);
-      console.log(`📋 [${debugId}] Number of validation errors:`, Object.keys(validationErrors).length);
+      // Only check saleType and invoiceTo (for Retail sales)
+      const errors: Record<string, string> = {}
       
-      // Check validation but allow bypass for debugging
-      if (Object.keys(validationErrors).length > 0) {
-        console.log(`❌ [${debugId}] VALIDATION FAILED - but continuing for debugging`);
-        console.log(`❌ [${debugId}] Validation errors:`, validationErrors);
-        setErrors(validationErrors);
-        
-        // Ask user if they want to continue despite validation errors
-        const continueAnyway = confirm(`Validation failed with ${Object.keys(validationErrors).length} errors:\n${Object.entries(validationErrors).map(([field, error]) => `${field}: ${error}`).join('\n')}\n\nContinue anyway for debugging?`);
-        
-        if (!continueAnyway) {
-          console.log(`❌ [${debugId}] User chose not to continue with validation errors`);
-          setIsSubmitting(false);
-          return;
-        }
-        
-        console.log(`⚠️ [${debugId}] User chose to continue despite validation errors`);
+      if (!formData.saleType) {
+        errors.saleType = 'Sale type is required'
       }
       
-      console.log(`✅ [${debugId}] VALIDATION PASSED/BYPASSED - proceeding with data storage`);
+      // Invoice To is only required for Retail sales
+      if (formData.saleType === 'Retail' && !formData.invoiceTo) {
+        errors.invoiceTo = 'Invoice recipient is required for retail sales'
+      }
+      
+      // If validation fails, show errors and return
+      if (Object.keys(errors).length > 0) {
+        setErrors(errors);
+        setIsSubmitting(false);
+        return;
+      }
 
       // Extract stockId from URL
-      console.log(`🔍 [${debugId}] Extracting stockId from URL...`);
       const currentUrl = window.location.pathname;
-      console.log(`🔍 [${debugId}] Current URL:`, currentUrl);
       const stockIdMatch = currentUrl.match(/\/mystock\/([^\/]+)\/invoice/);
-      console.log(`🔍 [${debugId}] StockId regex match:`, stockIdMatch);
       const stockId = stockIdMatch ? stockIdMatch[1] : 
                      stockData?.metadata?.stockId || 
                      stockData?.stockId || 
                      formData.vehicleRegistration;
 
-      // NOTE: We no longer save to saved invoices here.
-      // Instead, we'll redirect to dynamic editor and auto-trigger save there.
-      console.log(`📝 [${debugId}] Skipping immediate save - will auto-save in dynamic editor`);
-      console.log(`📝 [${debugId}] Passing form data directly to dynamic invoice editor`);
-      console.log(`🔍 [${debugId}] Final StockId:`, stockId);
-      console.log(`📊 [${debugId}] COMPLETE Form data being stored:`, formData);
-      console.log(`🎯 [${debugId}] Key fields check:`, {
-        saleType: formData.saleType,
-        invoiceTo: formData.invoiceTo,
-        invoiceNumber: formData.invoiceNumber,
-        firstName: formData.firstName,
-        surname: formData.surname,
-        vehicleRegistration: formData.vehicleRegistration,
-        salePrice: formData.salePrice,
-        warrantyLevel: formData.warrantyLevel
-      });
-
-      // Store form data in sessionStorage to pass to dynamic editor
-      console.log(`💾 [${debugId}] Creating invoice form data object...`);
+      // Prepare form data for dynamic editor
       const invoiceFormData = {
         ...formData,
         stockId: stockId,
-        stockData: stockData, // Include original stock data
+        stockData: stockData,
         timestamp: new Date().toISOString(),
-        source: 'invoice_form',
-        debugId: debugId
+        source: 'invoice_form'
       };
 
-      console.log(`💾 [${debugId}] ATTEMPTING TO STORE IN SESSIONSTORAGE...`);
-      console.log(`📦 [${debugId}] Data to store:`, invoiceFormData);
-      console.log(`📏 [${debugId}] Data size:`, JSON.stringify(invoiceFormData).length, 'characters');
-      
-      // NEXT.JS ROUTER STATE APPROACH: Much more reliable than browser storage
-      console.log(`🚀 [${debugId}] Using NEXT.JS ROUTER STATE approach...`);
-      console.log(`📦 [${debugId}] Preparing data for router state:`, invoiceFormData);
-      
       // Prepare the data for router state
       const routerStateData = {
         formData: invoiceFormData,
-        debugId: debugId,
         timestamp: new Date().toISOString(),
         source: 'invoice_form'
       };
       
-      console.log(`✅ [${debugId}] Router state data prepared successfully`);
-      console.log(`📏 [${debugId}] Data size:`, JSON.stringify(routerStateData).length, 'characters');
-      
-      // Also store as backup in case router state fails
+      // Store as backup in sessionStorage
       try {
         sessionStorage.setItem('invoiceFormData', JSON.stringify(invoiceFormData));
-        console.log(`✅ [${debugId}] Backup: Data also stored in sessionStorage`);
       } catch (storageError) {
-        console.warn(`⚠️ [${debugId}] Backup storage failed:`, storageError);
+        console.warn('Backup storage failed:', storageError);
       }
       
-      // Show success message and redirect using Next.js router state
-      console.log(`🎯 [${debugId}] Preparing to redirect with router state...`);
-      
-      const redirectUrl = stockId 
-        ? `/dynamic-invoice-editor?stockId=${stockId}&source=form&debug=${debugId}`
-        : `/dynamic-invoice-editor?source=form&debug=${debugId}`;
-      
-      console.log(`🔄 [${debugId}] Redirect URL:`, redirectUrl);
-      console.log(`📦 [${debugId}] Router state data:`, routerStateData);
-      
-      alert(`Form data validated successfully! Redirecting to Dynamic Invoice Editor with router state... (Debug ID: ${debugId})`);
-      
-      console.log(`🚀 [${debugId}] Using temporary server storage to avoid URL length limits...`);
-      
-      // NEW APPROACH: Store data on server temporarily to avoid URL length limits
+      // Store data on server temporarily to avoid URL length limits
       try {
-        console.log(`📦 [${debugId}] Storing data on server temporarily...`);
-        
         const response = await fetch('/api/temp-invoice-data', {
           method: 'POST',
           headers: {
@@ -1090,158 +1009,24 @@ export default function InvoiceForm({ stockData, stockActionsData }: InvoiceForm
         
         if (response.ok) {
           const result = await response.json();
-          console.log(`✅ [${debugId}] Data stored on server with temp ID:`, result.tempId);
-          
-          // Redirect with just the temp ID (much shorter URL)
-          const finalUrl = `/dynamic-invoice-editor?stockId=${stockId}&source=form&debug=${debugId}&tempId=${result.tempId}`;
-          console.log(`🔄 [${debugId}] Final URL length:`, finalUrl.length);
-          
+          const finalUrl = `/dynamic-invoice-editor?stockId=${stockId}&source=form&tempId=${result.tempId}`;
           router.push(finalUrl);
-          
         } else {
           throw new Error(`Server storage failed: ${response.status} ${response.statusText}`);
         }
         
       } catch (serverError) {
-        console.error(`❌ [${debugId}] Error storing data on server:`, serverError);
-        
+        console.error('Error storing data on server:', serverError);
         // Fallback: redirect without data and rely on sessionStorage backup
-        console.log(`🔄 [${debugId}] Falling back to simple redirect with sessionStorage backup...`);
-        router.push(`/dynamic-invoice-editor?stockId=${stockId}&source=form&debug=${debugId}`);
+        router.push(`/dynamic-invoice-editor?stockId=${stockId}&source=form`);
       }
       
     } catch (error) {
-      console.error(`❌ [${debugId}] CRITICAL ERROR in handleSubmit:`, error);
-      console.error(`❌ [${debugId}] Error type:`, (error as Error).constructor.name);
-      console.error(`❌ [${debugId}] Error message:`, (error as Error).message);
-      console.error(`❌ [${debugId}] Error stack:`, (error as Error).stack);
-      alert(`Critical Error: ${(error as Error).message}. Please try again.`);
+      console.error('Error in handleSubmit:', error);
+      alert(`Error: ${(error as Error).message}. Please try again.`);
     } finally {
-      console.log(`🔄 [${debugId}] FINALLY BLOCK: Setting isSubmitting to false`);
       setIsSubmitting(false);
     }
-  }
-
-  // Enhanced form validation - Matching Gravity Forms requirements
-  const validateForm = (data: FormData): Record<string, string> => {
-    const errors: Record<string, string> = {}
-    
-    // Basic required fields
-    if (!data.saleType) {
-      errors.saleType = 'Sale type is required'
-    }
-    
-    // Invoice To is only required for Retail sales
-    if (data.saleType === 'Retail' && !data.invoiceTo) {
-      errors.invoiceTo = 'Invoice recipient is required for retail sales'
-    }
-    
-    if (!data.vehicleRegistration) {
-      errors.vehicleRegistration = 'Vehicle registration is required'
-    }
-    
-    if (!data.firstName) {
-      errors.firstName = 'First name is required'
-    }
-    
-    if (!data.surname) {
-      errors.surname = 'Surname is required'
-    }
-    
-    if (!data.salePrice || data.salePrice <= 0) {
-      errors.salePrice = 'Sale price must be greater than 0'
-    }
-    
-    if (!data.dateOfSale) {
-      errors.dateOfSale = 'Date of sale is required'
-    }
-
-    // Conditional validation based on sale type
-    if (data.saleType === 'Trade') {
-      // Trade sales have fewer requirements
-      if (data.inHouse === 'Yes' && !data.termsOfServiceTrade) {
-        errors.termsOfServiceTrade = 'Trade sale terms must be accepted'
-      }
-    } else {
-      // Retail/Commercial sales need more details
-      if (!data.make) {
-        errors.make = 'Vehicle make is required for retail/commercial sales'
-      }
-      
-      if (!data.model) {
-        errors.model = 'Vehicle model is required for retail/commercial sales'
-      }
-    }
-
-    // Finance company validation - only for Retail sales with Finance Company selected
-    if (data.saleType === 'Retail' && data.invoiceTo === 'Finance Company') {
-      if (!data.financeCompany) {
-        errors.financeCompany = 'Finance company selection is required'
-      }
-      
-      if (data.financeCompany === 'Other' && !data.financeCompanyName) {
-        errors.financeCompanyName = 'Finance company name is required when "Other" is selected'
-      }
-    }
-
-    // Warranty validation
-    if (data.warrantyLevel && data.warrantyLevel !== 'None Selected') {
-      if (!data.inHouse) {
-        errors.inHouse = 'In house selection is required when warranty is selected'
-      }
-      
-      if (data.inHouse === 'Yes' && !data.termsOfServiceInHouse) {
-        errors.termsOfServiceInHouse = 'In house warranty terms must be accepted'
-      }
-    }
-
-    // Add-ons validation
-    if (data.addonsToFinance === 'Yes') {
-      if (!data.financeAddon1 && (!data.financeAddonsArray || data.financeAddonsArray.length === 0)) {
-        errors.financeAddon1 = 'At least one finance add-on is required when finance add-ons are enabled'
-      }
-    }
-
-    if (data.customerAddons === 'Yes') {
-      if (!data.customerAddon1 && (!data.customerAddonsArray || data.customerAddonsArray.length === 0)) {
-        errors.customerAddon1 = 'At least one customer add-on is required when customer add-ons are enabled'
-      }
-    }
-
-    // Part exchange validation
-    if (data.partExIncluded === 'Yes') {
-      if (!data.pxVehicleRegistration) {
-        errors.pxVehicleRegistration = 'Part exchange vehicle registration is required'
-      }
-      
-      if (!data.pxMakeModel) {
-        errors.pxMakeModel = 'Part exchange make and model is required'
-      }
-      
-      if (!data.valueOfPxVehicle || data.valueOfPxVehicle <= 0) {
-        errors.valueOfPxVehicle = 'Part exchange value must be greater than 0'
-      }
-    }
-
-    // Delivery validation
-    if (data.deliveryOptions === 'Delivery') {
-      if (!data.deliveryCost || data.deliveryCost < 0) {
-        errors.deliveryCost = 'Delivery cost is required when delivery is selected'
-      }
-      
-      if (!data.dateOfCollectionDelivery) {
-        errors.dateOfCollectionDelivery = 'Delivery date is required when delivery is selected'
-      }
-    }
-
-    // Signature validation
-    if (data.customerAvailableSignature === 'Yes') {
-      if (!data.dateOfSignature) {
-        errors.dateOfSignature = 'Signature date is required when customer is available for signature'
-      }
-    }
-
-    return errors
   }
 
   const currentStepConfig = visibleSteps[currentStep]
@@ -1582,6 +1367,21 @@ export default function InvoiceForm({ stockData, stockActionsData }: InvoiceForm
             </CardContent>
           </Card>
         </LoadingOverlay>
+
+        {/* Always-render components (hidden) - for background calculations */}
+        <div style={{ display: 'none' }}>
+          {STEPS.filter(step => step.alwaysRender && !step.isVisible(formData)).map(step => {
+            const HiddenComponent = step.component;
+            return (
+              <HiddenComponent
+                key={`hidden-${step.id}`}
+                formData={formData}
+                updateFormData={updateFormData}
+                errors={errors}
+              />
+            );
+          })}
+        </div>
 
         {/* Enhanced Navigation Buttons */}
         <Card className={`shadow-lg border-0 ${

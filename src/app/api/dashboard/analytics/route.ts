@@ -9,7 +9,8 @@ import {
   detailedMargins,
   invoices,
   inventoryDetails,
-  dealers
+  dealers,
+  teamMembers
 } from '@/db/schema';
 import { eq, sql, desc, count, sum, avg } from 'drizzle-orm';
 import { 
@@ -18,6 +19,7 @@ import {
   createSuccessResponse,
   ErrorType
 } from '@/lib/errorHandler';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // Define proper types for user metadata
 interface UserPublicMetadata {
@@ -53,40 +55,18 @@ export async function GET() {
       );
     }
 
-    // FIXED: Handle both store owners and team members with proper typing
-    const userMetadata = user.publicMetadata as UserPublicMetadata;
-    const userType = userMetadata?.userType;
-    const storeOwnerId = userMetadata?.storeOwnerId;
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
     
-    console.log('🔍 Dashboard analytics user check:', {
-      userId: user.id,
-      userType,
-      storeOwnerId,
-      email: user.emailAddresses[0]?.emailAddress
-    });
-
     let dealerId: string | null = null;
-
-    if (userType === 'team_member' && storeOwnerId) {
-      // Team member: Use their store owner's dealer ID
-      console.log('👥 Team member detected - using store owner dealer ID:', storeOwnerId);
-      dealerId = storeOwnerId;
-    } else {
-      // Store owner or admin: Use their own dealer record
-      console.log('🏢 Store owner/admin detected - looking up own dealer record');
-      const dealerResult = await db
-        .select({ id: dealers.id })
-        .from(dealers)
-        .where(eq(dealers.clerkUserId, user.id))
-        .limit(1);
-
-      if (dealerResult.length === 0) {
-        console.log('⚠️ No dealer record found for user:', user.id);
-        console.log('📊 Will return empty analytics instead of error');
-        
-        // OPTIMIZED: Return empty analytics instead of throwing error
-        // This allows dashboard to show "no data" state instead of error state
-        const emptyAnalytics = {
+    
+    if (!dealerIdResult.success) {
+      console.log('⚠️ No dealer record found for user:', user.id);
+      console.log('📊 Will return empty analytics instead of error');
+      
+      // OPTIMIZED: Return empty analytics instead of throwing error
+      // This allows dashboard to show "no data" state instead of error state
+      const emptyAnalytics = {
           inventory: {
             overview: {
               totalVehicles: 0,
@@ -133,9 +113,9 @@ export async function GET() {
         response.headers.set('Expires', '0');
         
         return response;
-      }
-
-      dealerId = dealerResult[0].id;
+    } else {
+      dealerId = dealerIdResult.dealerId!;
+      console.log('✅ Dashboard analytics - using dealer ID:', dealerId);
     }
 
     // Safety check - should never happen but just in case

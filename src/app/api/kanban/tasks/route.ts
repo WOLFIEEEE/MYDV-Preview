@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { kanbanTasks, kanbanBoards, dealers } from '@/db/schema';
+import { kanbanTasks, kanbanBoards, dealers, teamMembers } from '@/db/schema';
 import { eq, and, max, gt, gte, lt, lte, ne, sql } from 'drizzle-orm';
 import { KanbanNotificationService } from '@/lib/kanbanNotifications';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // Create a new task
 export async function POST(request: NextRequest) {
@@ -34,31 +35,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get dealer ID (handle both store owners and team members)
-    const userMetadata = user.publicMetadata;
-    const userType = userMetadata?.userType as string;
-    const storeOwnerId = userMetadata?.storeOwnerId as string;
-    
-    let dealerId: string;
-
-    if (userType === 'team_member' && storeOwnerId) {
-      dealerId = storeOwnerId;
-    } else {
-      const dealerResult = await db
-        .select({ id: dealers.id })
-        .from(dealers)
-        .where(eq(dealers.clerkUserId, user.id))
-        .limit(1);
-
-      if (dealerResult.length === 0) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Dealer record not found' 
-        }, { status: 404 });
-      }
-
-      dealerId = dealerResult[0].id;
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
     }
+
+    const dealerId = dealerIdResult.dealerId!;
 
     // Verify board belongs to dealer
     const [board] = await db
@@ -147,31 +133,16 @@ export async function PATCH(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get dealer ID (handle both store owners and team members)
-    const userMetadata = user.publicMetadata;
-    const userType = userMetadata?.userType as string;
-    const storeOwnerId = userMetadata?.storeOwnerId as string;
-    
-    let dealerId: string;
-
-    if (userType === 'team_member' && storeOwnerId) {
-      dealerId = storeOwnerId;
-    } else {
-      const dealerResult = await db
-        .select({ id: dealers.id })
-        .from(dealers)
-        .where(eq(dealers.clerkUserId, user.id))
-        .limit(1);
-
-      if (dealerResult.length === 0) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Dealer record not found' 
-        }, { status: 404 });
-      }
-
-      dealerId = dealerResult[0].id;
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
     }
+
+    const dealerId = dealerIdResult.dealerId!;
 
     // Verify board belongs to dealer
     if (boardId) {

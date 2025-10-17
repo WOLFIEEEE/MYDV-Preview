@@ -30,7 +30,8 @@ import {
   Car,
   PoundSterling,
   FileText,
-  Receipt
+  Receipt,
+  QrCode
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Header from "@/components/shared/Header";
@@ -142,6 +143,7 @@ export default function StoreOwnerSettings() {
   const [companySettings, setCompanySettings] = useState({
     companyName: '',
     companyLogo: '',
+    qrCode: '', // Add QR code field
     businessType: '',
     establishedYear: '',
     registrationNumber: '',
@@ -159,12 +161,22 @@ export default function StoreOwnerSettings() {
       website: '',
       fax: ''
     },
+    payment: {
+      bankName: '',
+      bankSortCode: '',
+      bankAccountNumber: '',
+      bankAccountName: '',
+      bankIban: '',
+      bankSwiftCode: ''
+    },
     description: '',
     mission: '',
     vision: ''
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
+  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+  const [qrCodePreview, setQrCodePreview] = useState<string>('');
   const [isSavingCompanySettings, setIsSavingCompanySettings] = useState(false);
   // Templates state
   const [templates, setTemplates] = useState<Array<{
@@ -429,15 +441,27 @@ export default function StoreOwnerSettings() {
   };
 
   // Stock Image management functions
-  const loadStockImages = async () => {
+  const loadStockImages = async (bustCache = false) => {
     setIsLoadingStockImages(true);
     try {
-      const response = await fetch('/api/stock-images');
+      // Add cache-busting parameter when needed
+      const url = bustCache 
+        ? `/api/stock-images?_t=${Date.now()}` 
+        : '/api/stock-images';
+      
+      const response = await fetch(url, {
+        // Force no cache on the request
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await response.json();
       
       if (data.success) {
         setStockImages(data.stockImages || []);
-        console.log('📸 Loaded stock images:', data.stockImages?.length || 0);
+        console.log(`📸 Loaded stock images at ${new Date().toISOString()}:`, data.stockImages?.length || 0);
       } else {
         console.error('❌ Failed to load stock images:', data.message);
         setStockImages([]);
@@ -474,17 +498,30 @@ export default function StoreOwnerSettings() {
 
       if (data.success) {
         console.log('✅ Stock images uploaded successfully');
-        await loadStockImages(); // Reload stock images
+        
+        // Clear form and close modal first
         setShowAddStockImageModal(false);
         setSelectedStockImageFiles([]);
         setNewStockImageName('');
         setNewStockImageDescription('');
         setStockImageType('fallback');
+        setStockImageFileSelectionMessage('');
+        
+        // Then reload stock images with cache busting
+        await loadStockImages(true);
+        
+        // Show success message if there were partial failures
+        if (data.errors && data.errors.length > 0) {
+          console.warn('⚠️ Some images failed to upload:', data.errors);
+          alert(`Successfully uploaded ${data.count} image(s). Some files failed: ${data.errors.join(', ')}`);
+        }
       } else {
         console.error('❌ Stock image upload failed:', data.message);
+        alert(`Upload failed: ${data.message}${data.errors ? '\n' + data.errors.join('\n') : ''}`);
       }
     } catch (error) {
       console.error('❌ Error uploading stock images:', error);
+      alert('Upload failed: Network error or server unavailable. Please try again.');
     } finally {
       setIsUploadingStockImage(false);
       setStockImageUploadProgress(0);
@@ -492,6 +529,15 @@ export default function StoreOwnerSettings() {
   };
 
   const deleteStockImage = async (stockImageId: string) => {
+    // Show confirmation dialog
+    if (!confirm('Are you sure you want to delete this stock image? This action cannot be undone.')) {
+      return;
+    }
+
+    // Optimistically remove from UI
+    const originalStockImages = [...stockImages];
+    setStockImages(prev => prev.filter(img => img.id !== stockImageId));
+
     try {
       console.log('🗑️ Attempting to delete stock image with ID:', stockImageId);
       
@@ -503,12 +549,21 @@ export default function StoreOwnerSettings() {
 
       if (data.success) {
         console.log('✅ Stock image deleted successfully:', stockImageId);
-        await loadStockImages(); // Reload stock images
+        // Small delay to ensure database transaction is committed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // Force reload with cache busting to ensure fresh data
+        await loadStockImages(true);
       } else {
         console.error('❌ Stock image deletion failed:', data.message);
+        // Revert optimistic update
+        setStockImages(originalStockImages);
+        alert(`Delete failed: ${data.message}`);
       }
     } catch (error) {
       console.error('❌ Error deleting stock image:', error);
+      // Revert optimistic update
+      setStockImages(originalStockImages);
+      alert('Delete failed: Network error or server unavailable. Please try again.');
     }
   };
 
@@ -565,9 +620,40 @@ export default function StoreOwnerSettings() {
   const handleStockImageFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length > 0) {
-      setSelectedStockImageFiles(files);
-      setStockImageFileSelectionMessage(`${files.length} file(s) selected`);
+      // Validate files
+      const validFiles = [];
+      const errors = [];
+      
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+          errors.push(`${file.name}: Not an image file`);
+          continue;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          errors.push(`${file.name}: File too large (max 10MB)`);
+          continue;
+        }
+        validFiles.push(file);
+      }
+      
+      setSelectedStockImageFiles(validFiles);
+      
+      if (validFiles.length > 0) {
+        setStockImageFileSelectionMessage(`${validFiles.length} valid file(s) selected`);
+      }
+      
+      if (errors.length > 0) {
+        setStockImageFileSelectionMessage(
+          `${validFiles.length} valid file(s) selected. Errors: ${errors.join(', ')}`
+        );
+      }
+    } else {
+      setSelectedStockImageFiles([]);
+      setStockImageFileSelectionMessage('');
     }
+    
+    // Reset the input to allow selecting the same files again
+    event.target.value = '';
   };
 
   // Handle keyboard events for modal
@@ -905,6 +991,44 @@ export default function StoreOwnerSettings() {
     }
   };
 
+  const handleQrCodeUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select a valid image file (PNG, JPG, GIF, etc.)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+
+      setQrCodeFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64String = e.target?.result as string;
+        setQrCodePreview(base64String);
+        setCompanySettings(prev => ({
+          ...prev,
+          qrCode: base64String
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleQrCodeRemove = () => {
+    setQrCodeFile(null);
+    setQrCodePreview('');
+    setCompanySettings(prev => ({
+      ...prev,
+      qrCode: ''
+    }));
+  };
+
   const handleCompanySettingsChange = (field: string, value: string | number | boolean) => {
     setCompanySettings(prev => {
       if (field.includes('.')) {
@@ -980,9 +1104,11 @@ export default function StoreOwnerSettings() {
             vatNumber: companySettings.vatNumber,
             address: companySettings.address,
             contact: companySettings.contact,
+            payment: companySettings.payment, // Include payment information
             description: companySettings.description,
             mission: companySettings.mission,
-            vision: companySettings.vision
+            vision: companySettings.vision,
+            qrCode: companySettings.qrCode // Include QR code data
           }
         })
       });
@@ -1013,6 +1139,9 @@ export default function StoreOwnerSettings() {
           setCompanySettings(result.data);
           if (result.data.companyLogo) {
             setLogoPreview(result.data.companyLogo);
+          }
+          if (result.data.qrCode) {
+            setQrCodePreview(result.data.qrCode);
           }
         }
       }
@@ -2009,6 +2138,83 @@ export default function StoreOwnerSettings() {
                             </div>
                           </div>
                         </div>
+
+                        {/* QR Code for Invoice Footer */}
+                        <div>
+                          <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                            QR Code for Invoice Footer
+                          </label>
+                          <div className="flex items-center gap-6">
+                            <div className="w-24 h-24 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-700">
+                              {qrCodePreview || companySettings.qrCode ? (
+                                <Image
+                                  src={qrCodePreview || companySettings.qrCode}
+                                  alt="QR Code"
+                                  width={96}
+                                  height={96}
+                                  className="w-full h-full object-contain rounded-xl"
+                                />
+                              ) : (
+                                <QrCode className="w-8 h-8 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              {qrCodePreview || companySettings.qrCode ? (
+                                <div className="space-y-2">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleQrCodeUpload}
+                                      className="hidden"
+                                      id="qr-code-upload"
+                                    />
+                                    <label
+                                      htmlFor="qr-code-upload"
+                                      className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
+                                    >
+                                      <Upload className="w-4 h-4 mr-2" />
+                                      Replace QR Code
+                                    </label>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={handleQrCodeRemove}
+                                      className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Remove
+                                    </Button>
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-white">
+                                    QR code uploaded successfully. This will appear in invoice footers.
+                                  </p>
+                                </div>
+                              ) : (
+                                <div>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleQrCodeUpload}
+                                    className="hidden"
+                                    id="qr-code-upload"
+                                  />
+                                  <label
+                                    htmlFor="qr-code-upload"
+                                    className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-white bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 cursor-pointer transition-colors"
+                                  >
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Upload QR Code
+                                  </label>
+                                  <p className="text-xs text-slate-500 dark:text-white mt-2">
+                                    Upload a QR code to display in invoice footers. PNG or JPG, max 5MB
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
 
@@ -2157,8 +2363,101 @@ export default function StoreOwnerSettings() {
                       </CardContent>
                     </Card>
 
+                    {/* Payment Information */}
+                    <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-0 shadow-xl">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+                          <PoundSterling className="w-5 h-5" />
+                          Payment Information
+                        </CardTitle>
+                        <CardDescription className="text-slate-600 dark:text-slate-300">
+                          Banking details that will appear on invoices for customer payments
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6 pb-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Bank Name
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankName}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankName', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="e.g., Barclays Bank"
+                            />
+                          </div>
 
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Account Name
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankAccountName}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankAccountName', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="Company Name Ltd"
+                            />
+                          </div>
 
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Sort Code
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankSortCode}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankSortCode', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="12-34-56"
+                              maxLength={8}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              Account Number
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankAccountNumber}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankAccountNumber', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="12345678"
+                              maxLength={8}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              IBAN <span className="text-slate-500 text-xs">(Optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankIban}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankIban', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="GB29 NWBK 6016 1331 9268 19"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold mb-3 text-slate-700 dark:text-white">
+                              SWIFT/BIC Code <span className="text-slate-500 text-xs">(Optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={companySettings.payment.bankSwiftCode}
+                              onChange={(e) => handleCompanySettingsChange('payment.bankSwiftCode', e.target.value)}
+                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white transition-all duration-200"
+                              placeholder="NWBKGB2L"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
                   </div>
                 )}

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { returnCosts, dealers } from '@/db/schema';
+import { returnCosts, dealers, teamMembers } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 export async function GET() {
   try {
@@ -12,21 +13,16 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get dealer record from Clerk user ID
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1);
-
-    if (dealerResult.length === 0) {
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Dealer record not found' 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
       }, { status: 404 });
     }
 
-    const dealerId = dealerResult[0].id;
+    const dealerId = dealerIdResult.dealerId!;
 
     // Fetch all return costs for this dealer
     const allReturnCosts = await db

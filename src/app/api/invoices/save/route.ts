@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { savedInvoices } from '@/db/schema';
+import { savedInvoices, dealers, teamMembers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { syncInvoiceData } from '@/lib/invoiceSyncService';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +22,17 @@ export async function POST(request: NextRequest) {
         error: 'Missing required fields' 
       }, { status: 400 });
     }
+
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
+      }, { status: 404 });
+    }
+
+    const dealerId = dealerIdResult.dealerId!;
 
     // Extract key fields for quick search/filtering with null checks
     const customerName = invoiceData.customer 
@@ -45,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Ensure invoiceNumber is never null or undefined
-    const invoiceNumber = invoiceData.invoiceNumber || `INV-${stockId}-${Date.now()}`;
+    const invoiceNumber = invoiceData.invoiceNumber || `INV-${invoiceData.vehicle?.registration || stockId}-${Date.now()}`;
     
     console.log('🔍 Invoice save debug:', {
       originalInvoiceNumber: invoiceData.invoiceNumber,
@@ -70,16 +83,19 @@ export async function POST(request: NextRequest) {
       invoiceNumber
     };
 
-    // Check if invoice already exists
+    // Check if invoice already exists (using dealer ID instead of user ID)
     const existingInvoice = await db.select()
       .from(savedInvoices)
       .where(
         and(
           eq(savedInvoices.invoiceNumber, invoiceNumber),
-          eq(savedInvoices.userId, user.id)
+          eq(savedInvoices.userId, dealerId)
         )
       )
       .limit(1);
+
+    let invoiceId: string;
+    let isUpdate = false;
 
     if (existingInvoice.length > 0) {
       // Update existing invoice
@@ -99,19 +115,15 @@ export async function POST(request: NextRequest) {
         .where(eq(savedInvoices.id, existingInvoice[0].id));
 
       console.log('✅ Invoice updated:', invoiceNumber);
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Invoice updated successfully',
-        invoiceId: existingInvoice[0].id
-      });
+      invoiceId = existingInvoice[0].id;
+      isUpdate = true;
     } else {
-      // Create new invoice
+      // Create new invoice (using dealer ID instead of user ID)
       const [newInvoice] = await db.insert(savedInvoices)
         .values({
           invoiceNumber,
           stockId,
-          userId: user.id,
+          userId: dealerId,
           invoiceData: updatedInvoiceData,
           customerName,
           vehicleRegistration,
@@ -125,13 +137,45 @@ export async function POST(request: NextRequest) {
         .returning();
 
       console.log('✅ Invoice saved:', invoiceNumber);
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Invoice saved successfully',
-        invoiceId: newInvoice.id
-      });
+      invoiceId = newInvoice.id;
+      isUpdate = false;
     }
+
+    // Sync with CRM and Sales Details (non-blocking)
+    console.log('🔄 Starting post-invoice sync...');
+    console.log('📊 [SAVE API] Invoice data structure for sync:', {
+      stockId,
+      dealerId,
+      deliveryInfo: updatedInvoiceData.delivery,
+      pricingInfo: updatedInvoiceData.pricing,
+      hasDelivery: !!updatedInvoiceData.delivery,
+      hasPricing: !!updatedInvoiceData.pricing
+    });
+    
+    try {
+      const syncResult = await syncInvoiceData(dealerId, stockId, updatedInvoiceData);
+      
+      if (syncResult.success) {
+        console.log('✅ Invoice sync completed successfully:', {
+          customerId: syncResult.customerId,
+          saleDetailsId: syncResult.saleDetailsId
+        });
+      } else {
+        console.log('⚠️ Invoice sync completed with issues:', {
+          errors: syncResult.errors,
+          warnings: syncResult.warnings
+        });
+      }
+    } catch (syncError) {
+      // Don't fail the invoice save if sync fails
+      console.error('❌ Invoice sync failed (non-blocking):', syncError);
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: isUpdate ? 'Invoice updated successfully' : 'Invoice saved successfully',
+      invoiceId: invoiceId
+    });
   } catch (error) {
     console.error('❌ Error saving invoice:', error);
     return NextResponse.json({

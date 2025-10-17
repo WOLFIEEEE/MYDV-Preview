@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { useTheme } from "@/contexts/ThemeContext";
 import { stockQueryKeys } from "@/hooks/useStockDataQuery";
+import { useDirectBrochureDownload } from "@/hooks/useDirectBrochureDownload";
 import StockHeader from "./StockHeader";
 import SideTabNavigation from "./SideTabNavigation";
 import TopActionNavigation from "./TopActionNavigation";
@@ -27,6 +28,7 @@ import SaleDetailsForm from "./tabs/actions/SaleDetailsForm";
 import ServiceDetailsForm from "./tabs/actions/ServiceDetailsForm";
 import DetailedMarginsForm from "./tabs/actions/DetailedMarginsForm";
 import GenerateInvoiceForm from "./tabs/actions/GenerateInvoiceForm";
+import BrochureDownloadModal from "./BrochureDownloadModal";
 
 interface StockDetailLayoutProps {
   stockData: any;
@@ -34,6 +36,7 @@ interface StockDetailLayoutProps {
   onOpenDocuments?: () => void;
   registration?: string;
   vehicleTitle?: string;
+  saleDetailsData?: any | null;
 }
 
 export type TabType = 
@@ -57,13 +60,17 @@ export type TabType =
   | "detailed-margins"
   | "generate-invoice";
 
-export default function StockDetailLayout({ stockData, stockId, onOpenDocuments, registration, vehicleTitle }: StockDetailLayoutProps) {
+export default function StockDetailLayout({ stockData, stockId, onOpenDocuments, registration, vehicleTitle, saleDetailsData }: StockDetailLayoutProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showBrochureModal, setShowBrochureModal] = useState(false);
   const { isDarkMode } = useTheme();
   const { user, isLoaded } = useUser();
   const queryClient = useQueryClient();
+  
+  // Centralized brochure download state and logic
+  const { downloadBrochure, isGenerating: isBrochureGenerating } = useDirectBrochureDownload();
 
   // Generate user-specific cache ID - only when user is loaded and authenticated
   const userCacheId = user?.id && isLoaded ? `user_${user.id}` : null;
@@ -102,7 +109,11 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
       case "vehicle":
         return <VehicleTab stockData={stockData} />;
       case "gallery":
-        return <GalleryTab stockData={stockData} />;
+        return <GalleryTab 
+          stockData={stockData} 
+          downloadBrochure={downloadBrochure}
+          isBrochureGenerating={isBrochureGenerating}
+        />;
       case "features":
         return <FeaturesTab stockData={stockData} />;
       case "adverts":
@@ -134,7 +145,7 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
       case "detailed-margins":
         return <DetailedMarginsForm stockData={stockData} onSuccess={refreshActionStatuses} />;
       case "generate-invoice":
-        return <GenerateInvoiceForm stockData={stockData} onSuccess={refreshActionStatuses} />;
+        return <GenerateInvoiceForm stockData={stockData} saleDetailsData={saleDetailsData} onSuccess={refreshActionStatuses} />;
       default:
         return <OverviewTab stockData={stockData} />;
     }
@@ -149,6 +160,9 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
         stockId={stockId}
         stockData={stockData}
         refreshTrigger={refreshTrigger}
+        onOpenBrochureModal={() => setShowBrochureModal(true)}
+        downloadBrochure={downloadBrochure}
+        isBrochureGenerating={isBrochureGenerating}
       />
 
       {/* Main Layout with Enhanced Design - Full Width */}
@@ -173,6 +187,13 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
           </div>
         </div>
       </div>
+
+      {/* Brochure Download Modal */}
+      <BrochureDownloadModal
+        isOpen={showBrochureModal}
+        onClose={() => setShowBrochureModal(false)}
+        stockData={stockData}
+      />
     </div>
   );
 }

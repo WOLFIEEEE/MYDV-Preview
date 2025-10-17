@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { invoices, dealers, saleDetails, vehicleChecklist } from '@/db/schema';
+import { invoices, dealers, saleDetails, vehicleChecklist, teamMembers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // POST - Create or update invoice
 export async function POST(request: NextRequest) {
@@ -13,21 +14,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get dealer record from Clerk user ID
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1);
-
-    if (dealerResult.length === 0) {
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Dealer record not found' 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
       }, { status: 404 });
     }
 
-    const dealerId = dealerResult[0].id;
+    const dealerId = dealerIdResult.dealerId!;
 
     const body = await request.json();
     console.log('📝 Invoice API - Received data:', body);
@@ -179,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate invoice number if not provided
-    const finalInvoiceNumber = invoiceNumber || `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const finalInvoiceNumber = invoiceNumber || `INV-${vehicleRegistration || stockId}-${Date.now()}`;
 
     // Check if record already exists
     const existingRecord = await db
@@ -386,7 +382,7 @@ export async function POST(request: NextRequest) {
       const saleUpdateData = {
         // Sale information
         saleDate: dateOfSale ? new Date(dateOfSale) : undefined,
-        salePrice: salePrice?.toString(),
+        salePrice: (salePricePostDiscount ?? salePrice)?.toString(),
         monthOfSale,
         quarterOfSale,
         
@@ -400,8 +396,22 @@ export async function POST(request: NextRequest) {
         
         // Delivery information
         deliveryType: deliveryOptions,
-        deliveryPrice: deliveryCost?.toString(),
+        deliveryPrice: (() => {
+          const finalPrice = (deliveryPricePostDiscount ?? deliveryCost)?.toString();
+          console.log('🚚 [API] Delivery Price Sync:', {
+            deliveryOptions,
+            deliveryCost,
+            deliveryPricePostDiscount,
+            finalPrice,
+            stockId
+          });
+          return finalPrice;
+        })(),
         deliveryDate: dateOfCollectionDelivery ? new Date(dateOfCollectionDelivery) : undefined,
+        
+        // Add-on totals (calculated from form data)
+        totalFinanceAddOn: calculateTotalFinanceAddOns(body).toString(),
+        totalCustomerAddOn: calculateTotalCustomerAddOns(body).toString(),
         
         // Payment information
         depositAmount: (amountPaidDepositFinance || amountPaidDepositCustomer)?.toString(),
@@ -522,6 +532,60 @@ export async function POST(request: NextRequest) {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+/**
+ * Calculate total finance add-ons from form data (post-discount values)
+ */
+function calculateTotalFinanceAddOns(formData: any): number {
+  let total = 0;
+
+  // Static finance add-ons (post-discount if available)
+  const financeAddon1Cost = formData.financeAddon1PricePostDiscount ?? formData.financeAddon1Cost ?? 0;
+  const financeAddon2Cost = formData.financeAddon2PricePostDiscount ?? formData.financeAddon2Cost ?? 0;
+  
+  total += financeAddon1Cost + financeAddon2Cost;
+
+  // Dynamic finance add-ons (from arrays)
+  if (formData.financeAddonsArray) {
+    const dynamicFinanceAddons = formData.financeAddonsArray.reduce((sum: number, addon: any, index: number) => {
+      // Check if there's a discount entry for this addon
+      const discountEntry = (formData.financeAddonsDiscountArray || [])[index];
+      const addonCost = discountEntry?.pricePostDiscount ?? addon.cost ?? 0;
+      return sum + addonCost;
+    }, 0);
+    
+    total += dynamicFinanceAddons;
+  }
+
+  return total;
+}
+
+/**
+ * Calculate total customer add-ons from form data (post-discount values)
+ */
+function calculateTotalCustomerAddOns(formData: any): number {
+  let total = 0;
+
+  // Static customer add-ons (post-discount if available)
+  const customerAddon1Cost = formData.customerAddon1PricePostDiscount ?? formData.customerAddon1Cost ?? 0;
+  const customerAddon2Cost = formData.customerAddon2PricePostDiscount ?? formData.customerAddon2Cost ?? 0;
+  
+  total += customerAddon1Cost + customerAddon2Cost;
+
+  // Dynamic customer add-ons (from arrays)
+  if (formData.customerAddonsArray) {
+    const dynamicCustomerAddons = formData.customerAddonsArray.reduce((sum: number, addon: any, index: number) => {
+      // Check if there's a discount entry for this addon
+      const discountEntry = (formData.customerAddonsDiscountArray || [])[index];
+      const addonCost = discountEntry?.pricePostDiscount ?? addon.cost ?? 0;
+      return sum + addonCost;
+    }, 0);
+    
+    total += dynamicCustomerAddons;
+  }
+
+  return total;
 }
 
 // GET - Retrieve invoice

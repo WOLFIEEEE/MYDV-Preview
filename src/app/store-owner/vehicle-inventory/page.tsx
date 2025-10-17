@@ -400,13 +400,16 @@ export default function VehicleInventoryPage() {
       return;
     }
 
+    // Headers matching the required column order
     const headers = [
-      'Vehicle Registration', 'Status', 'Date of Purchase', 'Month of Purchase', 'Quarter (purchase)',
-      'Vatable Purchase?', 'Cost of Purchase', 'List Price', 'Deposit Amount', 'Deposit Date',
-      'Email Address', 'Contact Number', 'First Name', 'Last Name', 'Date of Collection / Delivery',
-      'Warranty Price Post Discount', 'Date of Sale', 'Month of Sale', 'Quarter (sale)',
+      'ID', 'Purchase date', 'VRM', 'Make', 'Model', 'Variant', 'Year', 'Status', 
+      'Purchased from', 'Purchase price',
+      // Keep existing comprehensive columns
+      'Month of Purchase', 'Quarter (purchase)', 'Vatable Purchase?', 'List Price',
+      'Deposit Amount', 'Deposit Date', 'Email Address', 'Contact Number', 'First Name', 'Last Name', 'Date of Collection / Delivery',
+      'Warranty Price Post Discount', 'Delivery Price', 'Total Finance Add-On', 'Total Customer Add-On', 'Date of Sale', 'Month of Sale', 'Quarter (sale)',
       'Amount Paid by Finance', 'Amount Paid by BACS / Card', 'Amount Paid in Cash',
-      'Amount Paid in Part Exchange', 'Amount Paid in Total', 'Days in Stock', 'Transport In',
+      'Amount Paid in Part Exchange', 'Amount Paid in Total', 'Vehicle Sale Price', 'Days in Stock', 'Transport In',
       'Transport Out', 'MOT', 'Service VATABLE', 'Parts VATABLE', 'Repairs VATABLE',
       'Dents VATABLE', 'Bodyshop VATABLE', 'Service NON-VATABLE', 'Parts NON-VATABLE',
       'Repairs NON-VATABLE', 'Dents NON-VATABLE', 'Bodyshop NON-VATABLE', 'Outlay on Vehicle',
@@ -417,16 +420,24 @@ export default function VehicleInventoryPage() {
 
     const formatCurrency = (value: number) => `£${value.toFixed(2)}`;
 
-    const rows = filteredData.map(item => [
-      item.vehicleRegistration, item.status, item.dateOfPurchase, item.monthOfPurchase,
-      item.quarterPurchase, item.vatablePurchase, formatCurrency(item.costOfPurchase),
-      formatCurrency(item.listPrice), formatCurrency(item.depositAmount), item.depositDate,
+    const rows = filteredData.map((item, index) => [
+      // ID field as first column
+      (index + 1).toString(), // Sequential ID starting from 1
+      // Required order columns
+      item.dateOfPurchase, item.vehicleRegistration, item.make || '', item.model || '',
+      item.variant || '', item.yearOfManufacture || '', item.status,
+      item.purchaseFrom || '', formatCurrency(item.costOfPurchase),
+      // Keep existing comprehensive data
+      item.monthOfPurchase,
+      item.quarterPurchase, item.vatablePurchase, formatCurrency(item.listPrice),
+      formatCurrency(item.depositAmount), item.depositDate,
       item.emailAddress, item.contactNumber, item.firstName, item.lastName,
       item.dateOfCollectionDelivery, formatCurrency(item.warrantyPricePostDiscount),
+      formatCurrency(item.deliveryPrice || 0), formatCurrency(item.totalFinanceAddOn || 0), formatCurrency(item.totalCustomerAddOn || 0),
       item.dateOfSale, item.monthOfSale, item.quarterSale,
       formatCurrency(item.amountPaidByFinance), formatCurrency(item.amountPaidByBACSCard),
       formatCurrency(item.amountPaidInCash), formatCurrency(item.amountPaidInPartExchange),
-      formatCurrency(item.amountPaidInTotal), item.daysInStock || '',
+      formatCurrency(item.amountPaidInTotal), formatCurrency(item.salePrice || 0), item.daysInStock || '',
       formatCurrency(item.transportIn), formatCurrency(item.transportOut), formatCurrency(item.mot),
       formatCurrency(item.serviceVatable), formatCurrency(item.partsVatable),
       formatCurrency(item.repairsVatable), formatCurrency(item.dentsVatable),
@@ -923,6 +934,9 @@ export default function VehicleInventoryPage() {
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Last Name</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Date of Collection / Delivery</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Warranty Price Post Discount</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Delivery Price</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Total Finance Add-On</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Total Customer Add-On</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Date of Sale</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Month of Sale</th>
                         <th className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Quarter (sale)</th>
@@ -931,6 +945,7 @@ export default function VehicleInventoryPage() {
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Amount Paid in Cash</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Amount Paid in Part Exchange</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Amount Paid in Total</th>
+                        <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Vehicle Sale Price</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Days in Stock</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Transport In</th>
                         <th className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Transport Out</th>
@@ -998,6 +1013,9 @@ export default function VehicleInventoryPage() {
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.lastName}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.dateOfCollectionDelivery}</td>
                           <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{item.warrantyPricePostDiscount.toFixed(2)}</td>
+                          <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{(item.deliveryPrice || 0).toFixed(2)}</td>
+                          <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{(item.totalFinanceAddOn || 0).toFixed(2)}</td>
+                          <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{(item.totalCustomerAddOn || 0).toFixed(2)}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.dateOfSale}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.monthOfSale}</td>
                           <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.quarterSale}</td>
@@ -1006,6 +1024,7 @@ export default function VehicleInventoryPage() {
                           <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{item.amountPaidInCash.toFixed(2)}</td>
                           <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{item.amountPaidInPartExchange.toFixed(2)}</td>
                           <td className={`px-3 py-2 whitespace-nowrap text-right font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>£{item.amountPaidInTotal.toFixed(2)}</td>
+                          <td className={`px-3 py-2 whitespace-nowrap text-right font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>£{(item.salePrice || 0).toFixed(2)}</td>
                           <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{item.daysInStock || '-'}</td>
                           <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{item.transportIn.toFixed(2)}</td>
                           <td className={`px-3 py-2 whitespace-nowrap text-right ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>£{item.transportOut.toFixed(2)}</td>

@@ -16,7 +16,8 @@ import {
   Eye,
   CheckCircle2,
   Clock,
-  Wrench
+  Wrench,
+  Download
 } from "lucide-react";
 import { TabType } from "./StockDetailLayout";
 import { useState, useEffect } from "react";
@@ -29,6 +30,9 @@ interface TopActionNavigationProps {
   stockId?: string;
   stockData?: any;
   refreshTrigger?: number;
+  onOpenBrochureModal?: () => void;
+  downloadBrochure: (options: { stockData: any }) => Promise<void>;
+  isBrochureGenerating: boolean;
 }
 
 type CompletionStatus = 'completed' | 'pending';
@@ -45,7 +49,16 @@ const actionTabs = [
   { id: "service-details", label: "Service Details", shortLabel: "Service", icon: Wrench, color: "purple" },
 ] as const;
 
-export default function TopActionNavigation({ activeTab, onTabChange, stockId, stockData, refreshTrigger }: TopActionNavigationProps) {
+export default function TopActionNavigation({ 
+  activeTab, 
+  onTabChange, 
+  stockId, 
+  stockData, 
+  refreshTrigger, 
+  onOpenBrochureModal,
+  downloadBrochure,
+  isBrochureGenerating 
+}: TopActionNavigationProps) {
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useUser();
@@ -54,7 +67,7 @@ export default function TopActionNavigation({ activeTab, onTabChange, stockId, s
   const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
   const [isDepositTaken, setIsDepositTaken] = useState(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
-
+  
   // Check user role for permissions
   const userRole = user?.publicMetadata?.role as string;
   const userType = user?.publicMetadata?.userType as string;
@@ -156,6 +169,29 @@ export default function TopActionNavigation({ activeTab, onTabChange, stockId, s
       }
     } catch (error) {
       console.error('Error loading deposit status:', error);
+    }
+  };
+
+  // Direct brochure download handler
+  const handleDirectBrochureDownload = async () => {
+    console.log('🖱️ Brochure download button clicked');
+    
+    if (!stockData) {
+      console.error('❌ No stock data available for brochure generation');
+      return;
+    }
+    
+    if (isBrochureGenerating) {
+      console.log('⚠️ PDF generation already in progress');
+      return;
+    }
+    
+    console.log('📊 Stock data available, starting download...');
+    
+    try {
+      await downloadBrochure({ stockData });
+    } catch (error) {
+      console.error('❌ Error in brochure download handler:', error);
     }
   };
 
@@ -541,6 +577,25 @@ export default function TopActionNavigation({ activeTab, onTabChange, stockId, s
               <span className="lg:hidden">View</span>
             </button>
           )}
+
+          {/* Brochure Download Button */}
+          <button
+            onClick={handleDirectBrochureDownload}
+            disabled={isBrochureGenerating}
+            className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 mr-6 ${
+              isBrochureGenerating 
+                ? 'text-gray-400 border-gray-400 bg-gray-100 cursor-not-allowed'
+                : 'text-white border-blue-400 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 hover:text-white hover:border-blue-300 bg-blue-600/70'
+            }`}
+          >
+            <Download className={`h-4 w-4 mr-2 ${isBrochureGenerating ? 'animate-spin' : ''}`} />
+            <span className="hidden lg:inline">
+              {isBrochureGenerating ? 'Generating...' : 'Download Brochure'}
+            </span>
+            <span className="lg:hidden">
+              {isBrochureGenerating ? 'Gen...' : 'Brochure'}
+            </span>
+          </button>
 
           {/* Flex spacer to center the action tabs */}
           <div className="flex-1"></div>

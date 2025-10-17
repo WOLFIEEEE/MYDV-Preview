@@ -75,6 +75,7 @@ export interface AdvertInfo {
     attentionGrabber?: string;
     priceIndicatorRating?: string;
     vatable?: string;
+    vatStatus?: string;
     // Channel-specific advert status
     autotraderAdvert?: {
       status?: string;

@@ -355,6 +355,17 @@ export class StockCacheService {
   }
 
   /**
+   * Force refresh with progress tracking for background operations
+   */
+  static async forceRefreshStockDataWithProgress(
+    options: StockQueryOptions,
+    progressCallback?: (current: number, total: number, estimatedTime?: number) => void
+  ): Promise<CachedStockResponse> {
+    console.log('🔄 StockCacheService: Force refreshing with progress tracking...');
+    return await this.refreshAndGetStockDataWithProgress(options, progressCallback);
+  }
+
+  /**
    * Get stock data with intelligent caching
    * Priority: Fresh cache > Stale cache > AutoTrader API > Any cached data for user
    * 
@@ -1176,6 +1187,56 @@ export class StockCacheService {
   }
   
   /**
+   * Refresh stock data from AutoTrader and cache it with progress tracking
+   */
+  private static async refreshAndGetStockDataWithProgress(
+    options: StockQueryOptions,
+    progressCallback?: (current: number, total: number, estimatedTime?: number) => void
+  ): Promise<CachedStockResponse> {
+    console.log('🔄 Refreshing stock data from AutoTrader with progress tracking...');
+    
+    // Resolve Clerk user ID to dealer UUID
+    const dealerId = await this.resolveDealerUuid(options.dealerId);
+    if (!dealerId) {
+      throw new Error(`Dealer not found for Clerk user ID: ${options.dealerId}`);
+    }
+    
+    const syncLogId = await this.startSyncLog(dealerId, options.advertiserId, 'full_sync');
+    
+    try {
+      // Get user email (same logic as original)
+      const userEmail = await this.getUserEmail(options.dealerId);
+      
+      // Get AutoTrader token
+      const tokenResult = await getAutoTraderToken(userEmail);
+      if (!tokenResult.success || !tokenResult.access_token) {
+        throw new Error('Failed to authenticate with AutoTrader');
+      }
+      
+      // Fetch all stock data with parallel processing and progress tracking
+      const stockData = await this.fetchAllStockFromAutoTraderParallel(
+        tokenResult.access_token,
+        options.advertiserId,
+        userEmail,
+        progressCallback
+      );
+      
+      // Update cache with fresh data
+      await this.updateCacheOptimized(dealerId, options.advertiserId, stockData);
+      
+      await this.completeSyncLog(syncLogId, stockData.length, stockData.length, 0, 0);
+      
+      // Return filtered and paginated data from cache
+      return await this.getCachedStockData({ ...options, dealerId }, false);
+      
+    } catch (error) {
+      const errorMessage = this.logError('Error refreshing stock data', error);
+      await this.failSyncLog(syncLogId, errorMessage);
+      throw error;
+    }
+  }
+
+  /**
    * Refresh stock data from AutoTrader and cache it
    */
   private static async refreshAndGetStockData(options: StockQueryOptions): Promise<CachedStockResponse> {
@@ -1236,8 +1297,8 @@ export class StockCacheService {
         throw new Error('Failed to authenticate with AutoTrader');
       }
       
-      // Fetch all stock data from AutoTrader with automatic retry on token expiration
-      const stockData = await this.fetchAllStockFromAutoTraderWithRetry(
+      // Fetch all stock data from AutoTrader with parallel processing for better performance
+      const stockData = await this.fetchAllStockFromAutoTraderParallel(
         tokenResult.access_token,
         options.advertiserId,
         userEmail
@@ -1530,6 +1591,130 @@ export class StockCacheService {
     
     console.log(`✅ Fetched ${allResults.length} stock items from AutoTrader across ${currentPage - 1} pages`);
     return allResults;
+  }
+
+  /**
+   * Parallel fetch implementation - fetches multiple pages simultaneously
+   */
+  private static async fetchAllStockFromAutoTraderParallel(
+    accessToken: string, 
+    advertiserId: string,
+    userEmail: string,
+    progressCallback?: (current: number, total: number, estimatedTime?: number) => void
+  ): Promise<any[]> {
+    console.log('🚀 Fetching stock from AutoTrader with parallel processing...');
+    
+    const baseUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL;
+    const pageSize = 100;
+    const maxConcurrent = 6; // Fetch 6 pages simultaneously for better performance
+    const startTime = Date.now();
+    
+    // Get circuit breaker
+    const circuitBreakerKey = `autotrader-${advertiserId}`;
+    if (!this.circuitBreaker.has(circuitBreakerKey)) {
+      this.circuitBreaker.set(circuitBreakerKey, new CircuitBreaker(5, 60000));
+    }
+    const breaker = this.circuitBreaker.get(circuitBreakerKey)!;
+    
+    // First, fetch page 1 to get total pages
+    const firstPageData = await this.fetchSinglePage(baseUrl!, accessToken, advertiserId, 1, pageSize, breaker);
+    const totalPages = firstPageData.totalPages || Math.ceil((firstPageData.totalResults || 0) / pageSize) || 1;
+    
+    console.log(`📊 Total pages to fetch: ${totalPages}`);
+    progressCallback?.(1, totalPages);
+    
+    let allResults = firstPageData.results || [];
+    
+    if (totalPages <= 1) {
+      return allResults;
+    }
+    
+    // Fetch remaining pages in parallel batches
+    const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+    
+    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
+      const batch = remainingPages.slice(i, i + maxConcurrent);
+      const batchStartTime = Date.now();
+      
+      console.log(`🔄 Fetching batch: pages ${batch.join(', ')}`);
+      
+      const batchPromises = batch.map(page => 
+        this.fetchSinglePage(baseUrl!, accessToken, advertiserId, page, pageSize, breaker)
+      );
+      
+      try {
+        const batchResults = await Promise.all(batchPromises);
+        
+        for (const pageData of batchResults) {
+          if (pageData.results) {
+            allResults = allResults.concat(pageData.results);
+          }
+        }
+        
+        const currentPage = i + maxConcurrent + 1;
+        const elapsed = Date.now() - startTime;
+        const avgTimePerBatch = elapsed / Math.ceil((currentPage) / maxConcurrent);
+        const remainingBatches = Math.ceil((totalPages - currentPage) / maxConcurrent);
+        const estimatedTimeRemaining = avgTimePerBatch * remainingBatches;
+        
+        progressCallback?.(currentPage, totalPages, estimatedTimeRemaining);
+        
+        console.log(`✅ Batch completed in ${Date.now() - batchStartTime}ms. Total items: ${allResults.length}`);
+        
+      } catch (error) {
+        console.error(`❌ Batch failed for pages ${batch.join(', ')}:`, error);
+        // Continue with other batches - don't fail entire refresh
+      }
+      
+      // Small delay between batches to be respectful to the API (reduced from 100ms to 50ms)
+      if (i + maxConcurrent < remainingPages.length) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+    
+    console.log(`🚀 Parallel fetch completed: ${allResults.length} items in ${Date.now() - startTime}ms`);
+    return allResults;
+  }
+
+  /**
+   * Fetch a single page of stock data
+   */
+  private static async fetchSinglePage(
+    baseUrl: string,
+    accessToken: string,
+    advertiserId: string,
+    page: number,
+    pageSize: number,
+    breaker: CircuitBreaker
+  ): Promise<any> {
+    const stockParams = new URLSearchParams();
+    stockParams.append('advertiserId', advertiserId);
+    stockParams.append('page', page.toString());
+    stockParams.append('pageSize', pageSize.toString());
+    stockParams.append('includeHistory', 'true');
+    stockParams.append('includeCheck', 'true');
+    stockParams.append('includeFeatures', 'true');
+    stockParams.append('includeHighlights', 'true');
+    stockParams.append('includeMedia', 'true');
+    
+    const stockUrl = `${baseUrl}/stock?${stockParams.toString()}`;
+    
+    const response = await breaker.execute(async () => {
+      return await fetchWithRetry(stockUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+    });
+    
+    if (!response.ok) {
+      throw new Error(`AutoTrader API error for page ${page}: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
   }
   
   /**
@@ -2068,5 +2253,249 @@ export class StockCacheService {
       this.logError('Error getting cache stats', error);
       throw error;
     }
+  }
+
+  /**
+   * Optimized cache update with bulk operations
+   */
+  private static async updateCacheOptimized(dealerId: string, advertiserId: string, stockData: any[]): Promise<void> {
+    console.log(`💾 Optimized cache update with ${stockData.length} stock items...`);
+    
+    try {
+      if (stockData.length === 0) {
+        console.log('📦 No stock data to cache');
+        await db
+          .update(stockCache)
+          .set({ isStale: true, updatedAt: new Date() })
+          .where(and(
+            eq(stockCache.dealerId, dealerId),
+            eq(stockCache.advertiserId, advertiserId)
+          ));
+        return;
+      }
+
+      // Get existing stock IDs
+      const existingStockIds = await db
+        .select({ stockId: stockCache.stockId })
+        .from(stockCache)
+        .where(and(
+          eq(stockCache.dealerId, dealerId),
+          eq(stockCache.advertiserId, advertiserId)
+        ));
+      
+      const existingIds = new Set(existingStockIds.map(row => row.stockId));
+      const newStockIds = new Set(stockData.map(item => item.metadata?.stockId || '').filter(Boolean));
+      
+      console.log(`📊 Existing: ${existingIds.size}, New: ${newStockIds.size} stock items`);
+      
+      // Mark stale entries in bulk
+      const staleIds = Array.from(existingIds).filter(id => !newStockIds.has(id));
+      if (staleIds.length > 0) {
+        console.log(`🗑️ Marking ${staleIds.length} items as stale`);
+        await db
+          .update(stockCache)
+          .set({ isStale: true, updatedAt: new Date() })
+          .where(and(
+            eq(stockCache.dealerId, dealerId),
+            eq(stockCache.advertiserId, advertiserId),
+            inArray(stockCache.stockId, staleIds)
+          ));
+      }
+      
+      // Prepare cache entries
+      const cacheEntries = stockData.map(item => this.prepareCacheEntry(item, dealerId, advertiserId));
+      
+      // Separate into updates and inserts
+      const toUpdate = cacheEntries.filter(entry => existingIds.has(entry.stockId));
+      const toInsert = cacheEntries.filter(entry => !existingIds.has(entry.stockId));
+      
+      console.log(`🔄 Bulk operations: ${toUpdate.length} updates, ${toInsert.length} inserts`);
+      
+      // Bulk insert new entries with larger batch size for better performance
+      if (toInsert.length > 0) {
+        const batchSize = 100; // Increased from 50 to 100 for faster inserts
+        for (let i = 0; i < toInsert.length; i += batchSize) {
+          const batch = toInsert.slice(i, i + batchSize);
+          
+          try {
+            await db.insert(stockCache).values(batch);
+            console.log(`💾 Inserted batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(toInsert.length / batchSize)}`);
+          } catch (batchError) {
+            console.error('❌ Batch insert failed, trying individual inserts:', batchError);
+            // Fallback to individual inserts
+            for (const entry of batch) {
+              try {
+                await db.insert(stockCache).values([entry]);
+              } catch (individualError) {
+                console.error(`❌ Failed to insert ${entry.stockId}:`, individualError);
+              }
+            }
+          }
+        }
+      }
+
+      // Bulk update existing entries with optimized batch processing
+      if (toUpdate.length > 0) {
+        const batchSize = 50; // Increased from 25 to 50 for faster updates
+        for (let i = 0; i < toUpdate.length; i += batchSize) {
+          const batch = toUpdate.slice(i, i + batchSize);
+          
+          // Process updates in parallel for better performance
+          await Promise.all(batch.map(async (entry) => {
+            try {
+              await db
+                .update(stockCache)
+                .set({
+                  make: entry.make,
+                  model: entry.model,
+                  derivative: entry.derivative,
+                  registration: entry.registration,
+                  vin: entry.vin,
+                  yearOfManufacture: entry.yearOfManufacture,
+                  odometerReadingMiles: entry.odometerReadingMiles,
+                  fuelType: entry.fuelType,
+                  bodyType: entry.bodyType,
+                  forecourtPriceGBP: entry.forecourtPriceGBP,
+                  totalPriceGBP: entry.totalPriceGBP,
+                  lifecycleState: entry.lifecycleState,
+                  ownershipCondition: entry.ownershipCondition,
+                  lastFetchedFromAutoTrader: entry.lastFetchedFromAutoTrader,
+                  isStale: entry.isStale,
+                  autoTraderVersionNumber: entry.autoTraderVersionNumber,
+                  vehicleData: entry.vehicleData,
+                  advertiserData: entry.advertiserData,
+                  advertsData: entry.advertsData,
+                  metadataRaw: entry.metadataRaw,
+                  featuresData: entry.featuresData,
+                  mediaData: entry.mediaData,
+                  historyData: entry.historyData,
+                  checkData: entry.checkData,
+                  highlightsData: entry.highlightsData,
+                  valuationsData: entry.valuationsData,
+                  responseMetricsData: entry.responseMetricsData,
+                  updatedAt: entry.updatedAt
+                })
+                .where(and(
+                  eq(stockCache.stockId, entry.stockId),
+                  eq(stockCache.dealerId, dealerId),
+                  eq(stockCache.advertiserId, advertiserId)
+                ));
+            } catch (updateError) {
+              console.error(`❌ Failed to update ${entry.stockId}:`, updateError);
+            }
+          }));
+          
+          console.log(`💾 Updated batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(toUpdate.length / batchSize)}`);
+        }
+      }
+      
+      console.log(`✅ Optimized cache update completed: ${toUpdate.length} updated, ${toInsert.length} inserted, ${staleIds.length} marked stale`);
+      
+    } catch (error) {
+      const errorMessage = this.logError('Error in optimized cache update', error);
+      throw new Error(`Optimized cache update failed: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Helper method to extract user email
+   */
+  private static async getUserEmail(clerkUserId: string): Promise<string> {
+    // Check if user is a team member first
+    const teamMemberResult = await db
+      .select({ storeOwnerId: teamMembers.storeOwnerId })
+      .from(teamMembers)
+      .where(eq(teamMembers.clerkUserId, clerkUserId))
+      .limit(1);
+    
+    if (teamMemberResult.length > 0) {
+      // User is team member - get store owner's email
+      const storeOwnerResult = await db
+        .select({ email: dealers.email })
+        .from(dealers)
+        .where(eq(dealers.id, teamMemberResult[0].storeOwnerId))
+        .limit(1);
+      
+      if (storeOwnerResult.length === 0) {
+        throw new Error('Store owner not found for team member');
+      }
+      
+      return storeOwnerResult[0].email;
+    } else {
+      // User is store owner - get their own email from store config
+      const dealerResult = await db
+        .select({ email: storeConfig.email })
+        .from(storeConfig)
+        .where(eq(storeConfig.clerkUserId, clerkUserId))
+        .limit(1);
+      
+      if (dealerResult.length === 0) {
+        throw new Error('Store configuration not found');
+      }
+      
+      return dealerResult[0].email;
+    }
+  }
+
+  /**
+   * Helper method to prepare cache entry
+   */
+  private static prepareCacheEntry(item: any, dealerId: string, advertiserId: string): any {
+    const vehicle = item.vehicle || {};
+    const metadata = item.metadata || {};
+    const adverts = item.adverts || {};
+    
+    // Extract pricing information
+    let forecourtPriceGBP: string | null = null;
+    let totalPriceGBP: string | null = null;
+    
+    if (adverts.forecourtPrice?.amountGBP) {
+      forecourtPriceGBP = adverts.forecourtPrice.amountGBP.toString();
+    }
+    if (adverts.retailAdverts?.totalPrice?.amountGBP) {
+      totalPriceGBP = adverts.retailAdverts.totalPrice.amountGBP.toString();
+    }
+    
+    return {
+      stockId: metadata.stockId || '',
+      dealerId,
+      advertiserId,
+      
+      // Core searchable fields
+      make: vehicle.make || '',
+      model: vehicle.model || '',
+      derivative: vehicle.derivative,
+      registration: vehicle.registration,
+      vin: vehicle.vin,
+      yearOfManufacture: vehicle.yearOfManufacture,
+      odometerReadingMiles: vehicle.odometerReadingMiles,
+      fuelType: vehicle.fuelType,
+      bodyType: vehicle.bodyType,
+      forecourtPriceGBP,
+      totalPriceGBP,
+      lifecycleState: metadata.lifecycleState,
+      ownershipCondition: vehicle.ownershipCondition,
+      
+      // Cache management
+      lastFetchedFromAutoTrader: new Date(),
+      isStale: false,
+      autoTraderVersionNumber: metadata.versionNumber,
+      
+      // JSON fields with complete data
+      vehicleData: item.vehicle,
+      advertiserData: item.advertiser,
+      advertsData: item.adverts,
+      metadataRaw: item.metadata,
+      featuresData: item.features,
+      mediaData: item.media,
+      historyData: item.history,
+      checkData: item.check,
+      highlightsData: item.highlights,
+      valuationsData: item.valuations,
+      responseMetricsData: item.responseMetrics,
+      
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 }

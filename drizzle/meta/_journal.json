@@ -8,6 +8,69 @@
       "when": 1759791000444,
       "tag": "0000_previous_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1759947067684,
+      "tag": "0001_dashing_blockbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760003393015,
+      "tag": "0002_small_exodus",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1760007435247,
+      "tag": "0003_cloudy_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1760099231379,
+      "tag": "0004_fair_natasha_romanoff",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1760114799280,
+      "tag": "0005_brave_arclight",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1760198559972,
+      "tag": "0006_many_doomsday",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1760331296769,
+      "tag": "0007_great_tenebrous",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1760552986983,
+      "tag": "0008_sloppy_iron_fist",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1760554730401,
+      "tag": "0009_tough_patch",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useEffect } from "react";
+import React, { useCallback, useMemo, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,14 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Car, 
-  User, 
-  Building, 
-  PoundSterling, 
-  Shield, 
-  Truck, 
-  FileText, 
+import {
+  Car,
+  User,
+  Building,
+  PoundSterling,
+  Shield,
+  Truck,
+  FileText,
   CheckCircle,
   CreditCard,
   Calendar,
@@ -28,11 +28,18 @@ import {
   Plus,
   Minus,
   Trash2,
-  PenTool
+  PenTool,
+  Upload,
+  QrCode,
+  Search
 } from "lucide-react";
 import { ComprehensiveInvoiceData } from "@/app/api/invoice-data/route";
 import { useTheme } from "@/contexts/ThemeContext";
 import { PREDEFINED_FINANCE_COMPANIES } from '@/lib/financeCompanies';
+import Image from 'next/image';
+import SignatureCapture from "../shared/SignatureCapture";
+import AddressFormSection from "@/components/ui/AddressFormSection";
+import CustomerSearchInput from "../shared/CustomerSearchInput";
 
 interface DynamicInvoiceFormProps {
   invoiceData: ComprehensiveInvoiceData;
@@ -46,14 +53,12 @@ const FORM_SECTIONS = [
   { id: 'basic', label: 'Basic Info', icon: FileText },
   { id: 'vehicle', label: 'Vehicle', icon: Car },
   { id: 'customer', label: 'Customer', icon: User },
-  { id: 'finance', label: 'Finance', icon: Building },
-  { id: 'pricing', label: 'Pricing', icon: PoundSterling },
-  { id: 'warranty', label: 'Warranty & Add-ons', icon: Shield },
-  { id: 'delivery', label: 'Delivery', icon: Truck },
+  { id: 'finance', label: 'Finance Company', icon: Building },
+  { id: 'deposit', label: 'Deposit Details', icon: PoundSterling },
+  { id: 'products', label: 'Products', icon: Truck },
+  { id: 'checklist', label: 'Checklist', icon: CheckCircle },
   { id: 'payment', label: 'Payment', icon: CreditCard },
   { id: 'balance', label: 'Balance Summary', icon: PoundSterling },
-  { id: 'checklist', label: 'Checklist', icon: CheckCircle },
-  { id: 'signature', label: 'Signature & IDD', icon: PenTool },
 ];
 
 
@@ -69,12 +74,14 @@ const WARRANTY_LEVELS = [
 ];
 
 // Memoized FormInput component to prevent re-renders
-const FormInput = React.memo(({ 
-  label, 
-  value, 
-  onChange, 
-  type = 'text', 
-  placeholder, 
+const FormInput = React.memo(({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  highlight = false,
+  placeholder,
+  subtitle,
   icon: Icon,
   required = false,
   disabled = false,
@@ -85,11 +92,15 @@ const FormInput = React.memo(({
   onChange: (value: string) => void;
   type?: string;
   placeholder?: string;
+  highlight?: boolean;
   icon?: React.ComponentType<{ className?: string }>;
   required?: boolean;
+  subtitle?: string;
   disabled?: boolean;
   className?: string;
 }) => {
+  const { isDarkMode } = useTheme();
+
   // Handle display value for numeric inputs
   const getDisplayValue = () => {
     if (type === 'number') {
@@ -104,7 +115,7 @@ const FormInput = React.memo(({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
-    
+
     if (type === 'number') {
       // For number inputs, allow empty string or valid numbers
       if (inputValue === '') {
@@ -123,18 +134,26 @@ const FormInput = React.memo(({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label className="text-sm font-medium flex items-center">
+      <Label className={`text-sm font-semibold flex items-center ${isDarkMode ? highlight ? 'text-red-400' : 'text-white' : highlight ? 'text-red-400' : 'text-slate-700'}`}>
         {Icon && <Icon className="h-4 w-4 mr-2" />}
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </Label>
+      <p className={`text-xs italic ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        {subtitle}
+      </p>
       <Input
         type={type === 'number' ? 'text' : type}
         value={getDisplayValue()}
         onChange={handleChange}
         placeholder={placeholder || (type === 'number' ? '0.00' : undefined)}
         disabled={disabled}
-        className={`${disabled ? 'bg-slate-100 dark:bg-slate-800' : ''}`}
+        className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${disabled
+            ? 'bg-slate-100 dark:bg-slate-800 opacity-60'
+            : isDarkMode
+              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+              : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+          }`}
       />
     </div>
   );
@@ -143,11 +162,11 @@ const FormInput = React.memo(({
 FormInput.displayName = 'FormInput';
 
 // Memoized FormSelect component to prevent re-renders
-const FormSelect = React.memo(({ 
-  label, 
-  value, 
-  onChange, 
-  options, 
+const FormSelect = React.memo(({
+  label,
+  value,
+  onChange,
+  options,
   placeholder,
   icon: Icon,
   required = false,
@@ -161,41 +180,170 @@ const FormSelect = React.memo(({
   icon?: React.ComponentType<{ className?: string }>;
   required?: boolean;
   disabled?: boolean;
-}) => (
-  <div className="space-y-2">
-    <Label className="text-sm font-medium flex items-center">
-      {Icon && <Icon className="h-4 w-4 mr-2" />}
-      {label}
-      {required && <span className="text-red-500 ml-1">*</span>}
-    </Label>
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className={disabled ? 'bg-slate-100 dark:bg-slate-800' : ''}>
-        <SelectValue placeholder={placeholder || `Select ${label}`} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => {
-          const optionValue = typeof option === 'string' ? option : option.value;
-          const optionLabel = typeof option === 'string' ? option : option.label;
-          return (
-            <SelectItem key={optionValue} value={optionValue}>
-              {optionLabel}
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
-  </div>
-));
+}) => {
+  const { isDarkMode } = useTheme();
+
+  return (
+    <div className="space-y-2">
+      <Label className={`text-sm font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+        {Icon && <Icon className="h-4 w-4 mr-2" />}
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </Label>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className={`px-4 py-3 border rounded-xl transition-all duration-200 ${disabled
+          ? 'bg-slate-100 dark:bg-slate-800 opacity-60'
+          : isDarkMode
+            ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 hover:bg-slate-800/70 hover:border-slate-600'
+            : 'bg-white border-slate-200 text-slate-900 hover:bg-white hover:border-slate-300'
+          }`}>
+          <SelectValue placeholder={placeholder || `Select ${label}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => {
+            const optionValue = typeof option === 'string' ? option : option.value;
+            const optionLabel = typeof option === 'string' ? option : option.label;
+            return (
+              <SelectItem key={optionValue} value={optionValue}>
+                {optionLabel}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+});
 
 FormSelect.displayName = 'FormSelect';
 
-export default function DynamicInvoiceForm({ 
-  invoiceData, 
-  onUpdate, 
-  activeTab, 
-  onTabChange 
+// Memoized QR Code Upload component
+const QRCodeUpload = React.memo(({
+  label,
+  value,
+  onChange,
+  icon: Icon,
+  disabled = false
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon?: React.ComponentType<{ className?: string }>;
+  disabled?: boolean;
+}) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, GIF, etc.)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    try {
+      // Convert to base64 for storage
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string;
+        onChange(base64String);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading QR code:', error);
+      alert('Error uploading QR code. Please try again.');
+    }
+  };
+
+  const handleRemove = () => {
+    onChange('');
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium flex items-center">
+        {Icon && <Icon className="h-4 w-4 mr-2" />}
+        {label}
+      </Label>
+
+      {value ? (
+        <div className="space-y-2">
+          {/* Preview */}
+          <div className="flex items-center space-x-4 p-3 border rounded-lg bg-slate-50 dark:bg-slate-800">
+            <div className="flex-shrink-0">
+              <Image
+                src={value}
+                alt="QR Code Preview"
+                width={64}
+                height={64}
+                className="object-contain border rounded"
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">QR Code Uploaded</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                This QR code will appear in the invoice footer
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRemove}
+              disabled={disabled}
+              className="text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center w-full">
+            <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 ${disabled ? 'opacity-50 cursor-not-allowed' : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'}`}>
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className="w-8 h-8 mb-4 text-slate-500 dark:text-slate-400" />
+                <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold">Click to upload</span> QR code image
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  PNG, JPG, GIF up to 5MB
+                </p>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                onChange={handleFileChange}
+                accept="image/*"
+                disabled={disabled}
+              />
+            </label>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Upload a QR code image to display in the invoice footer. This could be a QR code linking to your website, payment page, or contact information.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+QRCodeUpload.displayName = 'QRCodeUpload';
+
+export default function DynamicInvoiceForm({
+  invoiceData,
+  onUpdate,
+  activeTab,
+  onTabChange
 }: DynamicInvoiceFormProps) {
-  const { } = useTheme();
+  const [availableForFinalSignature, setAvailableForFinalSignature] = useState('No');
+  const { isDarkMode } = useTheme();
 
   // Optimized helper function to update nested data (prevents unnecessary re-renders)
   const updateNestedData = useCallback((path: string, value: string | number | boolean | object | null) => {
@@ -210,16 +358,16 @@ export default function DynamicInvoiceForm({
         break;
       }
     }
-    
+
     // If the value hasn't changed, don't trigger an update
     if (current === value) {
       return;
     }
-    
+
     // Create minimal update object
     const updates = { ...invoiceData };
     let updateCurrent: Record<string, any> = updates;
-    
+
     for (let i = 0; i < keys.length - 1; i++) {
       if (!updateCurrent[keys[i]]) {
         updateCurrent[keys[i]] = {};
@@ -227,10 +375,10 @@ export default function DynamicInvoiceForm({
       updateCurrent[keys[i]] = { ...updateCurrent[keys[i]] };
       updateCurrent = updateCurrent[keys[i]];
     }
-    
+
     updateCurrent[keys[keys.length - 1]] = value;
     onUpdate(updates);
-    
+
     // Note: Calculations will be triggered automatically by the useEffect
     // that watches for changes in the pricing fields
   }, [invoiceData, onUpdate]);
@@ -256,13 +404,13 @@ export default function DynamicInvoiceForm({
       if (company) {
         const addressLine1 = company.address.line1;
         const addressLine2 = company.address.line2 ? `\n${company.address.line2}` : '';
-        const cityCounty = company.address.county 
-          ? `${company.address.city}, ${company.address.county}` 
+        const cityCounty = company.address.county
+          ? `${company.address.city}, ${company.address.county}`
           : company.address.city;
         const contactInfo = [];
         if (company.address.phone) contactInfo.push(company.address.phone);
         if (company.address.email) contactInfo.push(company.address.email);
-        
+
         onUpdate({
           ...invoiceData,
           financeCompany: {
@@ -302,12 +450,12 @@ export default function DynamicInvoiceForm({
   // Dynamic add-on management functions
   const addFinanceAddon = useCallback(() => {
     let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
-    
+
     // Convert object format back to array if needed (preserves existing data)
     if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
       dynamicAddons = Object.values(dynamicAddons);
     }
-    
+
     const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
     const newAddon = { name: '', cost: 0, discount: 0 };
     updateNestedData('addons.finance.dynamicAddons', [...currentAddons, newAddon]);
@@ -315,12 +463,12 @@ export default function DynamicInvoiceForm({
 
   const removeFinanceAddon = useCallback((index: number) => {
     let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
-    
+
     // Convert object format back to array if needed (preserves existing data)
     if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
       dynamicAddons = Object.values(dynamicAddons);
     }
-    
+
     const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
     const newAddons = currentAddons.filter((_, i) => i !== index);
     updateNestedData('addons.finance.dynamicAddons', newAddons);
@@ -328,12 +476,12 @@ export default function DynamicInvoiceForm({
 
   const addCustomerAddon = useCallback(() => {
     let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-    
+
     // Convert object format back to array if needed (preserves existing data)
     if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
       dynamicAddons = Object.values(dynamicAddons);
     }
-    
+
     const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
     const newAddon = { name: '', cost: 0, discount: 0 };
     updateNestedData('addons.customer.dynamicAddons', [...currentAddons, newAddon]);
@@ -341,12 +489,12 @@ export default function DynamicInvoiceForm({
 
   const removeCustomerAddon = useCallback((index: number) => {
     let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-    
+
     // Convert object format back to array if needed (preserves existing data)
     if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
       dynamicAddons = Object.values(dynamicAddons);
     }
-    
+
     const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
     const newAddons = currentAddons.filter((_, i) => i !== index);
     updateNestedData('addons.customer.dynamicAddons', newAddons);
@@ -358,7 +506,7 @@ export default function DynamicInvoiceForm({
     const currentPayments = invoiceData.payment?.breakdown?.[`${type}Payments` as keyof typeof invoiceData.payment.breakdown] as Array<{ amount: number; date: string }> || [];
     const newPayments = [...currentPayments, { amount: 0, date: '' }];
     updateNestedData(fieldName, newPayments);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceData.payment?.breakdown, updateNestedData]);
 
   const removePayment = useCallback((type: 'card' | 'bacs' | 'cash', index: number) => {
@@ -368,7 +516,7 @@ export default function DynamicInvoiceForm({
       const newPayments = currentPayments.filter((_, i) => i !== index);
       updateNestedData(fieldName, newPayments);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceData.payment?.breakdown, updateNestedData]);
 
   const updatePayment = useCallback((type: 'card' | 'bacs' | 'cash', index: number, field: 'amount' | 'date', value: number | string) => {
@@ -379,7 +527,7 @@ export default function DynamicInvoiceForm({
       newPayments[index] = { ...newPayments[index], [field]: value };
       updateNestedData(fieldName, newPayments);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceData.payment?.breakdown, updateNestedData]);
 
   // Initialize payment arrays to ensure at least one entry is visible for each type
@@ -414,8 +562,16 @@ export default function DynamicInvoiceForm({
       });
     }
   }, [invoiceData.payment?.breakdown, updateNestedData]);
-  
-    // Comprehensive calculation function for all pricing and discount fields
+
+  // Comprehensive calculation function for all pricing and discount fields
+  // Helper function to ensure consistent array format for dynamic addons
+  const ensureArrayFormat = (data: any): any[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'object') return Object.values(data);
+    return [];
+  };
+
   const performCalculations = useCallback(() => {
     const calculations: Record<string, number> = {};
     let hasChanges = false;
@@ -424,7 +580,7 @@ export default function DynamicInvoiceForm({
     const salePrice = invoiceData.pricing.salePrice || 0;
     const discountOnSalePrice = invoiceData.pricing.discountOnSalePrice || 0;
     const salePricePostDiscount = Math.max(0, salePrice - discountOnSalePrice);
-    
+
     if (invoiceData.pricing.salePricePostDiscount !== salePricePostDiscount) {
       calculations['pricing.salePricePostDiscount'] = salePricePostDiscount;
       hasChanges = true;
@@ -435,7 +591,7 @@ export default function DynamicInvoiceForm({
       const warrantyPrice = invoiceData.pricing.warrantyPrice || 0;
       const discountOnWarranty = invoiceData.pricing.discountOnWarranty || 0;
       const warrantyPricePostDiscount = Math.max(0, warrantyPrice - discountOnWarranty);
-      
+
       if (invoiceData.pricing.warrantyPricePostDiscount !== warrantyPricePostDiscount) {
         calculations['pricing.warrantyPricePostDiscount'] = warrantyPricePostDiscount;
         hasChanges = true;
@@ -445,7 +601,7 @@ export default function DynamicInvoiceForm({
       const enhancedWarrantyPrice = invoiceData.pricing.enhancedWarrantyPrice || 0;
       const discountOnEnhancedWarranty = invoiceData.pricing.discountOnEnhancedWarranty || 0;
       const enhancedWarrantyPricePostDiscount = Math.max(0, enhancedWarrantyPrice - discountOnEnhancedWarranty);
-      
+
       if (invoiceData.pricing.enhancedWarrantyPricePostDiscount !== enhancedWarrantyPricePostDiscount) {
         calculations['pricing.enhancedWarrantyPricePostDiscount'] = enhancedWarrantyPricePostDiscount;
         hasChanges = true;
@@ -466,7 +622,7 @@ export default function DynamicInvoiceForm({
     const deliveryCost = invoiceData.delivery?.cost || 0;
     const deliveryDiscount = invoiceData.delivery?.discount || 0;
     const deliveryCostPostDiscount = Math.max(0, deliveryCost - deliveryDiscount);
-    
+
     // Update delivery post-discount cost
     if (invoiceData.delivery?.postDiscountCost !== deliveryCostPostDiscount) {
       calculations['delivery.postDiscountCost'] = deliveryCostPostDiscount;
@@ -478,7 +634,7 @@ export default function DynamicInvoiceForm({
       const addon1Cost = invoiceData.addons.finance.addon1.cost || 0;
       const addon1Discount = invoiceData.addons.finance.addon1.discount || 0;
       const addon1PostDiscount = Math.max(0, addon1Cost - addon1Discount);
-      
+
       if (invoiceData.addons.finance.addon1.postDiscountCost !== addon1PostDiscount) {
         calculations['addons.finance.addon1.postDiscountCost'] = addon1PostDiscount;
         hasChanges = true;
@@ -489,7 +645,7 @@ export default function DynamicInvoiceForm({
       const addon2Cost = invoiceData.addons.finance.addon2.cost || 0;
       const addon2Discount = invoiceData.addons.finance.addon2.discount || 0;
       const addon2PostDiscount = Math.max(0, addon2Cost - addon2Discount);
-      
+
       if (invoiceData.addons.finance.addon2.postDiscountCost !== addon2PostDiscount) {
         calculations['addons.finance.addon2.postDiscountCost'] = addon2PostDiscount;
         hasChanges = true;
@@ -501,7 +657,7 @@ export default function DynamicInvoiceForm({
       const addon1Cost = invoiceData.addons.customer.addon1.cost || 0;
       const addon1Discount = invoiceData.addons.customer.addon1.discount || 0;
       const addon1PostDiscount = Math.max(0, addon1Cost - addon1Discount);
-      
+
       if (invoiceData.addons.customer.addon1.postDiscountCost !== addon1PostDiscount) {
         calculations['addons.customer.addon1.postDiscountCost'] = addon1PostDiscount;
         hasChanges = true;
@@ -512,7 +668,7 @@ export default function DynamicInvoiceForm({
       const addon2Cost = invoiceData.addons.customer.addon2.cost || 0;
       const addon2Discount = invoiceData.addons.customer.addon2.discount || 0;
       const addon2PostDiscount = Math.max(0, addon2Cost - addon2Discount);
-      
+
       if (invoiceData.addons.customer.addon2.postDiscountCost !== addon2PostDiscount) {
         calculations['addons.customer.addon2.postDiscountCost'] = addon2PostDiscount;
         hasChanges = true;
@@ -525,7 +681,7 @@ export default function DynamicInvoiceForm({
         const addonCost = addon.cost || 0;
         const addonDiscount = addon.discount || 0;
         const addonPostDiscount = Math.max(0, addonCost - addonDiscount);
-        
+
         if (addon.postDiscountCost !== addonPostDiscount) {
           calculations[`addons.finance.dynamicAddons.${index}.postDiscountCost`] = addonPostDiscount;
           hasChanges = true;
@@ -539,7 +695,7 @@ export default function DynamicInvoiceForm({
         const addonCost = addon.cost || 0;
         const addonDiscount = addon.discount || 0;
         const addonPostDiscount = Math.max(0, addonCost - addonDiscount);
-        
+
         if (addon.postDiscountCost !== addonPostDiscount) {
           calculations[`addons.customer.dynamicAddons.${index}.postDiscountCost`] = addonPostDiscount;
           hasChanges = true;
@@ -553,7 +709,7 @@ export default function DynamicInvoiceForm({
       const warrantyPricePostDiscount = invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0;
       const enhancedWarrantyPricePostDiscount = invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0;
       const deliveryPricePostDiscount = invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0;
-      
+
       // Calculate all customer add-ons (post-discount)
       const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
       const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
@@ -562,35 +718,37 @@ export default function DynamicInvoiceForm({
         if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
           dynamicAddons = Object.values(dynamicAddons);
         }
-        return Array.isArray(dynamicAddons) 
-          ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number }) => 
-              sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
+        return Array.isArray(dynamicAddons)
+          ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number }) =>
+            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
           : 0;
       })();
-      
+
       const totalCustomerAddons = customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost;
-      
+
       const calculatedCompulsorySaleDepositFinance = warrantyPricePostDiscount + enhancedWarrantyPricePostDiscount + deliveryPricePostDiscount + totalCustomerAddons;
-      
+
       if (invoiceData.pricing.compulsorySaleDepositFinance !== calculatedCompulsorySaleDepositFinance) {
         calculations['pricing.compulsorySaleDepositFinance'] = calculatedCompulsorySaleDepositFinance;
         hasChanges = true;
       }
-      
+
       const compulsorySaleDepositFinance = calculatedCompulsorySaleDepositFinance;
       // Calculate combined total finance deposit paid (dealer deposit + finance deposit)
       const dealerDepositPaidCustomer = invoiceData.pricing?.dealerDepositPaidCustomer || 0;
       const amountPaidDepositFinance = invoiceData.pricing.amountPaidDepositFinance || 0;
       const totalFinanceDepositPaid = dealerDepositPaidCustomer + amountPaidDepositFinance;
       const outstandingDepositFinance = compulsorySaleDepositFinance - totalFinanceDepositPaid;
-      
+
       // CRITICAL FIX: Calculate overpayments (Finance) - matches Stock Invoice Form
       // Formula: Math.max(0, totalPaid - compulsory)
-      const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - compulsorySaleDepositFinance);
-      
-      if (invoiceData.pricing.outstandingDepositFinance !== outstandingDepositFinance || 
-          invoiceData.pricing.totalFinanceDepositPaid !== totalFinanceDepositPaid ||
-          invoiceData.pricing.overpaymentsFinance !== overpaymentsFinance) {
+      const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - ((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)));
+      // const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - compulsorySaleDepositFinance); 
+      console.log((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0))
+
+      if (invoiceData.pricing.outstandingDepositFinance !== outstandingDepositFinance ||
+        invoiceData.pricing.totalFinanceDepositPaid !== totalFinanceDepositPaid ||
+        invoiceData.pricing.overpaymentsFinance !== overpaymentsFinance) {
         calculations['pricing.outstandingDepositFinance'] = outstandingDepositFinance;
         calculations['pricing.totalFinanceDepositPaid'] = totalFinanceDepositPaid;
         calculations['pricing.overpaymentsFinance'] = overpaymentsFinance;
@@ -602,25 +760,25 @@ export default function DynamicInvoiceForm({
     const compulsorySaleDepositCustomer = invoiceData.pricing.compulsorySaleDepositCustomer || 0;
     const amountPaidDepositCustomer = invoiceData.pricing.amountPaidDepositCustomer || 0;
     const outstandingDepositCustomer = compulsorySaleDepositCustomer - amountPaidDepositCustomer;
-    
+
     // CRITICAL FIX: Calculate overpayments (Customer) - matches Stock Invoice Form
     // Formula: Math.max(0, amountPaid - compulsory)
     const overpaymentsCustomer = Math.max(0, amountPaidDepositCustomer - compulsorySaleDepositCustomer);
-    
+
     if (invoiceData.pricing.outstandingDepositCustomer !== outstandingDepositCustomer ||
-        invoiceData.pricing.overpaymentsCustomer !== overpaymentsCustomer) {
+      invoiceData.pricing.overpaymentsCustomer !== overpaymentsCustomer) {
       calculations['pricing.outstandingDepositCustomer'] = outstandingDepositCustomer;
       calculations['pricing.overpaymentsCustomer'] = overpaymentsCustomer;
       hasChanges = true;
     }
-    
+
     // 10b. Part Exchange Amount Paid Calculation
     // Calculate: PX Value - Settlement Amount (only if Part Exchange is included)
     if (invoiceData.payment.partExchange?.included) {
       const pxValue = invoiceData.payment.partExchange?.valueOfVehicle || 0;
       const settlement = invoiceData.payment.partExchange?.settlementAmount || 0;
       const amountPaidPartEx = Math.max(0, pxValue - settlement);
-      
+
       if (invoiceData.payment.partExchange?.amountPaid !== amountPaidPartEx) {
         calculations['payment.partExchange.amountPaid'] = amountPaidPartEx;
         hasChanges = true;
@@ -632,27 +790,27 @@ export default function DynamicInvoiceForm({
         hasChanges = true;
       }
     }
-    
+
     // 11. Balance to Finance calculation - CORRECTED to match BalanceSummary logic
     if (invoiceData.invoiceTo === 'Finance Company') {
       // Use POST-DISCOUNT values for finance add-ons
       const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.postDiscountCost || invoiceData.addons?.finance?.addon1?.cost || 0;
       const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.postDiscountCost || invoiceData.addons?.finance?.addon2?.cost || 0;
-      const financeDynamicAddonsCost = Array.isArray(invoiceData.addons?.finance?.dynamicAddons) 
-        ? invoiceData.addons.finance.dynamicAddons.reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) => 
-            sum + (addon.postDiscountCost || addon.cost || 0), 0) 
+      const financeDynamicAddonsCost = Array.isArray(invoiceData.addons?.finance?.dynamicAddons)
+        ? invoiceData.addons.finance.dynamicAddons.reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) =>
+          sum + (addon.postDiscountCost || addon.cost || 0), 0)
         : 0;
-      
+
       // Sum all card, BACS, and cash payments from arrays
       const totalCardPayments = (invoiceData.payment?.breakdown?.cardPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
       const totalBacsPayments = (invoiceData.payment?.breakdown?.bacsPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
       const totalCashPayments = (invoiceData.payment?.breakdown?.cashPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
-      
+
       const totalDirectPayments = totalCardPayments +
-                                 totalBacsPayments +
-                                 totalCashPayments +
-                                 (invoiceData.payment?.partExchange?.amountPaid || 0);
-      
+        totalBacsPayments +
+        totalCashPayments +
+        (invoiceData.payment?.partExchange?.amountPaid || 0);
+
       // CORRECTED: Balance to Finance = Sale Price + Settlement + Finance Add-ons - Overpayments (F) - Direct Payments
       // Formula matches PaymentsAgainstBalance and BalanceSummary exactly
       const balanceToFinance = Math.max(0,
@@ -664,13 +822,13 @@ export default function DynamicInvoiceForm({
         (invoiceData.pricing?.overpaymentsFinance || 0) -
         totalDirectPayments
       );
-      
+
       if (invoiceData.payment?.balanceToFinance !== balanceToFinance) {
         calculations['payment.balanceToFinance'] = balanceToFinance;
         hasChanges = true;
       }
     }
-    
+
     // 12. VAT calculation - Used cars are VAT-exempt
     const vatAmount = 0; // Used cars are VAT-exempt (0% VAT)
     if (invoiceData.vatAmount !== vatAmount) {
@@ -683,16 +841,16 @@ export default function DynamicInvoiceForm({
     const totalCardPayments = (invoiceData.payment?.breakdown?.cardPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
     const totalBacsPayments = (invoiceData.payment?.breakdown?.bacsPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
     const totalCashPayments = (invoiceData.payment?.breakdown?.cashPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
-    
+
     const totalDirectPayments = totalCardPayments +
-                               totalBacsPayments +
-                               totalCashPayments +
-                               (invoiceData.payment?.partExchange?.amountPaid || 0);
-    
+      totalBacsPayments +
+      totalCashPayments +
+      (invoiceData.payment?.partExchange?.amountPaid || 0);
+
     // Include customer deposit payments as part of total payments (booking amount)
     const totalDepositPayments = (invoiceData.pricing?.amountPaidDepositCustomer || 0);
     const totalPayments = totalDirectPayments + totalDepositPayments;
-    
+
     // Calculate subtotal from all components
     const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
     const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
@@ -701,36 +859,21 @@ export default function DynamicInvoiceForm({
     const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
     const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
     const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-    const financeDynamicAddonsCost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (() => {
-      let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
-      // Convert object format back to array if needed
-      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-        dynamicAddons = Object.values(dynamicAddons);
-      }
-      return Array.isArray(dynamicAddons)
-        ? dynamicAddons.reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) => 
-            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
-        : 0;
-    })();
-    const customerDynamicAddonsCost = (() => {
-      let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-      // Convert object format back to array if needed
-      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-        dynamicAddons = Object.values(dynamicAddons);
-      }
-      return Array.isArray(dynamicAddons)
-        ? dynamicAddons.reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) => 
-            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
-        : 0;
-    })();
-    
-    const balanceSubtotal = salePricePostDiscount + warrantyPrice + enhancedWarrantyPrice + deliveryPrice + 
-                           financeAddon1Cost + financeAddon2Cost + customerAddon1Cost + customerAddon2Cost +
-                           financeDynamicAddonsCost + customerDynamicAddonsCost;
-    
+    // FIXED: Use helper function for consistent array handling
+    const financeDynamicAddonsCost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 :
+      ensureArrayFormat(invoiceData.addons?.finance?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) =>
+        sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0);
+
+    const customerDynamicAddonsCost = ensureArrayFormat(invoiceData.addons?.customer?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) =>
+      sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0);
+
+    const balanceSubtotal = salePricePostDiscount + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
+      financeAddon1Cost + financeAddon2Cost + customerAddon1Cost + customerAddon2Cost +
+      financeDynamicAddonsCost + customerDynamicAddonsCost;
+
     // Calculate remaining balance
     const remainingBalance = Math.max(0, balanceSubtotal - totalPayments);
-    
+
     // Calculate customer balance due
     let customerBalanceDue = 0;
     if (invoiceData.invoiceTo === 'Finance Company') {
@@ -758,7 +901,7 @@ export default function DynamicInvoiceForm({
         hasChanges = true;
       }
     }
-    
+
     // For Retail Customer invoices, set pricing.remainingBalance
     if (invoiceData.saleType === 'Retail' && invoiceData.invoiceTo === 'Customer') {
       if (invoiceData.pricing?.remainingBalance !== remainingBalance) {
@@ -782,10 +925,10 @@ export default function DynamicInvoiceForm({
         }
         current[keys[keys.length - 1]] = value;
       });
-      
+
       onUpdate(updates);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     // Basic pricing dependencies
     invoiceData.pricing.salePrice,
@@ -822,8 +965,9 @@ export default function DynamicInvoiceForm({
     invoiceData.addons?.customer?.addon1?.discount,
     invoiceData.addons?.customer?.addon2?.cost,
     invoiceData.addons?.customer?.addon2?.discount,
-    invoiceData.addons?.finance?.dynamicAddons,
-    invoiceData.addons?.customer?.dynamicAddons,
+    // FIXED: Add proper dynamic addon dependencies
+    JSON.stringify(invoiceData.addons?.finance?.dynamicAddons || []),
+    JSON.stringify(invoiceData.addons?.customer?.dynamicAddons || []),
     // Current calculated values (to prevent infinite loops)
     invoiceData.pricing.salePricePostDiscount,
     invoiceData.pricing.warrantyPricePostDiscount,
@@ -883,47 +1027,119 @@ export default function DynamicInvoiceForm({
 
   // const createStringChangeHandler = useCallback((path: string) => {
   //   return (value: string) => updateNestedData(path, value);
-  // }, [updateNestedData]);
+  // }, [updateNestedData]);  
+  // const isSignatureAvailable = invoiceData.customerAvailableSignature === 'Yes'
+
+  // Customer search and selection handler
+  const handleCustomerSelect = useCallback((customer: any) => {
+    // Map customer data to invoice data structure
+    const customerUpdates = {
+      customer: {
+        title: invoiceData.customer.title || '', // Keep existing title if set
+        firstName: customer.firstName || '',
+        middleName: invoiceData.customer.middleName || '', // Keep existing middle name
+        lastName: customer.lastName || '',
+        contact: {
+          phone: customer.phone || '',
+          email: customer.email || ''
+        },
+        address: {
+          firstLine: customer.addressLine1 || '',
+          secondLine: customer.addressLine2 || '',
+          city: customer.city || '',
+          county: customer.county || '',
+          postCode: customer.postcode || '',
+          country: customer.country || 'United Kingdom'
+        },
+        flags: {
+          vulnerabilityMarker: invoiceData.customer.flags?.vulnerabilityMarker || false,
+          gdprConsent: customer.gdprConsent || false,
+          salesMarketingConsent: customer.marketingConsent || false
+        }
+      }
+    };
+
+    // Update the invoice data with selected customer information
+    onUpdate({
+      ...invoiceData,
+      ...customerUpdates
+    });
+  }, [invoiceData, onUpdate]);
+
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="safari-form-container">
       {/* Tab Navigation */}
-      <div className="border-b px-4 py-2">
+      <div className={`border-b px-4 py-3 flex-shrink-0 ${isDarkMode ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-gradient-to-r from-violet-50 to-blue-50'}`}>
         <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-          <TabsList className="bg-muted text-muted-foreground rounded-lg p-2 h-auto w-full flex flex-col gap-1">
+          <TabsList className={`p-2 h-auto w-full flex flex-col gap-2 rounded-2xl ${isDarkMode ? 'bg-slate-800/50 border border-slate-700' : 'bg-white/80 backdrop-blur-sm border border-slate-200 shadow-sm'}`}>
             {/* First Row - First 6 tabs */}
-            <div className="grid grid-cols-6 gap-1 w-full">
+            <div className="grid grid-cols-6 gap-2 w-full">
               {visibleSections.slice(0, 6).map((section) => {
                 const IconComponent = section.icon;
+                const isActive = activeTab === section.id;
                 return (
-                  <TabsTrigger 
-                    key={section.id} 
+                  <TabsTrigger
+                    key={section.id}
                     value={section.id}
-                    className="flex items-center justify-center text-xs py-2 px-2 h-auto min-h-[3rem] w-full"
+                    className={`flex items-center justify-center text-xs py-3 px-2 h-auto min-h-[4rem] w-full rounded-xl transition-all duration-200 ${isActive
+                      ? isDarkMode
+                        ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
+                        : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
+                      : isDarkMode
+                        ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
+                        : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
+                      }`}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <IconComponent className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-[10px] leading-tight text-center break-words">{section.label}</span>
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className={`p-2 rounded-lg ${isActive
+                        ? isDarkMode
+                          ? 'bg-indigo-500/20'
+                          : 'bg-indigo-200/50'
+                        : isDarkMode
+                          ? 'bg-slate-600/30'
+                          : 'bg-slate-200/50'
+                        }`}>
+                        <IconComponent className="h-5 w-5 flex-shrink-0" />
+                      </div>
+                      <span className="text-[10px] leading-tight text-center break-words font-semibold">{section.label}</span>
                     </div>
                   </TabsTrigger>
                 );
               })}
             </div>
-            
+
             {/* Second Row - Remaining tabs (up to 6 more) */}
             {visibleSections.length > 6 && (
-              <div className="grid grid-cols-6 gap-1 w-full">
+              <div className="grid grid-cols-6 gap-2 w-full">
                 {visibleSections.slice(6, 12).map((section) => {
                   const IconComponent = section.icon;
+                  const isActive = activeTab === section.id;
                   return (
-                    <TabsTrigger 
-                      key={section.id} 
+                    <TabsTrigger
+                      key={section.id}
                       value={section.id}
-                      className="flex items-center justify-center text-xs py-2 px-2 h-auto min-h-[3rem] w-full"
+                      className={`flex items-center justify-center text-xs py-3 px-2 h-auto min-h-[4rem] w-full rounded-xl transition-all duration-200 ${isActive
+                        ? isDarkMode
+                          ? 'bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-white border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/20'
+                          : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-900 border-2 border-indigo-300 shadow-md'
+                        : isDarkMode
+                          ? 'bg-slate-700/30 text-slate-300 border-2 border-transparent hover:bg-slate-700/50 hover:text-white'
+                          : 'bg-slate-50 text-slate-600 border-2 border-transparent hover:bg-indigo-50 hover:text-indigo-700'
+                        }`}
                     >
-                      <div className="flex flex-col items-center gap-1">
-                        <IconComponent className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-[10px] leading-tight text-center break-words">{section.label}</span>
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className={`p-2 rounded-lg ${isActive
+                          ? isDarkMode
+                            ? 'bg-indigo-500/20'
+                            : 'bg-indigo-200/50'
+                          : isDarkMode
+                            ? 'bg-slate-600/30'
+                            : 'bg-slate-200/50'
+                          }`}>
+                          <IconComponent className="h-5 w-5 flex-shrink-0" />
+                        </div>
+                        <span className="text-[10px] leading-tight text-center break-words font-semibold">{section.label}</span>
                       </div>
                     </TabsTrigger>
                   );
@@ -935,13 +1151,13 @@ export default function DynamicInvoiceForm({
       </div>
 
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         <Tabs value={activeTab} onValueChange={onTabChange}>
           {/* Basic Information */}
-          <TabsContent value="basic" className="space-y-6">
-            <Card>
+          <TabsContent value="basic" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-violet-100/80 border-blue-300/50 shadow-cyan-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <FileText className="h-5 w-5 mr-2" />
                   Basic Invoice Information
                 </CardTitle>
@@ -955,7 +1171,7 @@ export default function DynamicInvoiceForm({
                     icon={Hash}
                     required
                   />
-                  
+
                   <FormInput
                     label="Invoice Date"
                     value={invoiceData.invoiceDate}
@@ -964,30 +1180,33 @@ export default function DynamicInvoiceForm({
                     icon={Calendar}
                     required
                   />
-                  
+
                   <FormSelect
                     label="Sale Type"
                     value={invoiceData.saleType}
-                    onChange={() => {}} // Read-only - create new invoice to change
+                    onChange={() => { }} // Read-only - create new invoice to change
                     options={['Retail', 'Trade', 'Commercial']}
                     icon={FileText}
                     required
                     disabled={true}
                   />
-                  
-                  <FormSelect
-                    label="Invoice To"
-                    value={invoiceData.invoiceTo}
-                    onChange={() => {}} // Read-only - create new invoice to change
-                    options={['Customer', 'Finance Company']}
-                    disabled={true}
-                    icon={Building}
-                    required
-                  />
+
+                  {/* Only show Invoice To field for Retail sales */}
+                  {invoiceData.saleType === 'Retail' && (
+                    <FormSelect
+                      label="Invoice To"
+                      value={invoiceData.invoiceTo}
+                      onChange={() => { }} // Read-only - create new invoice to change
+                      options={['Customer', 'Finance Company']}
+                      disabled={true}
+                      icon={Building}
+                      required
+                    />
+                  )}
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormInput
                     label="Sale Date"
@@ -996,7 +1215,7 @@ export default function DynamicInvoiceForm({
                     type="date"
                     icon={Calendar}
                   />
-                  
+
                   <FormInput
                     label="Month of Sale"
                     value={invoiceData.sale.monthOfSale}
@@ -1007,13 +1226,70 @@ export default function DynamicInvoiceForm({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Company Information */}
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-violet-100/80 border-blue-300/50 shadow-cyan-200/40'}`}>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Building className="h-5 w-5 mr-2" />
+                  Company Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Company Name"
+                    value={invoiceData.companyInfo.name}
+                    onChange={(value) => updateNestedData('companyInfo.name', value)}
+                    icon={Building}
+                    placeholder="Your Company Name"
+                  />
+
+                  <FormInput
+                    label="VAT Number"
+                    value={invoiceData.companyInfo.vatNumber}
+                    onChange={(value) => updateNestedData('companyInfo.vatNumber', value)}
+                    icon={Hash}
+                    placeholder="123456789"
+                  />
+
+                  <FormInput
+                    label="Phone"
+                    value={invoiceData.companyInfo.contact.phone}
+                    onChange={(value) => updateNestedData('companyInfo.contact.phone', value)}
+                    icon={Phone}
+                    placeholder="+44 123 456 7890"
+                  />
+
+                  <FormInput
+                    label="Email"
+                    value={invoiceData.companyInfo.contact.email}
+                    onChange={(value) => updateNestedData('companyInfo.contact.email', value)}
+                    icon={Mail}
+                    type="email"
+                    placeholder="info@company.com"
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <QRCodeUpload
+                    label="QR Code for Invoice Footer"
+                    value={invoiceData.companyInfo.qrCode || ''}
+                    onChange={(value) => updateNestedData('companyInfo.qrCode', value)}
+                    icon={QrCode}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Vehicle Information */}
-          <TabsContent value="vehicle" className="space-y-6">
-            <Card>
+          <TabsContent value="vehicle" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-indigo-100/80 border-purple-300/50 shadow-blue-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Car className="h-5 w-5 mr-2" />
                   Vehicle Information
                 </CardTitle>
@@ -1027,7 +1303,7 @@ export default function DynamicInvoiceForm({
                     placeholder="AB12 CDE"
                     required
                   />
-                  
+
                   <FormInput
                     label="Make"
                     value={invoiceData.vehicle.make}
@@ -1035,7 +1311,7 @@ export default function DynamicInvoiceForm({
                     placeholder="e.g., BMW"
                     required
                   />
-                  
+
                   <FormInput
                     label="Model"
                     value={invoiceData.vehicle.model}
@@ -1043,55 +1319,55 @@ export default function DynamicInvoiceForm({
                     placeholder="e.g., 3 Series"
                     required
                   />
-                  
+
                   <FormInput
                     label="Derivative"
                     value={invoiceData.vehicle.derivative}
                     onChange={(value) => updateNestedData('vehicle.derivative', value)}
                     placeholder="e.g., 320d M Sport"
                   />
-                  
+
                   <FormInput
                     label="VIN"
                     value={invoiceData.vehicle.vin}
                     onChange={(value) => updateNestedData('vehicle.vin', value)}
                     placeholder="17-character VIN"
                   />
-                  
+
                   <FormInput
                     label="Engine Number"
                     value={invoiceData.vehicle.engineNumber}
                     onChange={(value) => updateNestedData('vehicle.engineNumber', value)}
                   />
-                  
+
                   <FormInput
                     label="Engine Capacity"
                     value={invoiceData.vehicle.engineCapacity}
                     onChange={(value) => updateNestedData('vehicle.engineCapacity', value)}
                     placeholder="e.g., 2.0L"
                   />
-                  
+
                   <FormInput
                     label="Colour"
                     value={invoiceData.vehicle.colour}
                     onChange={(value) => updateNestedData('vehicle.colour', value)}
                     placeholder="e.g., Alpine White"
                   />
-                  
+
                   <FormInput
                     label="Fuel Type"
                     value={invoiceData.vehicle.fuelType}
                     onChange={(value) => updateNestedData('vehicle.fuelType', value)}
                     placeholder="e.g., Diesel"
                   />
-                  
+
                   <FormInput
                     label="First Registration Date"
                     value={invoiceData.vehicle.firstRegDate}
                     onChange={(value) => updateNestedData('vehicle.firstRegDate', value)}
                     type="date"
                   />
-                  
+
                   <FormInput
                     label="Mileage"
                     value={invoiceData.vehicle.mileage}
@@ -1101,231 +1377,10 @@ export default function DynamicInvoiceForm({
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Customer Information */}
-          <TabsContent value="customer" className="space-y-6">
-            <Card>
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-indigo-100/80 border-purple-300/50 shadow-blue-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="h-5 w-5 mr-2" />
-                  Customer Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <FormInput
-                    label="Title"
-                    value={invoiceData.customer.title}
-                    onChange={(value) => updateNestedData('customer.title', value)}
-                    placeholder="Mr/Mrs/Ms/Dr"
-                  />
-                  
-                  <FormInput
-                    label="First Name"
-                    value={invoiceData.customer.firstName}
-                    onChange={(value) => updateNestedData('customer.firstName', value)}
-                    required
-                  />
-                  
-                  <FormInput
-                    label="Middle Name"
-                    value={invoiceData.customer.middleName || ''}
-                    onChange={(value) => updateNestedData('customer.middleName', value)}
-                  />
-                  
-                  <FormInput
-                    label="Last Name"
-                    value={invoiceData.customer.lastName}
-                    onChange={(value) => updateNestedData('customer.lastName', value)}
-                    required
-                  />
-                </div>
-                
-                <Separator />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Phone Number"
-                    value={invoiceData.customer.contact.phone}
-                    onChange={(value) => updateNestedData('customer.contact.phone', value)}
-                    type="tel"
-                    icon={Phone}
-                  />
-                  
-                  <FormInput
-                    label="Email Address"
-                    value={invoiceData.customer.contact.email}
-                    onChange={(value) => updateNestedData('customer.contact.email', value)}
-                    type="email"
-                    icon={Mail}
-                  />
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-4">
-                  <h4 className="font-medium flex items-center">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Address Information
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormInput
-                      label="Address Line 1"
-                      value={invoiceData.customer.address.firstLine}
-                      onChange={(value) => updateNestedData('customer.address.firstLine', value)}
-                      className="md:col-span-2"
-                    />
-                    
-                    <FormInput
-                      label="Address Line 2"
-                      value={invoiceData.customer.address.secondLine || ''}
-                      onChange={(value) => updateNestedData('customer.address.secondLine', value)}
-                      className="md:col-span-2"
-                    />
-                    
-                    <FormInput
-                      label="City"
-                      value={invoiceData.customer.address.city || ''}
-                      onChange={(value) => updateNestedData('customer.address.city', value)}
-                    />
-                    
-                    <FormInput
-                      label="County"
-                      value={invoiceData.customer.address.county || ''}
-                      onChange={(value) => updateNestedData('customer.address.county', value)}
-                    />
-                    
-                    <FormInput
-                      label="Post Code"
-                      value={invoiceData.customer.address.postCode}
-                      onChange={(value) => updateNestedData('customer.address.postCode', value)}
-                      required
-                    />
-                    
-                    <FormInput
-                      label="Country"
-                      value={invoiceData.customer.address.country}
-                      onChange={(value) => updateNestedData('customer.address.country', value)}
-                    />
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-4">
-                  <h4 className="font-medium">Customer Flags</h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={invoiceData.customer.flags.vulnerabilityMarker}
-                        onCheckedChange={(checked) => 
-                          updateNestedData('customer.flags.vulnerabilityMarker', checked)
-                        }
-                      />
-                      <Label>Vulnerability Marker</Label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={invoiceData.customer.flags.gdprConsent}
-                        onCheckedChange={(checked) => 
-                          updateNestedData('customer.flags.gdprConsent', checked)
-                        }
-                      />
-                      <Label>GDPR Consent</Label>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={invoiceData.customer.flags.salesMarketingConsent}
-                        onCheckedChange={(checked) => 
-                          updateNestedData('customer.flags.salesMarketingConsent', checked)
-                        }
-                      />
-                      <Label>Marketing Consent</Label>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Finance Company */}
-          <TabsContent value="finance" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Building className="h-5 w-5 mr-2" />
-                  Finance Company Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {invoiceData.invoiceTo === 'Finance Company' ? (
-                  <>
-                    <FormSelect
-                      label="Finance Company"
-                      value={invoiceData.financeCompany?.name || ''}
-                      onChange={(value) => handleFinanceCompanyChange(value)}
-                      options={[...PREDEFINED_FINANCE_COMPANIES.map(fc => fc.name), 'Other (Custom)']}
-                      required
-                    />
-                    
-                    {/* Show address fields for all selected companies */}
-                    {invoiceData.financeCompany?.name && (
-                      <div className="space-y-4">
-                        <FormInput
-                          label="Finance Company Name"
-                          value={invoiceData.financeCompany?.companyName || ''}
-                          onChange={(value) => updateNestedData('financeCompany.companyName', value)}
-                          placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter company name' : 'Auto-populated from selection'}
-                          required
-                        />
-                        
-                        <div className="space-y-2">
-                          <Label>First Line and Street</Label>
-                          <Textarea
-                            value={invoiceData.financeCompany?.address?.firstLine || ''}
-                            onChange={(e) => updateNestedData('financeCompany.address.firstLine', e.target.value)}
-                            placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter street address' : 'Auto-populated from selection'}
-                            rows={2}
-                            className="resize-none"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>County, Post Code and Contact Details</Label>
-                          <Textarea
-                            value={invoiceData.financeCompany?.address?.countyPostCodeContact || ''}
-                            onChange={(e) => updateNestedData('financeCompany.address.countyPostCodeContact', e.target.value)}
-                            placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter county, postcode, phone, email' : 'Auto-populated from selection'}
-                            rows={3}
-                            className="resize-none"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Include any Contact Numbers and/or Email Address
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    <Building className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Finance company details are only required when &quot;Invoice To&quot; is set to &quot;Finance Company&quot;</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Pricing */}
-          <TabsContent value="pricing" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <PoundSterling className="h-5 w-5 mr-2" />
                   Pricing Information
                 </CardTitle>
@@ -1340,7 +1395,7 @@ export default function DynamicInvoiceForm({
                     icon={PoundSterling}
                     required
                   />
-                  
+
                   <FormInput
                     label="Discount on Sale Price"
                     value={invoiceData.pricing.discountOnSalePrice || 0}
@@ -1348,7 +1403,7 @@ export default function DynamicInvoiceForm({
                     type="number"
                     icon={PoundSterling}
                   />
-                  
+
                   <FormInput
                     label="Sale Price Post-Discount"
                     value={invoiceData.pricing.salePricePostDiscount}
@@ -1357,239 +1412,892 @@ export default function DynamicInvoiceForm({
                     icon={PoundSterling}
                     disabled
                   />
-                  
                 </div>
-                
-                {/* Warranty Pricing - Only show for non-trade sales */}
-                {invoiceData.saleType !== 'Trade' && (
-                  <>
-                    <Separator />
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Warranty Pricing</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormInput
-                          label="Warranty Price"
-                          value={invoiceData.pricing.warrantyPrice || 0}
-                          onChange={createChangeHandler('pricing.warrantyPrice')}
-                          type="number"
-                          icon={PoundSterling}
-                        />
-                        
-                        <FormInput
-                          label="Discount on Warranty"
-                          value={invoiceData.pricing.discountOnWarranty || 0}
-                          onChange={createChangeHandler('pricing.discountOnWarranty')}
-                          type="number"
-                          icon={PoundSterling}
-                        />
-                        
-                        <FormInput
-                          label="Warranty Price Post-Discount"
-                          value={
-                            (invoiceData.pricing.warrantyPrice || 0) - (invoiceData.pricing.discountOnWarranty || 0)
-                          }
-                          onChange={createChangeHandler('pricing.warrantyPricePostDiscount')}
-                          type="number"
-                          icon={PoundSterling}
-                          disabled
-                        />
-                      </div>
+
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Customer Information */}
+          <TabsContent value="customer" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-purple-100/80 border-indigo-300/50 shadow-purple-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <User className="h-5 w-5 mr-2" />
+                  Customer Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Customer Search */}
+                <div className="space-y-2">
+                  <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                    Search Existing Customer
+                  </Label>
+                  <CustomerSearchInput
+                    onCustomerSelect={handleCustomerSelect}
+                    placeholder="Search by name or email to auto-fill customer details..."
+                    className="w-full"
+                  />
+                  <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Start typing to search and select an existing customer, or fill in the details manually below.
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <FormInput
+                    label="Title"
+                    value={invoiceData.customer.title}
+                    onChange={(value) => updateNestedData('customer.title', value)}
+                    placeholder="Mr/Mrs/Ms/Dr"
+                  />
+
+                  <FormInput
+                    label="First Name"
+                    value={invoiceData.customer.firstName}
+                    onChange={(value) => updateNestedData('customer.firstName', value)}
+                    required
+                  />
+
+                  <FormInput
+                    label="Middle Name"
+                    value={invoiceData.customer.middleName || ''}
+                    onChange={(value) => updateNestedData('customer.middleName', value)}
+                  />
+
+                  <FormInput
+                    label="Last Name"
+                    value={invoiceData.customer.lastName}
+                    onChange={(value) => updateNestedData('customer.lastName', value)}
+                    required
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    label="Phone Number"
+                    value={invoiceData.customer.contact.phone}
+                    onChange={(value) => updateNestedData('customer.contact.phone', value)}
+                    type="tel"
+                    icon={Phone}
+                  />
+
+                  <FormInput
+                    label="Email Address"
+                    value={invoiceData.customer.contact.email}
+                    onChange={(value) => updateNestedData('customer.contact.email', value)}
+                    type="email"
+                    icon={Mail}
+                  />
+                </div>
+
+                <Separator />
+
+                <AddressFormSection
+                  address={invoiceData.customer.address}
+                  onAddressChange={(field: string, value: string) => updateNestedData(`customer.address.${field}`, value)}
+                />
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <h4 className="font-medium">Customer Flags</h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={invoiceData.customer.flags.vulnerabilityMarker}
+                        onCheckedChange={(checked) =>
+                          updateNestedData('customer.flags.vulnerabilityMarker', checked)
+                        }
+                      />
+                      <Label>Vulnerability Marker</Label>
                     </div>
 
-                    <Separator />
-                  </>
-                )}
-                
-                {/* Enhanced Warranty Section - Only show for non-trade sales */}
-                {invoiceData.saleType !== 'Trade' && (
-                  <>
-                    <Separator />
-                    
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Enhanced Warranty</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Enhanced Warranty</label>
-                          <select
-                            value={invoiceData.warranty.enhanced ? 'Yes' : 'No'}
-                            onChange={(e) => updateNestedData('warranty.enhanced', e.target.value === 'Yes')}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="No">No</option>
-                            <option value="Yes">Yes</option>
-                          </select>
-                        </div>
-                        
-                        {invoiceData.warranty.enhanced && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Enhanced Warranty Level</label>
-                            <select
-                              value={invoiceData.warranty.enhancedLevel || ''}
-                              onChange={(e) => updateNestedData('warranty.enhancedLevel', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">-</option>
-                              <option value="3 Months Enhanced">3 Months Enhanced</option>
-                              <option value="6 Months Enhanced">6 Months Enhanced</option>
-                              <option value="12 Months Enhanced">12 Months Enhanced</option>
-                              <option value="18 Months Enhanced">18 Months Enhanced</option>
-                              <option value="24 Months Enhanced">24 Months Enhanced</option>
-                              <option value="36 Months Enhanced">36 Months Enhanced</option>
-                              <option value="48 Months Enhanced">48 Months Enhanced</option>
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {invoiceData.warranty.enhanced && (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormInput
-                              label="Enhanced Warranty Price"
-                              value={invoiceData.pricing.enhancedWarrantyPrice || 0}
-                              onChange={createChangeHandler('pricing.enhancedWarrantyPrice')}
-                              type="number"
-                              icon={PoundSterling}
-                            />
-                            
-                            <FormInput
-                              label="Discount on Enhanced Warranty"
-                              value={invoiceData.pricing.discountOnEnhancedWarranty || 0}
-                              onChange={createChangeHandler('pricing.discountOnEnhancedWarranty')}
-                              type="number"
-                              icon={PoundSterling}
-                            />
-                            
-                            <FormInput
-                              label="Enhanced Warranty Post-Discount"
-                              value={
-                                (invoiceData.pricing.enhancedWarrantyPrice || 0) - (invoiceData.pricing.discountOnEnhancedWarranty || 0)
-                              }
-                              onChange={createChangeHandler('pricing.enhancedWarrantyPricePostDiscount')}
-                              type="number"
-                              icon={PoundSterling}
-                              disabled
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Enhanced Warranty Details</label>
-                            <textarea
-                              value={invoiceData.warranty.enhancedDetails || ''}
-                              onChange={(e) => updateNestedData('warranty.enhancedDetails', e.target.value)}
-                              rows={3}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Enter enhanced warranty details..."
-                            />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    
-                    <Separator />
-                  </>
-                )}
-                
-                
-                {/* Deposit Information - Only for Customer invoices (Finance deposits moved to Payment tab) */}
-                {invoiceData.invoiceTo !== 'Finance Company' && (
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Deposit Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormInput
-                        label="Compulsory Sale Deposit (Customer)"
-                        value={invoiceData.pricing.compulsorySaleDepositCustomer || 0}
-                        onChange={createChangeHandler('pricing.compulsorySaleDepositCustomer')}
-                        type="number"
-                        icon={PoundSterling}
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={invoiceData.customer.flags.gdprConsent}
+                        onCheckedChange={(checked) =>
+                          updateNestedData('customer.flags.gdprConsent', checked)
+                        }
                       />
-                      
-                      <FormInput
-                          label="Amount Paid in Deposit (Customer)"
-                          value={invoiceData.pricing.amountPaidDepositCustomer || 0}
-                          onChange={createChangeHandler('pricing.amountPaidDepositCustomer')}
-                          type="number"
-                          icon={PoundSterling}
-                        />
-                        
-                        <FormInput
-                          label="Deposit Date (Customer)"
-                          value={invoiceData.payment?.breakdown?.depositDate || ''}
-                          onChange={createChangeHandler('payment.breakdown.depositDate')}
-                          type="date"
-                          icon={Calendar}
-                        />
-                        
-                        <FormInput
-                          label="Outstanding Deposit (Customer)"
-                          value={invoiceData.pricing.outstandingDepositCustomer || 0}
-                          onChange={createChangeHandler('pricing.outstandingDepositCustomer')}
-                          type="number"
-                          icon={PoundSterling}
-                          disabled
-                        />
+                      <Label>GDPR Consent</Label>
                     </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={invoiceData.customer.flags.salesMarketingConsent}
+                        onCheckedChange={(checked) =>
+                          updateNestedData('customer.flags.salesMarketingConsent', checked)
+                        }
+                      />
+                      <Label>Marketing Consent</Label>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-purple-100/80 border-indigo-300/50 shadow-purple-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <PenTool className="h-5 w-5 mr-2" />
+                  Customer Signature & IDD Acceptance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* IDD Acceptance - Only show for Finance Company Retail sales */}
+                  {invoiceData.saleType !== 'Trade' && invoiceData.invoiceTo === 'Finance Company' && (
+                    <FormSelect
+                      label="Customer has accepted the IDD"
+                      value={invoiceData.customerAcceptedIdd || 'N/A'}
+                      onChange={(value) => updateNestedData('customerAcceptedIdd', value)}
+                      options={[
+                        'N/A',
+                        'Yes',
+                      'No',
+                      'On Collection',
+                      'Customer Decided Against Finance'
+                    ]}
+                    icon={CheckCircle}
+                  />
+                  )}
+                </div>
+
+                {/* Customer Available for Signature - input_116 */}
+                <div className="space-y-2">
+                  <label className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'
+                    }`}>
+                    Customer Available for Signature
+                  </label>
+                  <select
+                    value={availableForFinalSignature}
+                    onChange={(e) => setAvailableForFinalSignature(e.target.value)}
+                    className={`w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${isDarkMode
+                      ? 'border-slate-600 bg-slate-800 text-slate-100 hover:border-slate-500'
+                      : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300'
+                      }`}
+                  >
+                    <option value="">-</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+
+                {availableForFinalSignature === 'Yes' && (
+                  <div className="space-y-2">
+                    <label className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-700'
+                      }`}>
+                      Customer Signature
+                    </label>
+                    <SignatureCapture
+                      value={invoiceData.signature?.customerSignature}
+                      onChange={signature => updateNestedData('signature.customerSignature', signature)}
+                      // onChange={(signature) => handleInputChange('customerSignature', signature)}
+                      width={400}
+                      height={200}
+                    />
+                  </div>
+                )}
+
+                {availableForFinalSignature === 'Yes' && (
+                  <FormInput
+                    label="Date of Signature"
+                    value={invoiceData.signature?.dateOfSignature || ''}
+                    onChange={(value) => updateNestedData('signature.dateOfSignature', value)}
+                    type="date"
+                    icon={Calendar}
+                  />
+                )}
+
+                {/* Additional Information - input_114 */}
+                <div className="space-y-2 mt-6">
+                  <label className="text-sm font-medium text-gray-700">
+                    Additional Information
+                  </label>
+                  <textarea
+                    value={invoiceData.additionalInformation || ''}
+                    onChange={(e) => updateNestedData('additionalInformation', e.target.value)}
+                    rows={10}
+                    placeholder="Enter any additional information about the sale..."
+                    className="w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 border-gray-200 bg-white text-gray-900 hover:border-gray-300"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Finance Company */}
+          <TabsContent value="finance" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-blue-100/80 border-cyan-300/50 shadow-blue-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Building className="h-5 w-5 mr-2" />
+                  Finance Company Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {invoiceData.invoiceTo === 'Finance Company' ? (
+                  <>
+                    <FormSelect
+                      label="Finance Company"
+                      value={invoiceData.financeCompany?.name || ''}
+                      onChange={(value) => handleFinanceCompanyChange(value)}
+                      options={[...PREDEFINED_FINANCE_COMPANIES.map(fc => fc.name), 'Other (Custom)']}
+                      required
+                    />
+
+                    {/* Show address fields for all selected companies */}
+                    {invoiceData.financeCompany?.name && (
+                      <div className="space-y-4">
+                        <FormInput
+                          label="Finance Company Name"
+                          value={invoiceData.financeCompany?.companyName || ''}
+                          onChange={(value) => updateNestedData('financeCompany.companyName', value)}
+                          placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter company name' : 'Auto-populated from selection'}
+                          required
+                        />
+
+                        <div className="space-y-2">
+                          <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>First Line and Street</Label>
+                          <Textarea
+                            value={invoiceData.financeCompany?.address?.firstLine || ''}
+                            onChange={(e) => updateNestedData('financeCompany.address.firstLine', e.target.value)}
+                            placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter street address' : 'Auto-populated from selection'}
+                            rows={2}
+                            className={`resize-none px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
+                              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                                : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                              }`}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>County, Post Code and Contact Details</Label>
+                          <Textarea
+                            value={invoiceData.financeCompany?.address?.countyPostCodeContact || ''}
+                            onChange={(e) => updateNestedData('financeCompany.address.countyPostCodeContact', e.target.value)}
+                            placeholder={invoiceData.financeCompany?.name === 'Other' ? 'Enter county, postcode, phone, email' : 'Auto-populated from selection'}
+                            rows={3}
+                            className={`resize-none px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
+                              ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                                : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                              }`}
+                          />
+                          <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-muted-foreground'}`}>
+                            Include any Contact Numbers and/or Email Address
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Finance Company Balance Summary</h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Subtotal - Hidden for Finance Company */}
+                        {false && (
+                          <FormInput
+                            label="Subtotal"
+                            value={(() => {
+                              const salePrice = invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0;
+                              const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
+                              const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
+                              const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+
+                              // Finance addons
+                              const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0;
+                              const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0;
+                              const financeDynamicAddonsCost = (() => {
+                                let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
+                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                  dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
+                                }
+                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                              })();
+
+                              // Customer addons
+                              const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+                              const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                              const customerDynamicAddonsCost = (() => {
+                                let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
+                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                  dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
+                                }
+                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                              })();
+
+                              // Settlement amount - only for finance company invoices with part exchange
+                              const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included
+                                ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0)
+                                : 0;
+
+                              return salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
+                                financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
+                                customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
+                            })()}
+                            onChange={() => { }}
+                            type="number"
+                            disabled={true}
+                            icon={PoundSterling}
+                          />
+                        )}
+
+                        {/* Balance to Customer - Show for Finance Company */}
+                        <FormInput
+                          label="Balance to Customer"
+                          value={(() => {
+                            // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
+                            // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
+                            const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
+                            const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
+                            const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+
+                            // Static customer add-ons (use post-discount values when available)
+                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+
+                            // Dynamic customer add-ons (use post-discount values when available)
+                            const postDynamicCustomerAddons = (() => {
+                              let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
+                              if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                dynamicAddons = Object.values(dynamicAddons);
+                              }
+                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                            })();
+
+                            const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
+                              postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
+
+                            // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
+                            const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) +
+                              (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
+                            const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
+                            return Math.max(0, outstandingDepositAmountFinance);
+                          })()}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+
+                        {/* Customer Balance Due - Hidden for Finance Company */}
+                        {false && (
+                          <FormInput
+                            label="Customer Balance Due"
+                            value={invoiceData.payment?.customerBalanceDue || 0}
+                            onChange={() => { }}
+                            type="number"
+                            disabled={true}
+                            icon={PoundSterling}
+                          />
+                        )}
+
+                        {/* Balance to Finance - ONLY field shown for Finance Company */}
+                        <FormInput
+                          label="Balance to Finance"
+                          value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <Building className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Finance company details are only required when &quot;Invoice To&quot; is set to &quot;Finance Company&quot;</p>
                   </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Warranty & Add-ons */}
-          <TabsContent value="warranty" className="space-y-6">
+
+          {/* Deposit */}
+          <TabsContent value="deposit" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-emerald-100/80 border-teal-300/50 shadow-emerald-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <PoundSterling className="h-5 w-5 mr-2" />
+                  Deposits
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {invoiceData.invoiceTo === 'Finance Company' ? <div>
+
+                  {/* Customer Contributions to Invoice Total */}
+                  <div className="space-y-4">
+                    <h3 className={`text-lg font-bold border-b pb-2 ${isDarkMode ? 'text-white border-slate-600' : 'text-slate-900 border-slate-300'}`}>
+                      Customer Contributions to Invoice Total
+                    </h3>
+
+                    <div className="space-y-3">
+                      {/* Voluntary Contribution to Sale Price */}
+                      <FormInput
+                        label="Voluntary Contribution to Sale Price "
+                        subtitle="(to be deducted from vehicle sale price and Balance to Finance)"
+                        value={invoiceData.pricing?.voluntaryContribution || 0}
+                        onChange={(value) => updateNestedData('pricing.voluntaryContribution', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Mandatory (addons, warranty and delivery) */}
+                        <FormInput
+                          label="Mandatory Deposit"
+                          subtitle="(addons, warranty and delivery)"
+                          value={invoiceData.pricing?.compulsorySaleDepositFinance || 0}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+
+                        {/* Total Customer Deposit */}
+                        <FormInput
+                          label="Total Customer Deposit Due"
+                          value={(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)}
+                          onChange={() => { }}
+                          subtitle='(mandatory deposit and any customer contribution to sale price)'
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+                      </div>
+
+
+                      {/* Amount paid in Deposit */}
+                      <FormInput
+                        label="Amount Paid in Deposit"
+                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
+                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+
+                        {/* Remaining Deposit Amount */}
+                        <FormInput
+                          label="Remaining Deposit Amount"
+                          value={Math.max(0, (invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+
+                        {/* Overpayments - Read-only */}
+                        <FormInput
+                          label="Overpayments"
+                          // value={Math.abs((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+                          value={invoiceData.pricing?.overpaymentsFinance || 0}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Finance Deposit Information - Consolidated - Only show for Finance Company invoices */}
+                  {false && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Finance Deposit Information</h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Compulsory Sale Deposit - Read-only */}
+
+                        {/* Dealer Deposit Paid - Editable */}
+                        <FormInput
+                          highlight={true}
+                          label="Dealership Deposit (pre-sale reservation fee)"
+                          value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
+                          onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
+                          type="number"
+                          icon={PoundSterling}
+                          placeholder="0.00"
+                        />
+
+
+                        {/* Total Finance Deposit Paid - Read-only */}
+                        {/* <FormInput
+                        highlight={true}
+                        label="Total Finance Deposit Paid"
+                        value={invoiceData.pricing?.totalFinanceDepositPaid || 0}
+                        onChange={() => { }}
+                        type="number"
+                        disabled={true}
+                        icon={PoundSterling}
+                      /> */}
+
+                        {/* Outstanding Deposit - Read-only */}
+                        <FormInput
+                          highlight={true}
+                          label="Outstanding Deposit (Finance)"
+                          value={invoiceData.pricing?.outstandingDepositFinance || 0}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+
+
+
+                        {/* Deposit Date */}
+                        <FormInput
+                          highlight={true}
+                          label="Deposit Date (Finance)"
+                          value={invoiceData.payment?.breakdown?.depositDate || ''}
+                          onChange={createChangeHandler('payment.breakdown.depositDate')}
+                          type="date"
+                          icon={Calendar}
+                        />
+                      </div>
+
+                      {/* Helper text */}
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Total Finance Deposit Paid = Dealer Deposit Paid + Amount Paid in Deposit (Finance)
+                      </p>
+                    </div>
+                  )}
+
+
+                  {invoiceData.invoiceTo === 'Finance Company' && (
+                    <>
+                      <div className="w-full h-0.25 my-4 dark:bg-gray-200 bg-gray-500" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormInput
+                          label="Overall cost to Customer"
+                          value={(() => {
+                            // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
+                            // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
+                            const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
+                            const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
+                            const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+
+                            // Static customer add-ons (use post-discount values when available)
+                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+
+                            // Dynamic customer add-ons (use post-discount values when available)
+                            const postDynamicCustomerAddons = (() => {
+                              let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
+                              if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                dynamicAddons = Object.values(dynamicAddons);
+                              }
+                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                            })();
+
+                            const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
+                              postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
+
+                            // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
+                            const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) +
+                              (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
+                            const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
+                            return Math.max(0, outstandingDepositAmountFinance);
+                          })()}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+
+                        <FormInput
+                          label="Overall cost to Finance"
+                          value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
+                          onChange={() => { }}
+                          type="number"
+                          disabled={true}
+                          icon={PoundSterling}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                </div> : <div className="space-y-4">
+                  <h4 className="font-medium">Deposit Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label="Required Reservation Fee"
+                      value={invoiceData.pricing.compulsorySaleDepositCustomer || 0}
+                      onChange={createChangeHandler('pricing.compulsorySaleDepositCustomer')}
+                      type="number"
+                      icon={PoundSterling}
+                    />
+
+                    <FormInput
+                      label="Amount Paid in Reservation"
+                      value={invoiceData.pricing.amountPaidDepositCustomer || 0}
+                      onChange={createChangeHandler('pricing.amountPaidDepositCustomer')}
+                      type="number"
+                      icon={PoundSterling}
+                    />
+
+                    <FormInput
+                      label="Deposit Date"
+                      value={invoiceData.payment?.breakdown?.depositDate || ''}
+                      onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
+                      type="date"
+                      icon={Calendar}
+                    />
+
+                    <FormInput
+                      label="Outstanding Deposit"
+                      value={invoiceData.pricing.outstandingDepositCustomer || 0}
+                      onChange={createChangeHandler('pricing.outstandingDepositCustomer')}
+                      type="number"
+                      icon={PoundSterling}
+                      disabled
+                    />
+                  </div>
+                </div>}
+
+                {/* Dealer Deposit Payment - Only show for Finance Company invoices */}
+                {invoiceData.invoiceTo === 'Finance Company' && invoiceData.saleType === 'Retail' && (
+                  <div className="space-y-4 mt-6 pt-6 border-t">
+                    <h4 className="font-medium">Dealer Deposit Payment</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        label="Dealer Deposit Paid (Customer)"
+                        value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
+                        onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                        placeholder="0.00"
+                      />
+
+                      <FormInput
+                        label="Payment Date (Customer)"
+                        value={invoiceData.pricing?.dealerDepositPaymentDateCustomer || ''}
+                        onChange={(value) => updateNestedData('pricing.dealerDepositPaymentDateCustomer', value)}
+                        type="date"
+                        icon={Calendar}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Amount of dealer deposit paid by customer (Vehicle Reservation Fees)
+                    </p>
+                  </div>
+                )}
+
+                {/* Finance Deposit Payment - Only show for Finance Company invoices */}
+                {invoiceData.invoiceTo === 'Finance Company' && (
+                  <div className="space-y-4 mt-6 pt-6 border-t">
+                    <h4 className="font-medium">Finance Deposit Payment</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormInput
+                        label="Deposit Amount Paid (Finance)"
+                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
+                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
+                        type="number"
+                        icon={PoundSterling}
+                        placeholder="0.00"
+                      />
+
+                      <FormInput
+                        label="Deposit Payment Date (Finance)"
+                        value={invoiceData.payment?.breakdown?.depositDate || ''}
+                        onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
+                        type="date"
+                        icon={Calendar}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Enter the amount and date when deposit was paid to the finance company
+                    </p>
+                  </div>
+                )}
+
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Products */}
+          <TabsContent value="products" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Truck className="h-5 w-5 mr-2" />
+                  Delivery Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormSelect
+                    label="Delivery Type"
+                    value={invoiceData.delivery.type}
+                    onChange={(value) => updateNestedData('delivery.type', value)}
+                    options={['collection', 'delivery']}
+                    icon={Truck}
+                    required
+                  />
+
+                  <FormInput
+                    label="Delivery/Collection Date"
+                    value={invoiceData.delivery.date || ''}
+                    onChange={(value) => updateNestedData('delivery.date', value)}
+                    type="date"
+                    icon={Calendar}
+                  />
+                </div>
+
+                {/* Delivery Pricing Section - Only show for Delivery type */}
+                {invoiceData.delivery.type === 'delivery' && (
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Delivery Pricing</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormInput
+                        label="Delivery Cost"
+                        value={invoiceData.delivery.cost || 0}
+                        onChange={createChangeHandler('delivery.cost')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Discount on Delivery"
+                        value={invoiceData.delivery.discount || 0}
+                        onChange={createChangeHandler('delivery.discount')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Delivery Cost Post-Discount"
+                        value={Math.max(0, (invoiceData.delivery.cost || 0) - (invoiceData.delivery.discount || 0))}
+                        onChange={() => { }}
+                        type="number"
+                        icon={PoundSterling}
+                        disabled={true}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {invoiceData.delivery.type === 'delivery' && (
+                  <div className="space-y-2">
+                    <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>Delivery Address</Label>
+                    <Textarea
+                      value={invoiceData.delivery.address || ''}
+                      onChange={(e) => updateNestedData('delivery.address', e.target.value)}
+                      placeholder="Delivery address if different from customer address..."
+                      rows={3}
+                      className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
+                        ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                        : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                        }`}
+                    />
+                  </div>
+                )}
+
+
+              </CardContent>
+            </Card>
+
             {/* Warranty Section - Only show for non-trade sales */}
             {invoiceData.saleType !== 'Trade' && (
-              <Card>
+              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                     <Shield className="h-5 w-5 mr-2" />
                     Warranty Information
                   </CardTitle>
                 </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormSelect
-                    label="Warranty Level"
-                    value={invoiceData.warranty.level}
-                    onChange={(value) => updateNestedData('warranty.level', value)}
-                    options={WARRANTY_LEVELS}
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormSelect
+                      label="Warranty Level"
+                      value={invoiceData.warranty.level}
+                      onChange={(value) => updateNestedData('warranty.level', value)}
+                      options={WARRANTY_LEVELS}
+                      icon={Shield}
+                    />
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={invoiceData.warranty.inHouse}
+                        onCheckedChange={(checked) => updateNestedData('warranty.inHouse', checked)}
+                      />
+                      <Label>In-House Warranty</Label>
+                    </div>
+                  </div>
+
+                  <FormInput
+                    label="Warranty Name (Custom)"
+                    value={invoiceData.warranty.name || ''}
+                    onChange={(value) => updateNestedData('warranty.name', value)}
+                    placeholder="Enter custom warranty name (optional)..."
                     icon={Shield}
                   />
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={invoiceData.warranty.inHouse}
-                      onCheckedChange={(checked) => updateNestedData('warranty.inHouse', checked)}
+
+                  <div className="space-y-2">
+                    <Label>Warranty Details for Customer</Label>
+                    <Textarea
+                      value={invoiceData.warranty.details || ''}
+                      onChange={(e) => updateNestedData('warranty.details', e.target.value)}
+                      placeholder="Additional warranty information for the customer..."
+                      rows={4}
                     />
-                    <Label>In-House Warranty</Label>
                   </div>
-                </div>
-                
-                <FormInput
-                  label="Warranty Name (Custom)"
-                  value={invoiceData.warranty.name || ''}
-                  onChange={(value) => updateNestedData('warranty.name', value)}
-                  placeholder="Enter custom warranty name (optional)..."
-                  icon={Shield}
-                />
-                
-                <div className="space-y-2">
-                  <Label>Warranty Details for Customer</Label>
-                  <Textarea
-                    value={invoiceData.warranty.details || ''}
-                    onChange={(e) => updateNestedData('warranty.details', e.target.value)}
-                    placeholder="Additional warranty information for the customer..."
-                    rows={4}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Warranty Pricing</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormInput
+                        label="Warranty Price"
+                        value={invoiceData.pricing.warrantyPrice || 0}
+                        onChange={createChangeHandler('pricing.warrantyPrice')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Discount on Warranty"
+                        value={invoiceData.pricing.discountOnWarranty || 0}
+                        onChange={createChangeHandler('pricing.discountOnWarranty')}
+                        type="number"
+                        icon={PoundSterling}
+                      />
+
+                      <FormInput
+                        label="Warranty Price Post-Discount"
+                        value={
+                          (invoiceData.pricing.warrantyPrice || 0) - (invoiceData.pricing.discountOnWarranty || 0)
+                        }
+                        onChange={createChangeHandler('pricing.warrantyPricePostDiscount')}
+                        type="number"
+                        icon={PoundSterling}
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+                </CardContent>
+              </Card>
             )}
-            
+
             {/* Enhanced Warranty Section - Only show for non-trade sales */}
             {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected' && (
-              <Card>
+              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Shield className="h-5 w-5 mr-2" />
@@ -1604,7 +2312,7 @@ export default function DynamicInvoiceForm({
                     />
                     <Label>Enhanced/Upgraded Warranty</Label>
                   </div>
-                  
+
                   {invoiceData.warranty.enhanced && (
                     <div className="space-y-4">
                       <FormSelect
@@ -1614,7 +2322,7 @@ export default function DynamicInvoiceForm({
                         options={['3 Months Enhanced', '6 Months Enhanced', '12 Months Enhanced', '18 Months Enhanced', '24 Months Enhanced', '36 Months Enhanced', '48 Months Enhanced']}
                         icon={Shield}
                       />
-                      
+
                       <FormInput
                         label="Enhanced Warranty Name (Custom)"
                         value={invoiceData.warranty.enhancedName || ''}
@@ -1622,26 +2330,92 @@ export default function DynamicInvoiceForm({
                         placeholder="Enter custom enhanced warranty name (optional)..."
                         icon={Shield}
                       />
-                      
+
                       <div className="space-y-2">
-                        <Label>Enhanced Warranty Details</Label>
+                        <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>Enhanced Warranty Details</Label>
                         <Textarea
                           value={invoiceData.warranty.enhancedDetails || ''}
                           onChange={(e) => updateNestedData('warranty.enhancedDetails', e.target.value)}
                           placeholder="Enter details about the enhanced warranty coverage..."
                           rows={4}
+                          className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${isDarkMode
+                            ? 'bg-slate-800/50 border-slate-700/50 text-slate-100 !placeholder-opacity-50 !placeholder-slate-400 hover:bg-slate-800/70 hover:border-slate-600'
+                              : 'bg-white border-slate-200 text-slate-900 !placeholder-opacity-50 !placeholder-slate-500 hover:bg-white hover:border-slate-300 focus:bg-white focus:ring-blue-500/20'
+                            }`}
                         />
                       </div>
                     </div>
                   )}
+
+
                 </CardContent>
               </Card>
             )}
-            
+
+
+            {/* Enhanced Warranty Section - Only show for non-trade sales */}
+            {invoiceData.saleType !== 'Trade' && (
+              <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
+                <CardContent className="space-y-4">
+                  <Separator />
+
+                  <div className="space-y-4">
+                    
+
+                    {invoiceData.warranty.enhanced && (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormInput
+                            label="Enhanced Warranty Price"
+                            value={invoiceData.pricing.enhancedWarrantyPrice || 0}
+                            onChange={createChangeHandler('pricing.enhancedWarrantyPrice')}
+                            type="number"
+                            icon={PoundSterling}
+                          />
+
+                          <FormInput
+                            label="Discount on Enhanced Warranty"
+                            value={invoiceData.pricing.discountOnEnhancedWarranty || 0}
+                            onChange={createChangeHandler('pricing.discountOnEnhancedWarranty')}
+                            type="number"
+                            icon={PoundSterling}
+                          />
+
+                          <FormInput
+                            label="Enhanced Warranty Post-Discount"
+                            value={
+                              (invoiceData.pricing.enhancedWarrantyPrice || 0) - (invoiceData.pricing.discountOnEnhancedWarranty || 0)
+                            }
+                            onChange={createChangeHandler('pricing.enhancedWarrantyPricePostDiscount')}
+                            type="number"
+                            icon={PoundSterling}
+                            disabled
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Enhanced Warranty Details</label>
+                          <textarea
+                            value={invoiceData.warranty.enhancedDetails || ''}
+                            onChange={(e) => updateNestedData('warranty.enhancedDetails', e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter enhanced warranty details..."
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Separator />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Add-ons Section */}
-            <Card>
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-sky-100/80 border-blue-300/50 shadow-sky-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Plus className="h-5 w-5 mr-2" />
                   Add-ons & Discounts
                 </CardTitle>
@@ -1659,13 +2433,13 @@ export default function DynamicInvoiceForm({
                         }}
                       />
                     </div>
-                  
-                  {invoiceData.addons?.finance?.enabled && (
-                    <div className="space-y-4">
-                      {/* Static Add-ons */}
-                      <div className="space-y-6">
-                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                          <h5 className="font-medium mb-3">Finance Add-on 1</h5>
+
+                    {invoiceData.addons?.finance?.enabled && (
+                      <div className="space-y-4">
+                        {/* Static Add-ons */}
+                        <div className="space-y-6">
+                          <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <h5 className="font-medium mb-3">Finance Add-on 1</h5>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <FormInput
                                 label="Name"
@@ -1691,176 +2465,176 @@ export default function DynamicInvoiceForm({
                                 value={
                                   Math.max(0, (invoiceData.addons.finance.addon1?.cost || 0) - (invoiceData.addons.finance.addon1?.discount || 0))
                                 }
-                                onChange={() => {}} // Read-only calculated field
+                                onChange={() => { }} // Read-only calculated field
                                 type="number"
                                 icon={PoundSterling}
                                 disabled
                               />
                             </div>
                           </div>
-                        
-                        {invoiceData.addons.finance.addon2 && (
-                          <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                            <h5 className="font-medium mb-3">Finance Add-on 2</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                              <FormInput
-                                label="Name"
-                                value={invoiceData.addons.finance.addon2.name}
-                                onChange={(value) => updateNestedData('addons.finance.addon2.name', value)}
-                              />
-                              <FormInput
-                                label="Cost"
-                                value={invoiceData.addons.finance.addon2.cost}
-                                onChange={(value) => updateNestedData('addons.finance.addon2.cost', parseFloat(value) || 0)}
-                                type="number"
-                                icon={PoundSterling}
-                              />
-                              <FormInput
-                                label="Discount"
-                                value={invoiceData.addons.finance.addon2.discount || 0}
-                                onChange={createChangeHandler('addons.finance.addon2.discount')}
-                                type="number"
-                                icon={PoundSterling}
-                              />
-                              <FormInput
-                                label="Post-Discount Cost"
-                                value={
-                                  Math.max(0, (invoiceData.addons.finance.addon2.cost || 0) - (invoiceData.addons.finance.addon2.discount || 0))
-                                }
-                                onChange={() => {}} // Read-only calculated field
-                                type="number"
-                                icon={PoundSterling}
-                                disabled
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Dynamic Add-ons Management */}
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium">Additional Finance Add-ons</h4>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addFinanceAddon}
-                            className="flex items-center gap-2"
-                          >
-                            <Plus className="h-4 w-4" />
-                            Add Finance Add-on
-                          </Button>
-                        </div>
-                        
-                        {(() => {
-                          let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
-                          
-                          // Convert object format back to array if needed
-                          if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                            dynamicAddons = Object.values(dynamicAddons);
-                          }
-                          
-                          return Array.isArray(dynamicAddons) && dynamicAddons.length > 0;
-                        })() && (
-                          <div className="space-y-3">
-                            {(() => {
-                              let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
-                              if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                dynamicAddons = Object.values(dynamicAddons);
-                              }
-                              return Array.isArray(dynamicAddons) ? dynamicAddons.map((addon, index) => (
-                              <div key={index} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h5 className="font-medium">Finance Add-on {(() => {
-                                    let count = 0;
-                                    if (invoiceData.addons.finance.addon1) count++;
-                                    if (invoiceData.addons.finance.addon2) count++;
-                                    return count + index + 1;
-                                  })()}</h5>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => removeFinanceAddon(index)}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                  >
-                                    <Minus className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                  <FormInput
-                                    label="Name"
-                                    value={addon.name}
-                                    onChange={(value) => {
-                                      let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
-                                      // Convert object format back to array if needed
-                                      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                        dynamicAddons = Object.values(dynamicAddons);
-                                      }
-                                      const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                      const newAddons = [...currentAddons];
-                                      newAddons[index] = { ...newAddons[index], name: value };
-                                      updateNestedData('addons.finance.dynamicAddons', newAddons);
-                                    }}
-                                  />
-                                  <FormInput
-                                    label="Cost"
-                                    value={addon.cost}
-                                    onChange={(value) => {
-                                      let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
-                                      // Convert object format back to array if needed
-                                      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                        dynamicAddons = Object.values(dynamicAddons);
-                                      }
-                                      const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                      const newAddons = [...currentAddons];
-                                      newAddons[index] = { ...newAddons[index], cost: parseFloat(value) || 0 };
-                                      updateNestedData('addons.finance.dynamicAddons', newAddons);
-                                    }}
-                                    type="number"
-                                    icon={PoundSterling}
-                                  />
-                                  <FormInput
-                                    label="Discount"
-                                    value={addon.discount || 0}
-                                    onChange={(value) => {
-                                      let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
-                                      // Convert object format back to array if needed
-                                      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                        dynamicAddons = Object.values(dynamicAddons);
-                                      }
-                                      const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                      const newAddons = [...currentAddons];
-                                      const numValue = value === '' ? 0 : parseFloat(value) || 0;
-                                      newAddons[index] = { ...newAddons[index], discount: numValue };
-                                      updateNestedData('addons.finance.dynamicAddons', newAddons);
-                                    }}
-                                    type="number"
-                                    icon={PoundSterling}
-                                  />
-                                  <FormInput
-                                    label="Post-Discount Cost"
-                                    value={Math.max(0, (addon.cost || 0) - (addon.discount || 0))}
-                                    onChange={() => {}} // Read-only calculated field
-                                    type="number"
-                                    icon={PoundSterling}
-                                    disabled
-                                  />
-                                </div>
+
+                          {invoiceData.addons.finance.addon2 && (
+                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                              <h5 className="font-medium mb-3">Finance Add-on 2</h5>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <FormInput
+                                  label="Name"
+                                  value={invoiceData.addons.finance.addon2.name}
+                                  onChange={(value) => updateNestedData('addons.finance.addon2.name', value)}
+                                />
+                                <FormInput
+                                  label="Cost"
+                                  value={invoiceData.addons.finance.addon2.cost}
+                                  onChange={(value) => updateNestedData('addons.finance.addon2.cost', parseFloat(value) || 0)}
+                                  type="number"
+                                  icon={PoundSterling}
+                                />
+                                <FormInput
+                                  label="Discount"
+                                  value={invoiceData.addons.finance.addon2.discount || 0}
+                                  onChange={createChangeHandler('addons.finance.addon2.discount')}
+                                  type="number"
+                                  icon={PoundSterling}
+                                />
+                                <FormInput
+                                  label="Post-Discount Cost"
+                                  value={
+                                    Math.max(0, (invoiceData.addons.finance.addon2.cost || 0) - (invoiceData.addons.finance.addon2.discount || 0))
+                                  }
+                                  onChange={() => { }} // Read-only calculated field
+                                  type="number"
+                                  icon={PoundSterling}
+                                  disabled
+                                />
                               </div>
-                              )) : null;
-                            })()}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Dynamic Add-ons Management */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">Additional Finance Add-ons</h4>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={addFinanceAddon}
+                              className="flex items-center gap-2"
+                            >
+                              <Plus className="h-4 w-4" />
+                              Add Finance Add-on
+                            </Button>
                           </div>
-                        )}
+
+                          {(() => {
+                            let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
+
+                            // Convert object format back to array if needed
+                            if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                              dynamicAddons = Object.values(dynamicAddons);
+                            }
+
+                            return Array.isArray(dynamicAddons) && dynamicAddons.length > 0;
+                          })() && (
+                              <div className="space-y-3">
+                                {(() => {
+                                  let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
+                                  if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                    dynamicAddons = Object.values(dynamicAddons);
+                                  }
+                                  return Array.isArray(dynamicAddons) ? dynamicAddons.map((addon, index) => (
+                                    <div key={index} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h5 className="font-medium">Finance Add-on {(() => {
+                                          let count = 0;
+                                          if (invoiceData.addons.finance.addon1) count++;
+                                          if (invoiceData.addons.finance.addon2) count++;
+                                          return count + index + 1;
+                                        })()}</h5>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => removeFinanceAddon(index)}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        >
+                                          <Minus className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <FormInput
+                                          label="Name"
+                                          value={addon.name}
+                                          onChange={(value) => {
+                                            let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
+                                            // Convert object format back to array if needed
+                                            if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                              dynamicAddons = Object.values(dynamicAddons);
+                                            }
+                                            const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                            const newAddons = [...currentAddons];
+                                            newAddons[index] = { ...newAddons[index], name: value };
+                                            updateNestedData('addons.finance.dynamicAddons', newAddons);
+                                          }}
+                                        />
+                                        <FormInput
+                                          label="Cost"
+                                          value={addon.cost}
+                                          onChange={(value) => {
+                                            let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
+                                            // Convert object format back to array if needed
+                                            if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                              dynamicAddons = Object.values(dynamicAddons);
+                                            }
+                                            const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                            const newAddons = [...currentAddons];
+                                            newAddons[index] = { ...newAddons[index], cost: parseFloat(value) || 0 };
+                                            updateNestedData('addons.finance.dynamicAddons', newAddons);
+                                          }}
+                                          type="number"
+                                          icon={PoundSterling}
+                                        />
+                                        <FormInput
+                                          label="Discount"
+                                          value={addon.discount || 0}
+                                          onChange={(value) => {
+                                            let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
+                                            // Convert object format back to array if needed
+                                            if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                              dynamicAddons = Object.values(dynamicAddons);
+                                            }
+                                            const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                            const newAddons = [...currentAddons];
+                                            const numValue = value === '' ? 0 : parseFloat(value) || 0;
+                                            newAddons[index] = { ...newAddons[index], discount: numValue };
+                                            updateNestedData('addons.finance.dynamicAddons', newAddons);
+                                          }}
+                                          type="number"
+                                          icon={PoundSterling}
+                                        />
+                                        <FormInput
+                                          label="Post-Discount Cost"
+                                          value={Math.max(0, (addon.cost || 0) - (addon.discount || 0))}
+                                          onChange={() => { }} // Read-only calculated field
+                                          type="number"
+                                          icon={PoundSterling}
+                                          disabled
+                                        />
+                                      </div>
+                                    </div>
+                                  )) : null;
+                                })()}
+                              </div>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                   </div>
                 )}
-                
+
                 {invoiceData.saleType !== 'Trade' && <Separator />}
-                
+
                 {/* Customer Add-ons */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -1872,46 +2646,46 @@ export default function DynamicInvoiceForm({
                       }}
                     />
                   </div>
-                  
+
                   {invoiceData.addons?.customer?.enabled && (
                     <div className="space-y-4">
                       {/* Static Add-ons */}
                       <div className="space-y-6">
                         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                           <h5 className="font-medium mb-3">Customer Add-on 1</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                              <FormInput
-                                label="Name"
-                                value={invoiceData.addons.customer.addon1?.name || ''}
-                                onChange={(value) => updateNestedData('addons.customer.addon1.name', value)}
-                              />
-                              <FormInput
-                                label="Cost"
-                                value={invoiceData.addons.customer.addon1?.cost || 0}
-                                onChange={(value) => updateNestedData('addons.customer.addon1.cost', parseFloat(value) || 0)}
-                                type="number"
-                                icon={PoundSterling}
-                              />
-                              <FormInput
-                                label="Discount"
-                                value={invoiceData.addons.customer.addon1?.discount || 0}
-                                onChange={createChangeHandler('addons.customer.addon1.discount')}
-                                type="number"
-                                icon={PoundSterling}
-                              />
-                              <FormInput
-                                label="Post-Discount Cost"
-                                value={
-                                  Math.max(0, (invoiceData.addons.customer.addon1?.cost || 0) - (invoiceData.addons.customer.addon1?.discount || 0))
-                                }
-                                onChange={() => {}} // Read-only calculated field
-                                type="number"
-                                icon={PoundSterling}
-                                disabled
-                              />
-                            </div>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <FormInput
+                              label="Name"
+                              value={invoiceData.addons.customer.addon1?.name || ''}
+                              onChange={(value) => updateNestedData('addons.customer.addon1.name', value)}
+                            />
+                            <FormInput
+                              label="Cost"
+                              value={invoiceData.addons.customer.addon1?.cost || 0}
+                              onChange={(value) => updateNestedData('addons.customer.addon1.cost', parseFloat(value) || 0)}
+                              type="number"
+                              icon={PoundSterling}
+                            />
+                            <FormInput
+                              label="Discount"
+                              value={invoiceData.addons.customer.addon1?.discount || 0}
+                              onChange={createChangeHandler('addons.customer.addon1.discount')}
+                              type="number"
+                              icon={PoundSterling}
+                            />
+                            <FormInput
+                              label="Post-Discount Cost"
+                              value={
+                                Math.max(0, (invoiceData.addons.customer.addon1?.cost || 0) - (invoiceData.addons.customer.addon1?.discount || 0))
+                              }
+                              onChange={() => { }} // Read-only calculated field
+                              type="number"
+                              icon={PoundSterling}
+                              disabled
+                            />
                           </div>
-                        
+                        </div>
+
                         {invoiceData.addons.customer.addon2 && (
                           <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <h5 className="font-medium mb-3">Customer Add-on 2</h5>
@@ -1940,7 +2714,7 @@ export default function DynamicInvoiceForm({
                                 value={
                                   Math.max(0, (invoiceData.addons.customer.addon2.cost || 0) - (invoiceData.addons.customer.addon2.discount || 0))
                                 }
-                                onChange={() => {}} // Read-only calculated field
+                                onChange={() => { }} // Read-only calculated field
                                 type="number"
                                 icon={PoundSterling}
                                 disabled
@@ -1949,7 +2723,7 @@ export default function DynamicInvoiceForm({
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Dynamic Add-ons Management */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -1965,16 +2739,16 @@ export default function DynamicInvoiceForm({
                             Add Customer Add-on
                           </Button>
                         </div>
-                        
+
                         {(() => {
                           let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
-                          
+
                           // Convert object format back to array if needed
                           if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                             dynamicAddons = Object.values(dynamicAddons);
                             console.log('🔧 [DYNAMIC FORM] Converted object to array:', dynamicAddons);
                           }
-                          
+
                           console.log('🔍 [DYNAMIC FORM] Customer Dynamic Addons Display Check:', {
                             originalData: invoiceData.addons.customer.dynamicAddons,
                             processedData: dynamicAddons,
@@ -1982,99 +2756,99 @@ export default function DynamicInvoiceForm({
                             length: dynamicAddons?.length,
                             shouldShow: Array.isArray(dynamicAddons) && dynamicAddons.length > 0
                           });
-                          
+
                           return Array.isArray(dynamicAddons) && dynamicAddons.length > 0;
                         })() && (
-                          <div className="space-y-3">
-                            {(() => {
-                              let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
-                              if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                dynamicAddons = Object.values(dynamicAddons);
-                              }
-                              return Array.isArray(dynamicAddons) ? dynamicAddons.map((addon, index) => (
-                              <div key={index} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h5 className="font-medium">Customer Add-on {(() => {
-                                    let count = 0;
-                                    if (invoiceData.addons.customer.addon1) count++;
-                                    if (invoiceData.addons.customer.addon2) count++;
-                                    return count + index + 1;
-                                  })()}</h5>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => removeCustomerAddon(index)}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                  >
-                                    <Minus className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                  <FormInput
-                                    label="Name"
-                                    value={addon.name}
-                                    onChange={(value) => {
-                                      let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
-                                      // Convert object format back to array if needed
-                                      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                        dynamicAddons = Object.values(dynamicAddons);
-                                      }
-                                      const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                      const newAddons = [...currentAddons];
-                                      newAddons[index] = { ...newAddons[index], name: value };
-                                      updateNestedData('addons.customer.dynamicAddons', newAddons);
-                                    }}
-                                  />
-                                  <FormInput
-                                    label="Cost"
-                                    value={addon.cost}
-                                    onChange={(value) => {
-                                      let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
-                                      // Convert object format back to array if needed
-                                      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                        dynamicAddons = Object.values(dynamicAddons);
-                                      }
-                                      const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                      const newAddons = [...currentAddons];
-                                      newAddons[index] = { ...newAddons[index], cost: parseFloat(value) || 0 };
-                                      updateNestedData('addons.customer.dynamicAddons', newAddons);
-                                    }}
-                                    type="number"
-                                    icon={PoundSterling}
-                                  />
-                                  <FormInput
-                                    label="Discount"
-                                    value={addon.discount || 0}
-                                    onChange={(value) => {
-                                      let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
-                                      // Convert object format back to array if needed
-                                      if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                        dynamicAddons = Object.values(dynamicAddons);
-                                      }
-                                      const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                      const newAddons = [...currentAddons];
-                                      const numValue = value === '' ? 0 : parseFloat(value) || 0;
-                                      newAddons[index] = { ...newAddons[index], discount: numValue };
-                                      updateNestedData('addons.customer.dynamicAddons', newAddons);
-                                    }}
-                                    type="number"
-                                    icon={PoundSterling}
-                                  />
-                                  <FormInput
-                                    label="Post-Discount Cost"
-                                    value={Math.max(0, (addon.cost || 0) - (addon.discount || 0))}
-                                    onChange={() => {}} // Read-only calculated field
-                                    type="number"
-                                    icon={PoundSterling}
-                                    disabled
-                                  />
-                                </div>
-                              </div>
-                              )) : null;
-                            })()}
-                          </div>
-                        )}
+                            <div className="space-y-3">
+                              {(() => {
+                                let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
+                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                  dynamicAddons = Object.values(dynamicAddons);
+                                }
+                                return Array.isArray(dynamicAddons) ? dynamicAddons.map((addon, index) => (
+                                  <div key={index} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <h5 className="font-medium">Customer Add-on {(() => {
+                                        let count = 0;
+                                        if (invoiceData.addons.customer.addon1) count++;
+                                        if (invoiceData.addons.customer.addon2) count++;
+                                        return count + index + 1;
+                                      })()}</h5>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => removeCustomerAddon(index)}
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                      >
+                                        <Minus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                      <FormInput
+                                        label="Name"
+                                        value={addon.name}
+                                        onChange={(value) => {
+                                          let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
+                                          // Convert object format back to array if needed
+                                          if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                            dynamicAddons = Object.values(dynamicAddons);
+                                          }
+                                          const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                          const newAddons = [...currentAddons];
+                                          newAddons[index] = { ...newAddons[index], name: value };
+                                          updateNestedData('addons.customer.dynamicAddons', newAddons);
+                                        }}
+                                      />
+                                      <FormInput
+                                        label="Cost"
+                                        value={addon.cost}
+                                        onChange={(value) => {
+                                          let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
+                                          // Convert object format back to array if needed
+                                          if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                            dynamicAddons = Object.values(dynamicAddons);
+                                          }
+                                          const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                          const newAddons = [...currentAddons];
+                                          newAddons[index] = { ...newAddons[index], cost: parseFloat(value) || 0 };
+                                          updateNestedData('addons.customer.dynamicAddons', newAddons);
+                                        }}
+                                        type="number"
+                                        icon={PoundSterling}
+                                      />
+                                      <FormInput
+                                        label="Discount"
+                                        value={addon.discount || 0}
+                                        onChange={(value) => {
+                                          let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
+                                          // Convert object format back to array if needed
+                                          if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                            dynamicAddons = Object.values(dynamicAddons);
+                                          }
+                                          const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                          const newAddons = [...currentAddons];
+                                          const numValue = value === '' ? 0 : parseFloat(value) || 0;
+                                          newAddons[index] = { ...newAddons[index], discount: numValue };
+                                          updateNestedData('addons.customer.dynamicAddons', newAddons);
+                                        }}
+                                        type="number"
+                                        icon={PoundSterling}
+                                      />
+                                      <FormInput
+                                        label="Post-Discount Cost"
+                                        value={Math.max(0, (addon.cost || 0) - (addon.discount || 0))}
+                                        onChange={() => { }} // Read-only calculated field
+                                        type="number"
+                                        icon={PoundSterling}
+                                        disabled
+                                      />
+                                    </div>
+                                  </div>
+                                )) : null;
+                              })()}
+                            </div>
+                          )}
                       </div>
                     </div>
                   )}
@@ -2083,144 +2857,11 @@ export default function DynamicInvoiceForm({
             </Card>
           </TabsContent>
 
-          {/* Delivery */}
-          <TabsContent value="delivery" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Truck className="h-5 w-5 mr-2" />
-                  Delivery Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormSelect
-                  label="Delivery Type"
-                  value={invoiceData.delivery.type}
-                  onChange={(value) => updateNestedData('delivery.type', value)}
-                  options={['Collection', 'Delivery']}
-                  icon={Truck}
-                  required
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    label="Delivery/Collection Date"
-                    value={invoiceData.delivery.date || ''}
-                    onChange={(value) => updateNestedData('delivery.date', value)}
-                    type="date"
-                    icon={Calendar}
-                  />
-                </div>
-
-                {/* Delivery Pricing Section - Only show for Delivery type */}
-                {invoiceData.delivery.type === 'Delivery' && (
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Delivery Pricing</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormInput
-                        label="Delivery Cost"
-                        value={invoiceData.delivery.cost || 0}
-                        onChange={createChangeHandler('delivery.cost')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
-                      
-                      <FormInput
-                        label="Discount on Delivery"
-                        value={invoiceData.delivery.discount || 0}
-                        onChange={createChangeHandler('delivery.discount')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
-                      
-                      <FormInput
-                        label="Delivery Cost Post-Discount"
-                        value={Math.max(0, (invoiceData.delivery.cost || 0) - (invoiceData.delivery.discount || 0))}
-                        onChange={() => {}}
-                        type="number"
-                        icon={PoundSterling}
-                        disabled={true}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                {invoiceData.delivery.type === 'Delivery' && (
-                  <div className="space-y-2">
-                    <Label>Delivery Address</Label>
-                    <Textarea
-                      value={invoiceData.delivery.address || ''}
-                      onChange={(e) => updateNestedData('delivery.address', e.target.value)}
-                      placeholder="Delivery address if different from customer address..."
-                      rows={3}
-                    />
-                  </div>
-                )}
-                
-                {/* Dealer Deposit Payment - Only show for Finance Company invoices */}
-                {invoiceData.invoiceTo === 'Finance Company' && invoiceData.saleType === 'Retail' && (
-                  <div className="space-y-4 mt-6 pt-6 border-t">
-                    <h4 className="font-medium">Dealer Deposit Payment</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormInput
-                        label="Dealer Deposit Paid (Customer)"
-                        value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
-                        onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                        placeholder="0.00"
-                      />
-                      
-                      <FormInput
-                        label="Payment Date (Customer)"
-                        value={invoiceData.pricing?.dealerDepositPaymentDateCustomer || ''}
-                        onChange={(value) => updateNestedData('pricing.dealerDepositPaymentDateCustomer', value)}
-                        type="date"
-                        icon={Calendar}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Amount of dealer deposit paid by customer (Vehicle Reservation Fees)
-                    </p>
-                  </div>
-                )}
-
-                {/* Finance Deposit Payment - Only show for Finance Company invoices */}
-                {invoiceData.invoiceTo === 'Finance Company' && (
-                  <div className="space-y-4 mt-6 pt-6 border-t">
-                    <h4 className="font-medium">Finance Deposit Payment</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormInput
-                        label="Deposit Amount Paid (Finance)"
-                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
-                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                        placeholder="0.00"
-                      />
-                      
-                      <FormInput
-                        label="Deposit Payment Date (Finance)"
-                        value={invoiceData.payment?.breakdown?.depositDate || ''}
-                        onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
-                        type="date"
-                        icon={Calendar}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Enter the amount and date when deposit was paid to the finance company
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Payment */}
-          <TabsContent value="payment" className="space-y-6">
-            <Card>
+          <TabsContent value="payment" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-lime-100/80 border-green-300/50 shadow-lime-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <CreditCard className="h-5 w-5 mr-2" />
                   Payment Breakdown
                 </CardTitle>
@@ -2241,7 +2882,7 @@ export default function DynamicInvoiceForm({
                       Add Card Payment
                     </Button>
                   </div>
-                  
+
                   {(invoiceData.payment?.breakdown?.cardPayments || []).map((payment, index) => (
                     <div key={index} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2252,7 +2893,7 @@ export default function DynamicInvoiceForm({
                           type="number"
                           icon={CreditCard}
                         />
-                        
+
                         <FormInput
                           label={`Card Payment Date ${index + 1}`}
                           value={payment.date || ''}
@@ -2261,7 +2902,7 @@ export default function DynamicInvoiceForm({
                           icon={Calendar}
                         />
                       </div>
-                      
+
                       {(invoiceData.payment?.breakdown?.cardPayments || []).length > 1 && (
                         <div className="mt-3 flex justify-end">
                           <Button
@@ -2295,7 +2936,7 @@ export default function DynamicInvoiceForm({
                       Add BACS Payment
                     </Button>
                   </div>
-                  
+
                   {(invoiceData.payment?.breakdown?.bacsPayments || []).map((payment, index) => (
                     <div key={index} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2306,7 +2947,7 @@ export default function DynamicInvoiceForm({
                           type="number"
                           icon={PoundSterling}
                         />
-                        
+
                         <FormInput
                           label={`BACS Payment Date ${index + 1}`}
                           value={payment.date || ''}
@@ -2315,7 +2956,7 @@ export default function DynamicInvoiceForm({
                           icon={Calendar}
                         />
                       </div>
-                      
+
                       {(invoiceData.payment?.breakdown?.bacsPayments || []).length > 1 && (
                         <div className="mt-3 flex justify-end">
                           <Button
@@ -2349,7 +2990,7 @@ export default function DynamicInvoiceForm({
                       Add Cash Payment
                     </Button>
                   </div>
-                  
+
                   {(invoiceData.payment?.breakdown?.cashPayments || []).map((payment, index) => (
                     <div key={index} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2360,7 +3001,7 @@ export default function DynamicInvoiceForm({
                           type="number"
                           icon={PoundSterling}
                         />
-                        
+
                         <FormInput
                           label={`Cash Payment Date ${index + 1}`}
                           value={payment.date || ''}
@@ -2369,7 +3010,7 @@ export default function DynamicInvoiceForm({
                           icon={Calendar}
                         />
                       </div>
-                      
+
                       {(invoiceData.payment?.breakdown?.cashPayments || []).length > 1 && (
                         <div className="mt-3 flex justify-end">
                           <Button
@@ -2400,7 +3041,7 @@ export default function DynamicInvoiceForm({
                         type="number"
                         icon={PoundSterling}
                       />
-                      
+
                       <FormInput
                         label="Finance Payment Date"
                         value={invoiceData.payment.breakdown.financeDate || ''}
@@ -2412,90 +3053,8 @@ export default function DynamicInvoiceForm({
                   </div>
                 )}
 
-                {/* Finance Deposit Information - Consolidated - Only show for Finance Company invoices */}
-                {invoiceData.invoiceTo === 'Finance Company' && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Finance Deposit Information</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Compulsory Sale Deposit - Read-only */}
-                      <FormInput
-                        label="Compulsory Sale Deposit (Finance)"
-                        value={invoiceData.pricing?.compulsorySaleDepositFinance || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Dealer Deposit Paid - Editable */}
-                      <FormInput
-                        label="Dealer Deposit Paid (Customer)"
-                        value={invoiceData.pricing?.dealerDepositPaidCustomer || 0}
-                        onChange={(value) => updateNestedData('pricing.dealerDepositPaidCustomer', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                        placeholder="0.00"
-                      />
-                      
-                      {/* Amount Paid in Deposit - Editable */}
-                      <FormInput
-                        label="Amount Paid in Deposit (Finance)"
-                        value={invoiceData.pricing?.amountPaidDepositFinance || 0}
-                        onChange={(value) => updateNestedData('pricing.amountPaidDepositFinance', parseFloat(value) || 0)}
-                        type="number"
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Total Finance Deposit Paid - Read-only */}
-                      <FormInput
-                        label="Total Finance Deposit Paid"
-                        value={invoiceData.pricing?.totalFinanceDepositPaid || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Outstanding Deposit - Read-only */}
-                      <FormInput
-                        label="Outstanding Deposit (Finance)"
-                        value={invoiceData.pricing?.outstandingDepositFinance || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Overpayments - Read-only */}
-                      <FormInput
-                        label="Overpayments (Finance)"
-                        value={invoiceData.pricing?.overpaymentsFinance || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                      
-                      {/* Deposit Date */}
-                      <FormInput
-                        label="Deposit Date (Finance)"
-                        value={invoiceData.payment?.breakdown?.depositDate || ''}
-                        onChange={(value) => updateNestedData('payment.breakdown.depositDate', value)}
-                        type="date"
-                        icon={Calendar}
-                      />
-                    </div>
-                    
-                    {/* Helper text */}
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Total Finance Deposit Paid = Dealer Deposit Paid + Amount Paid in Deposit (Finance)
-                    </p>
-                  </div>
-                )}
-                
                 <Separator />
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
                     <Switch
@@ -2504,7 +3063,7 @@ export default function DynamicInvoiceForm({
                     />
                     <Label>Part Exchange Included</Label>
                   </div>
-                  
+
                   {invoiceData.payment.partExchange?.included && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormInput
@@ -2512,19 +3071,19 @@ export default function DynamicInvoiceForm({
                         value={invoiceData.payment.partExchange?.vehicleRegistration || ''}
                         onChange={(value) => updateNestedData('payment.partExchange.vehicleRegistration', value)}
                       />
-                      
+
                       <FormInput
                         label="PX Make and Model"
                         value={invoiceData.payment.partExchange?.makeAndModel || ''}
                         onChange={(value) => updateNestedData('payment.partExchange.makeAndModel', value)}
                       />
-                      
+
                       <FormInput
                         label="PX Mileage"
                         value={invoiceData.payment.partExchange?.mileage || ''}
                         onChange={(value) => updateNestedData('payment.partExchange.mileage', value)}
                       />
-                      
+
                       <FormInput
                         label="Value of PX Vehicle"
                         value={invoiceData.payment.partExchange?.valueOfVehicle || 0}
@@ -2532,7 +3091,7 @@ export default function DynamicInvoiceForm({
                         type="number"
                         icon={PoundSterling}
                       />
-                      
+
                       <FormInput
                         label="Settlement Amount"
                         value={invoiceData.payment.partExchange?.settlementAmount || 0}
@@ -2540,12 +3099,12 @@ export default function DynamicInvoiceForm({
                         type="number"
                         icon={PoundSterling}
                       />
-                      
+
                       <div className="space-y-2">
                         <FormInput
                           label="Amount Paid in Part Exchange"
                           value={invoiceData.payment.partExchange?.amountPaid || 0}
-                          onChange={() => {}} // Read-only - auto-calculated
+                          onChange={() => { }} // Read-only - auto-calculated
                           type="number"
                           icon={PoundSterling}
                           disabled={true}
@@ -2554,7 +3113,7 @@ export default function DynamicInvoiceForm({
                           Auto-calculated: Value of Part Exchange vehicle - Settlement amount
                         </p>
                       </div>
-                      
+
                       <FormInput
                         label="Part Exchange Date"
                         value={invoiceData.payment.breakdown.partExDate || ''}
@@ -2565,22 +3124,22 @@ export default function DynamicInvoiceForm({
                     </div>
                   )}
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Balance to Finance - Only show when Invoice To is Finance Company */}
                   {invoiceData.invoiceTo === 'Finance Company' && (
                     <FormInput
                       label="Balance to Finance"
-                      value={invoiceData.payment.balanceToFinance || 0}
+                      value={(invoiceData.payment.balanceToFinance || 0) - (invoiceData.payment.partExchange?.amountPaid || 0)}
                       onChange={createChangeHandler('payment.balanceToFinance')}
                       type="number"
                       icon={PoundSterling}
                       disabled={true}
                     />
                   )}
-                  
+
                   <FormInput
                     label="Customer Balance Due"
                     value={invoiceData.payment.customerBalanceDue || 0}
@@ -2590,7 +3149,7 @@ export default function DynamicInvoiceForm({
                     disabled={true}
                   />
                 </div>
-                
+
                 {/* Additional Information */}
                 <div className="mt-6">
                   <Label htmlFor="additionalInformation" className="text-sm font-medium">
@@ -2610,10 +3169,10 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Checklist */}
-          <TabsContent value="checklist" className="space-y-6">
-            <Card>
+          <TabsContent value="checklist" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-teal-100/80 border-cyan-300/50 shadow-teal-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <CheckCircle className="h-5 w-5 mr-2" />
                   Vehicle Checklist
                 </CardTitle>
@@ -2625,7 +3184,7 @@ export default function DynamicInvoiceForm({
                     value={invoiceData.checklist.mileage || ''}
                     onChange={(value) => updateNestedData('checklist.mileage', value)}
                   />
-                  
+
                   <FormSelect
                     label="Number of Keys"
                     value={invoiceData.checklist.numberOfKeys || ''}
@@ -2633,7 +3192,7 @@ export default function DynamicInvoiceForm({
                     options={['1', '2', '3']}
                     placeholder="Select number of keys"
                   />
-                  
+
                   <FormSelect
                     label="User Manual"
                     value={invoiceData.checklist.userManual || ''}
@@ -2641,14 +3200,14 @@ export default function DynamicInvoiceForm({
                     options={['Yes', 'No', 'Digital']}
                     placeholder="Select user manual status"
                   />
-                  
+
                   <FormInput
                     label="Service History Record"
                     value={invoiceData.checklist.serviceHistoryRecord || ''}
                     onChange={(value) => updateNestedData('checklist.serviceHistoryRecord', value)}
                     placeholder="Enter service history details..."
                   />
-                  
+
                   <FormSelect
                     label="Wheel Locking Nut"
                     value={invoiceData.checklist.wheelLockingNut || ''}
@@ -2656,7 +3215,7 @@ export default function DynamicInvoiceForm({
                     options={['Yes', 'No']}
                     placeholder="Select wheel locking nut status"
                   />
-                  
+
                   <FormSelect
                     label="Cambelt/Chain Confirmation"
                     value={invoiceData.checklist.cambeltChainConfirmation || ''}
@@ -2664,23 +3223,23 @@ export default function DynamicInvoiceForm({
                     options={['Yes', 'No']}
                     placeholder="Select cambelt/chain status"
                   />
-                  
+
                   <FormSelect
                     label="Vehicle Inspection/Test Drive"
                     value={invoiceData.checklist.vehicleInspectionTestDrive || ''}
                     onChange={(value) => updateNestedData('checklist.vehicleInspectionTestDrive', value)}
-                    options={['Completed', 'Not Completed', 'Inspection Only', 'Test Drive Only']}
+                    options={['Yes', 'No']}
                     placeholder="Select inspection status"
                   />
-                  
+
                   <FormSelect
                     label="Dealer Pre-Sale Check"
                     value={invoiceData.checklist.dealerPreSaleCheck || ''}
                     onChange={(value) => updateNestedData('checklist.dealerPreSaleCheck', value)}
-                    options={['Completed', 'Not Completed', 'Partial', 'Not Required']}
+                    options={['Yes', 'No']}
                     placeholder="Select pre-sale check status"
                   />
-                  
+
                   <FormSelect
                     label="Fuel Type (Checklist)"
                     value={invoiceData.checklist.fuelType || ''}
@@ -2694,138 +3253,22 @@ export default function DynamicInvoiceForm({
           </TabsContent>
 
           {/* Balance Summary */}
-          <TabsContent value="balance" className="space-y-6">
-            <Card>
+          <TabsContent value="balance" className="space-y-6 p-4 bg-gradient-to-br from-violet-100/80 via-blue-100/60 to-cyan-100/80 dark:from-slate-900/50 dark:via-slate-800/30 dark:to-slate-900/50 rounded-xl">
+            <Card className={`rounded-xl border shadow-lg backdrop-blur-sm ${isDarkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-yellow-100/80 border-amber-300/50 shadow-yellow-200/40'}`}>
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className={`flex items-center ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   <PoundSterling className="h-5 w-5 mr-2" />
                   Balance Summary
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Finance Company Balance Summary - Only shown when Invoice To = Finance Company */}
-                {invoiceData.invoiceTo === 'Finance Company' && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Finance Company Balance Summary</h3>
-                    
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {/* Subtotal - Hidden for Finance Company */}
-                        {false && (
-                          <FormInput
-                            label="Subtotal"
-                            value={(() => {
-                              const salePrice = invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0;
-                              const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-                              const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-                              const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
-                              
-                              // Finance addons
-                              const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0;
-                              const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0;
-                              const financeDynamicAddonsCost = (() => {
-                                let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
-                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                  dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
-                                }
-                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
-                              })();
-                              
-                              // Customer addons
-                              const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                              const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-                              const customerDynamicAddonsCost = (() => {
-                                let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                  dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
-                                }
-                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
-                              })();
-                              
-                              // Settlement amount - only for finance company invoices with part exchange
-                              const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included 
-                                ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0) 
-                                : 0;
-                              
-                              return salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice + 
-                                     financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
-                                     customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
-                            })()}
-                            onChange={() => {}}
-                            type="number"
-                            disabled={true}
-                            icon={PoundSterling}
-                          />
-                        )}
-                        
-                        {/* Balance to Customer - Show for Finance Company */}
-                        {invoiceData.invoiceTo === 'Finance Company' && (
-                          <FormInput
-                            label="Balance to Customer"
-                            value={(() => {
-                              // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
-                              // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
-                              const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
-                              const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
-                              const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
-                              
-                              // Static customer add-ons (use post-discount values when available)
-                              const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                              const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-                              
-                              // Dynamic customer add-ons (use post-discount values when available)
-                              const postDynamicCustomerAddons = (() => {
-                                let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                  dynamicAddons = Object.values(dynamicAddons);
-                                }
-                                return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
-                              })();
-                              
-                              const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice + 
-                                                        postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
-                              
-                              // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
-                              const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) + 
-                                                              (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
-                              const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
-                              return Math.max(0, outstandingDepositAmountFinance);
-                            })()}
-                            onChange={() => {}}
-                            type="number"
-                            disabled={true}
-                            icon={PoundSterling}
-                          />
-                        )}
-                        
-                        {/* Customer Balance Due - Hidden for Finance Company */}
-                        {false && (
-                          <FormInput
-                            label="Customer Balance Due"
-                            value={invoiceData.payment?.customerBalanceDue || 0}
-                            onChange={() => {}}
-                            type="number"
-                            disabled={true}
-                            icon={PoundSterling}
-                          />
-                        )}
-                        
-                        {/* Balance to Finance - ONLY field shown for Finance Company */}
-                        <FormInput
-                          label="Balance to Finance"
-                        value={invoiceData.payment?.balanceToFinance || 0}
-                        onChange={() => {}}
-                        type="number"
-                        disabled={true}
-                        icon={PoundSterling}
-                      />
-                    </div>
-                  </div>
-                )}
+
 
                 {/* General Balance Summary */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Balance Summary</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormInput
                       label="Subtotal"
@@ -2834,7 +3277,7 @@ export default function DynamicInvoiceForm({
                         const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
                         const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
                         const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
-                        
+
                         // Finance addons - only for Finance Company invoices
                         const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
                         const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
@@ -2845,7 +3288,7 @@ export default function DynamicInvoiceForm({
                           }
                           return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
                         })();
-                        
+
                         // Customer addons
                         const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
                         const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
@@ -2856,22 +3299,22 @@ export default function DynamicInvoiceForm({
                           }
                           return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
                         })();
-                        
+
                         // Settlement amount - only for finance company invoices with part exchange
-                        const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included 
-                          ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0) 
+                        const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included
+                          ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0)
                           : 0;
-                        
-                        return salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice + 
-                               financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
-                               customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
+
+                        return salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
+                          financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
+                          customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
                       })()}
-                      onChange={() => {}}
+                      onChange={() => { }}
                       type="number"
                       disabled={true}
                       icon={PoundSterling}
                     />
-                    
+
                     <FormInput
                       label="Amount Paid"
                       value={(() => {
@@ -2879,17 +3322,17 @@ export default function DynamicInvoiceForm({
                         const totalCardPayments = (invoiceData.payment?.breakdown?.cardPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
                         const totalBacsPayments = (invoiceData.payment?.breakdown?.bacsPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
                         const totalCashPayments = (invoiceData.payment?.breakdown?.cashPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
-                        
+
                         const totalDirectPayments = totalCardPayments + totalBacsPayments + totalCashPayments + (invoiceData.payment?.partExchange?.amountPaid || 0);
                         const totalDepositPayments = (invoiceData.pricing?.amountPaidDepositCustomer || 0);
                         return totalDirectPayments + totalDepositPayments;
                       })()}
-                      onChange={() => {}}
+                      onChange={() => { }}
                       type="number"
                       disabled={true}
                       icon={PoundSterling}
                     />
-                    
+
                     <FormInput
                       label="Remaining Balance"
                       value={(() => {
@@ -2898,7 +3341,7 @@ export default function DynamicInvoiceForm({
                         const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
                         const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
                         const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
-                        
+
                         // Finance addons - only for Finance Company invoices
                         const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
                         const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
@@ -2909,7 +3352,7 @@ export default function DynamicInvoiceForm({
                           }
                           return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
                         })();
-                        
+
                         // Customer addons
                         const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
                         const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
@@ -2920,27 +3363,27 @@ export default function DynamicInvoiceForm({
                           }
                           return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
                         })();
-                        
+
                         // Settlement amount - only for finance company invoices with part exchange
-                        const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included 
-                          ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0) 
+                        const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included
+                          ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0)
                           : 0;
-                        
-                        const subtotal = salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice + 
-                                        financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
-                                        customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
-                        
+
+                        const subtotal = salePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
+                          financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost +
+                          customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost + settlementAmount;
+
                         // Sum all card, BACS, and cash payments from arrays
                         const totalCardPayments = (invoiceData.payment?.breakdown?.cardPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
                         const totalBacsPayments = (invoiceData.payment?.breakdown?.bacsPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
                         const totalCashPayments = (invoiceData.payment?.breakdown?.cashPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
-                        
+
                         const totalDirectPayments = totalCardPayments + totalBacsPayments + totalCashPayments + (invoiceData.payment?.partExchange?.amountPaid || 0);
                         const totalDepositPayments = (invoiceData.pricing?.amountPaidDepositCustomer || 0);
                         const totalPayments = totalDirectPayments + totalDepositPayments;
                         return Math.max(0, subtotal - totalPayments);
                       })()}
-                      onChange={() => {}}
+                      onChange={() => { }}
                       type="number"
                       disabled={true}
                       icon={PoundSterling}
@@ -2948,100 +3391,41 @@ export default function DynamicInvoiceForm({
                   </div>
                 </div>
 
-                {/* Additional Information - input_114 */}
-                <div className="space-y-2 mt-6">
-                  <label className="text-sm font-medium text-gray-700">
-                    Additional Information
-                  </label>
-                  <textarea
-                    value={invoiceData.additionalInformation || ''}
-                    onChange={(e) => updateNestedData('additionalInformation', e.target.value)}
-                    rows={10}
-                    placeholder="Enter any additional information about the sale..."
-                    className="w-full px-4 py-3 border-2 rounded-lg text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-200 border-gray-200 bg-white text-gray-900 hover:border-gray-300"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Signature & IDD */}
-          <TabsContent value="signature" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <PenTool className="h-5 w-5 mr-2" />
-                  Customer Signature & IDD Acceptance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* IDD Acceptance - Only show for Finance Company Retail sales */}
-                  {invoiceData.saleType !== 'Trade' && invoiceData.invoiceTo === 'Finance Company' && (
-                    <FormSelect
-                      label="Customer has accepted the IDD"
-                      value={invoiceData.customerAcceptedIdd || 'N/A'}
-                      onChange={(value) => updateNestedData('customerAcceptedIdd', value)}
-                      options={[
-                        'N/A',
-                        'Yes',
-                      'No',
-                      'On Collection',
-                      'Customer Decided Against Finance'
-                    ]}
-                    icon={CheckCircle}
-                  />
-                  )}
-                  
-                  <FormInput
-                    label="Date of Signature"
-                    value={invoiceData.signature?.dateOfSignature || ''}
-                    onChange={(value) => updateNestedData('signature.dateOfSignature', value)}
-                    type="date"
-                    icon={Calendar}
-                  />
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-4">
-                  <Label className="text-sm font-medium flex items-center">
-                    <PenTool className="h-4 w-4 mr-2" />
-                    Customer Signature
-                  </Label>
-                  
-                  {invoiceData.signature?.customerSignature ? (
-                    <div className="space-y-2">
-                      <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-800">
-                        <img 
-                          src={invoiceData.signature.customerSignature} 
-                          alt="Customer Signature" 
-                          className="max-h-20 mx-auto"
-                        />
+                <h4 className="font-medium">Enhanced Warranty</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Enhanced Warranty</label>
+                        <select
+                          value={invoiceData.warranty.enhanced ? 'Yes' : 'No'}
+                          onChange={(e) => updateNestedData('warranty.enhanced', e.target.value === 'Yes')}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="No">No</option>
+                          <option value="Yes">Yes</option>
+                        </select>
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateNestedData('signature.customerSignature', '')}
-                      >
-                        Clear Signature
-                      </Button>
+
+                      {invoiceData.warranty.enhanced && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Enhanced Warranty Level</label>
+                          <select
+                            value={invoiceData.warranty.enhancedLevel || ''}
+                            onChange={(e) => updateNestedData('warranty.enhancedLevel', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">-</option>
+                            <option value="3 Months Enhanced">3 Months Enhanced</option>
+                            <option value="6 Months Enhanced">6 Months Enhanced</option>
+                            <option value="12 Months Enhanced">12 Months Enhanced</option>
+                            <option value="18 Months Enhanced">18 Months Enhanced</option>
+                            <option value="24 Months Enhanced">24 Months Enhanced</option>
+                            <option value="36 Months Enhanced">36 Months Enhanced</option>
+                            <option value="48 Months Enhanced">48 Months Enhanced</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 text-center">
-                        <PenTool className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          No signature captured yet
-                        </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                          Signature will be captured during the invoice process
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

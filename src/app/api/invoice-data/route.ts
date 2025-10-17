@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { 
-  dealers, 
   saleDetails, 
   companySettings, 
   customTerms, 
@@ -12,6 +11,40 @@ import {
   stockCache
 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
+import { getCityAndCountyFromPostcode } from '@/lib/postcodeUtils';
+import { syncInvoiceData } from '@/lib/invoiceSyncService';
+
+// Type for additional data stored in JSON fields
+interface AdditionalInvoiceData {
+  enhancedWarrantyPrice?: number | string;
+  enhancedWarrantyPricePostDiscount?: number | string;
+  discountOnEnhancedWarrantyPrice?: number | string;
+  deliveryCost?: number | string;
+  discountOnDelivery?: number | string;
+  deliveryCostPostDiscount?: number | string;
+  cardPayments?: Array<{ amount: number; date: string }>;
+  bacsPayments?: Array<{ amount: number; date: string }>;
+  cashPayments?: Array<{ amount: number; date: string }>;
+  enhancedWarranty?: string;
+  enhancedWarrantyLevel?: string;
+  enhancedWarrantyDetails?: string;
+}
+
+interface VehicleData {
+  engineNumber?: string;
+  badgeEngineSizeLitres?: number;
+  engineCapacityCC?: number;
+  colour?: string;
+}
+
+interface ChecklistMetadata {
+  mileage?: string;
+  vehicleInspectionTestDrive?: string;
+  dealerPreSaleCheck?: string;
+  fuelType?: string;
+  serviceHistory?: string;
+}
 
 // Comprehensive Invoice Data Interface matching invoice.md structure
 export interface ComprehensiveInvoiceData {
@@ -37,9 +70,18 @@ export interface ComprehensiveInvoiceData {
       email: string;
       website?: string;
     };
+    payment?: {
+      bankName?: string;
+      bankSortCode?: string;
+      bankAccountNumber?: string;
+      bankAccountName?: string;
+      bankIban?: string;
+      bankSwiftCode?: string;
+    };
     vatNumber: string;
     registrationNumber?: string;
     logo?: string;
+    qrCode?: string; // QR code image URL/path for invoice footer
   };
   
   // Customer Information (from saleDetails)
@@ -87,6 +129,7 @@ export interface ComprehensiveInvoiceData {
     salePrice: number;                    // {Sale Price:6}
     discountOnSalePrice?: number;         // {Discount on Sale Price:64/51}
     salePricePostDiscount: number;        // {Sale Price Post-Discount:68}
+    voluntaryContribution?: number;     // Voluntary contribution to sale price
     
     // Warranty
     warrantyPrice?: number;               // {Warranty Price:45}
@@ -242,7 +285,7 @@ export interface ComprehensiveInvoiceData {
   
   // Delivery Information
   delivery: {
-    type: 'Collection' | 'Delivery';      // {Collection/Delivery:188}
+    type: 'collection' | 'delivery';      // {Collection/Delivery:188}
     date?: string;                        // {Date of Collection / Delivery:129}
     cost?: number;
     discount?: number;                    // Discount on delivery cost
@@ -333,21 +376,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get dealer record from Clerk user ID
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1);
-
-    if (dealerResult.length === 0) {
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Dealer record not found' 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
       }, { status: 404 });
     }
 
-    const dealerId = dealerResult[0].id;
+    const dealerId = dealerIdResult.dealerId!;
 
     const { searchParams } = new URL(request.url);
     const saleId = searchParams.get('saleId');
@@ -482,18 +520,18 @@ export async function GET(request: NextRequest) {
       existingInvoice = existingInvoiceResult[0] || null;
     }
 
-    // 8. Build comprehensive invoice data structure
+    // 7. Build comprehensive invoice data structure
     const invoiceData: ComprehensiveInvoiceData = {
       // Meta Information - Enhanced mapping
-      invoiceNumber: existingInvoice?.invoiceNumber || `INV-${stockId || 'DRAFT'}-${Date.now()}`,
+      invoiceNumber: existingInvoice?.invoiceNumber || `INV-${stockData?.registration || saleDetailsData?.registration || stockId || 'DRAFT'}-${Date.now()}`,
       invoiceDate: saleDetailsData?.saleDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-      saleType: (existingInvoice?.saleType as any) || 'Retail',
-      invoiceType: ((existingInvoice?.saleType as any) === 'Trade') ? 'Trade Invoice' : 'Retail (Customer) Invoice',
-      invoiceTo: (existingInvoice?.invoiceTo as any) || 'Customer',
+      saleType: (existingInvoice?.saleType as 'Retail' | 'Trade' | 'Commercial') || 'Retail',
+      invoiceType: ((existingInvoice?.saleType as 'Retail' | 'Trade' | 'Commercial') === 'Trade') ? 'Trade Invoice' : 'Retail (Customer) Invoice',
+      invoiceTo: (existingInvoice?.invoiceTo as 'Finance Company' | 'Customer') || 'Customer',
       
       // Company Information
       companyInfo: {
-        name: companyData?.companyName || 'Your Company Name',
+        name: companyData?.companyName || '',
         address: {
           street: companyData?.addressStreet || '',
           city: companyData?.addressCity || '',
@@ -506,128 +544,133 @@ export async function GET(request: NextRequest) {
           email: companyData?.contactEmail || '',
           website: companyData?.contactWebsite || '',
         },
+        payment: {
+          bankName: companyData?.bankName || '',
+          bankSortCode: companyData?.bankSortCode || '',
+          bankAccountNumber: companyData?.bankAccountNumber || '',
+          bankAccountName: companyData?.bankAccountName || '',
+          bankIban: companyData?.bankIban || '',
+          bankSwiftCode: companyData?.bankSwiftCode || '',
+        },
         vatNumber: companyData?.vatNumber || '',
         registrationNumber: companyData?.registrationNumber || '',
         logo: companyData?.companyLogoPublicUrl || '',
+        qrCode: companyData?.qrCodePublicUrl || '',
       },
       
-      // Customer Information - Enhanced mapping from sale details
+      // Customer Information - From sale details only
       customer: {
         title: existingInvoice?.customerTitle || '',
         firstName: saleDetailsData?.firstName || '',
         middleName: existingInvoice?.customerMiddleName || '',
         lastName: saleDetailsData?.lastName || '',
-        address: {
-          firstLine: saleDetailsData?.addressFirstLine || '',
-          secondLine: '',
-          city: '',
-          county: '',
-          postCode: saleDetailsData?.addressPostCode || '',
-          country: 'United Kingdom',
-        },
+        address: (() => {
+          const postCode = saleDetailsData?.addressPostCode || '';
+          const { city, county } = getCityAndCountyFromPostcode(postCode);
+          
+          return {
+            firstLine: saleDetailsData?.addressFirstLine || '',
+            secondLine: '',
+            city: city || '',
+            county: county || '',
+            postCode: postCode,
+            country: 'United Kingdom',
+          };
+        })(),
         contact: {
           phone: saleDetailsData?.contactNumber || '',
           email: saleDetailsData?.emailAddress || '',
         },
         flags: {
           vulnerabilityMarker: saleDetailsData?.vulnerabilityMarker || false,
-          gdprConsent: false,
-          salesMarketingConsent: false,
+          gdprConsent: saleDetailsData?.gdprConsent || false,
+          salesMarketingConsent: saleDetailsData?.salesMarketingConsent || false,
         },
       },
       
       // Vehicle Information - Enhanced mapping from multiple sources
       vehicle: {
-        registration: saleDetailsData?.registration || stockId || '',
-        make: existingInvoice?.make || '',
-        model: existingInvoice?.model || '',
-        derivative: existingInvoice?.derivative || '',
-        mileage: '',
-        engineNumber: existingInvoice?.engineNumber || '',
-        engineCapacity: existingInvoice?.engineCapacity || '',
-        vin: existingInvoice?.vin || '',
-        firstRegDate: existingInvoice?.firstRegDate?.toISOString().split('T')[0] || '',
-        colour: existingInvoice?.colour || '',
-        fuelType: existingInvoice?.fuelType || '',
+        registration: stockData?.registration || saleDetailsData?.registration || stockId || '',
+        make: stockData?.make || existingInvoice?.make || '',
+        model: stockData?.model || existingInvoice?.model || '',
+        derivative: stockData?.derivative || existingInvoice?.derivative || '',
+        mileage: stockData?.odometerReadingMiles?.toString() || '',
+        engineNumber: existingInvoice?.engineNumber || (stockData?.vehicleData as VehicleData)?.engineNumber || '',
+        engineCapacity: existingInvoice?.engineCapacity || (() => {
+          const vehicleData = stockData?.vehicleData as VehicleData;
+          // Try badgeEngineSizeLitres first (e.g., 2.0L), then engineCapacityCC (e.g., 1998cc)
+          if (vehicleData?.badgeEngineSizeLitres) {
+            return `${vehicleData.badgeEngineSizeLitres}L`;
+          } else if (vehicleData?.engineCapacityCC) {
+            return `${vehicleData.engineCapacityCC}cc`;
+          }
+          return '';
+        })(),
+        vin: stockData?.vin || existingInvoice?.vin || '',
+        firstRegDate: stockData?.yearOfManufacture ? `${stockData.yearOfManufacture}-01-01` : existingInvoice?.firstRegDate?.toISOString().split('T')[0] || '',
+        colour: (stockData?.vehicleData as VehicleData)?.colour || existingInvoice?.colour || '',
+        fuelType: stockData?.fuelType || existingInvoice?.fuelType || '',
       },
       
-      // Financial Information - Enhanced mapping from sale details
+      // Financial Information - Enhanced mapping from sale details and stock cache
       pricing: {
-        salePrice: parseFloat(saleDetailsData?.salePrice?.toString() || '0'),
-        salePricePostDiscount: parseFloat(saleDetailsData?.salePrice?.toString() || '0'),
+        salePrice: parseFloat(saleDetailsData?.salePrice?.toString() || stockData?.forecourtPriceGBP?.toString() || '0'),
+        salePricePostDiscount: parseFloat(saleDetailsData?.salePrice?.toString() || stockData?.forecourtPriceGBP?.toString() || '0'),
         discountOnSalePrice: 0,
         warrantyPrice: 0,
         warrantyPricePostDiscount: 0,
         discountOnWarranty: 0,
         // Enhanced warranty pricing fields
-        enhancedWarrantyPrice: parseFloat((existingInvoice?.additionalData as any)?.enhancedWarrantyPrice?.toString() || '0'),
-        enhancedWarrantyPricePostDiscount: parseFloat((existingInvoice?.additionalData as any)?.enhancedWarrantyPricePostDiscount?.toString() || '0'),
-        discountOnEnhancedWarranty: parseFloat((existingInvoice?.additionalData as any)?.discountOnEnhancedWarrantyPrice?.toString() || '0'),
+        enhancedWarrantyPrice: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.enhancedWarrantyPrice?.toString() || '0'),
+        enhancedWarrantyPricePostDiscount: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.enhancedWarrantyPricePostDiscount?.toString() || '0'),
+        discountOnEnhancedWarranty: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.discountOnEnhancedWarrantyPrice?.toString() || '0'),
         // Delivery pricing fields
-        deliveryCost: parseFloat((existingInvoice?.additionalData as any)?.deliveryCost?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
-        discountOnDelivery: parseFloat((existingInvoice?.additionalData as any)?.discountOnDelivery?.toString() || '0'),
-        deliveryCostPostDiscount: parseFloat((existingInvoice?.additionalData as any)?.deliveryCostPostDiscount?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
+        deliveryCost: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.deliveryCost?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
+        discountOnDelivery: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.discountOnDelivery?.toString() || '0'),
+        deliveryCostPostDiscount: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.deliveryCostPostDiscount?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
         compulsorySaleDepositFinance: 0,
         compulsorySaleDepositCustomer: 0,
         amountPaidDepositFinance: 0,
         amountPaidDepositCustomer: 0,
       },
       
-      // Payment Breakdown - Enhanced mapping
+      // Payment Breakdown - Initialize empty for manual entry in invoice
       payment: {
-        method: saleDetailsData?.paymentMethod || 'cash',
+        method: 'cash',
         breakdown: {
-          // Multiple payment entries (load from existing invoice or initialize with sale data)
+          // Multiple payment entries - initialize empty for manual entry
           cardPayments: (() => {
-            // First try to get from existing invoice additionalData
-            const existingCardPayments = (existingInvoice?.additionalData as any)?.cardPayments;
+            // Try to get from existing invoice additionalData
+            const existingCardPayments = (existingInvoice?.additionalData as AdditionalInvoiceData)?.cardPayments;
             if (existingCardPayments && Array.isArray(existingCardPayments) && existingCardPayments.length > 0) {
               return existingCardPayments;
             }
-            
-            // If no existing data, initialize with empty array (will be populated by form data if available)
             return [{ amount: 0, date: '' }];
           })(),
           bacsPayments: (() => {
-            // First try to get from existing invoice additionalData
-            const existingBacsPayments = (existingInvoice?.additionalData as any)?.bacsPayments;
+            // Try to get from existing invoice additionalData
+            const existingBacsPayments = (existingInvoice?.additionalData as AdditionalInvoiceData)?.bacsPayments;
             if (existingBacsPayments && Array.isArray(existingBacsPayments) && existingBacsPayments.length > 0) {
               return existingBacsPayments;
             }
-            
-            // If no existing data, check if there's single BACS amount from sale details
-            const bacsAmount = parseFloat(saleDetailsData?.bacsAmount?.toString() || '0');
-            if (bacsAmount > 0) {
-              return [{ amount: bacsAmount, date: '' }];
-            }
-            
-            // Default to empty array
             return [{ amount: 0, date: '' }];
           })(),
           cashPayments: (() => {
-            // First try to get from existing invoice additionalData
-            const existingCashPayments = (existingInvoice?.additionalData as any)?.cashPayments;
+            // Try to get from existing invoice additionalData
+            const existingCashPayments = (existingInvoice?.additionalData as AdditionalInvoiceData)?.cashPayments;
             if (existingCashPayments && Array.isArray(existingCashPayments) && existingCashPayments.length > 0) {
               return existingCashPayments;
             }
-            
-            // If no existing data, check if there's single cash amount from sale details
-            const cashAmount = parseFloat(saleDetailsData?.cashAmount?.toString() || '0');
-            if (cashAmount > 0) {
-              return [{ amount: cashAmount, date: '' }];
-            }
-            
-            // Default to empty array
             return [{ amount: 0, date: '' }];
           })(),
-          // Legacy single payment fields (calculated totals)
-          cashAmount: parseFloat(saleDetailsData?.cashAmount?.toString() || '0'),
-          bacsAmount: parseFloat(saleDetailsData?.bacsAmount?.toString() || '0'),
+          // Initialize all payment fields as 0 for manual entry
+          cashAmount: 0,
+          bacsAmount: 0,
           cardAmount: 0,
-          financeAmount: parseFloat(saleDetailsData?.financeAmount?.toString() || '0'),
-          depositAmount: parseFloat(saleDetailsData?.depositAmount?.toString() || '0'),
-          partExAmount: parseFloat(saleDetailsData?.partExAmount?.toString() || '0'),
-          // Initialize payment dates (legacy)
+          financeAmount: 0,
+          depositAmount: 0,
+          partExAmount: 0,
+          // Initialize payment dates as empty
           cashDate: '',
           bacsDate: '',
           cardDate: '',
@@ -635,9 +678,9 @@ export async function GET(request: NextRequest) {
           depositDate: '',
           partExDate: '',
         },
-        totalBalance: parseFloat(saleDetailsData?.salePrice?.toString() || '0'),
+        totalBalance: parseFloat(saleDetailsData?.salePrice?.toString() || stockData?.forecourtPriceGBP?.toString() || '0'),
         outstandingBalance: 0,
-        balanceToFinance: parseFloat(saleDetailsData?.financeAmount?.toString() || '0'),
+        balanceToFinance: 0,
         customerBalanceDue: 0,
         partExchange: undefined,
       },
@@ -650,14 +693,14 @@ export async function GET(request: NextRequest) {
       
       // Warranty Information - Enhanced mapping
       warranty: {
-        level: existingInvoice?.warrantyLevel || 'None Selected',
+        level: existingInvoice?.warrantyLevel || '',
         inHouse: (saleDetailsData?.warrantyType === 'in_house') || false,
         details: existingInvoice?.warrantyDetails || '',
-        type: (saleDetailsData?.warrantyType as any) || 'none',
+        type: (saleDetailsData?.warrantyType as 'none' | 'in_house' | 'third_party') || 'none',
         // Enhanced warranty fields
-        enhanced: (existingInvoice?.additionalData as any)?.enhancedWarranty === 'Yes' || false,
-        enhancedLevel: (existingInvoice?.additionalData as any)?.enhancedWarrantyLevel || '',
-        enhancedDetails: (existingInvoice?.additionalData as any)?.enhancedWarrantyDetails || '',
+        enhanced: (existingInvoice?.additionalData as AdditionalInvoiceData)?.enhancedWarranty === 'Yes' || false,
+        enhancedLevel: (existingInvoice?.additionalData as AdditionalInvoiceData)?.enhancedWarrantyLevel || '',
+        enhancedDetails: (existingInvoice?.additionalData as AdditionalInvoiceData)?.enhancedWarrantyDetails || '',
       },
       
       // Add-ons - Enhanced mapping from sale details
@@ -676,11 +719,11 @@ export async function GET(request: NextRequest) {
       
       // Delivery Information - Enhanced mapping
       delivery: {
-        type: (saleDetailsData?.deliveryType === 'delivery') ? 'Delivery' : 'Collection',
+        type: (saleDetailsData?.deliveryType === 'delivery') ? 'delivery' : 'collection',
         date: saleDetailsData?.deliveryDate?.toISOString().split('T')[0] || '',
-        cost: parseFloat((existingInvoice?.additionalData as any)?.deliveryCost?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
-        discount: parseFloat((existingInvoice?.additionalData as any)?.discountOnDelivery?.toString() || '0'),
-        postDiscountCost: parseFloat((existingInvoice?.additionalData as any)?.deliveryCostPostDiscount?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
+        cost: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.deliveryCost?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
+        discount: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.discountOnDelivery?.toString() || '0'),
+        postDiscountCost: parseFloat((existingInvoice?.additionalData as AdditionalInvoiceData)?.deliveryCostPostDiscount?.toString() || saleDetailsData?.deliveryPrice?.toString() || '0'),
         address: saleDetailsData?.deliveryAddress || '',
       },
       
@@ -696,18 +739,18 @@ export async function GET(request: NextRequest) {
       // Vehicle Checklist - Enhanced mapping from multiple data sources
       checklist: {
         // Map mileage from stock cache first, then checklist metadata
-        mileage: stockData?.odometerReadingMiles?.toString() || (checklistData?.metadata as any)?.mileage || '',
+        mileage: stockData?.odometerReadingMiles?.toString() || (checklistData?.metadata as ChecklistMetadata)?.mileage || '',
         numberOfKeys: checklistData?.numberOfKeys || '2', // Default to 2 keys
         userManual: checklistData?.userManual || 'Not Present',
         serviceHistoryRecord: checklistData?.serviceBook || 'Unknown',
         wheelLockingNut: checklistData?.wheelLockingNut || 'Not Present',
-        cambeltChainConfirmation: checklistData?.cambeltChainConfirmation || 'Not Confirmed',
-        vehicleInspectionTestDrive: (checklistData?.metadata as any)?.vehicleInspectionTestDrive || 'Not Completed',
-        dealerPreSaleCheck: (checklistData?.metadata as any)?.dealerPreSaleCheck || 'Not Completed',
+        cambeltChainConfirmation: checklistData?.cambeltChainConfirmation || 'No',
+        vehicleInspectionTestDrive: (checklistData?.metadata as ChecklistMetadata)?.vehicleInspectionTestDrive || 'No',
+        dealerPreSaleCheck: (checklistData?.metadata as ChecklistMetadata)?.dealerPreSaleCheck || 'No',
         // Map fuel type from stock cache first, then other sources
-        fuelType: stockData?.fuelType || (checklistData?.metadata as any)?.fuelType || 'Petrol',
+        fuelType: stockData?.fuelType || (checklistData?.metadata as ChecklistMetadata)?.fuelType || 'Petrol',
         // Additional checklist fields from metadata
-        serviceHistory: (checklistData?.metadata as any)?.serviceHistory || 'Not Available',
+        serviceHistory: (checklistData?.metadata as ChecklistMetadata)?.serviceHistory || 'Not Available',
         completionPercentage: checklistData?.completionPercentage || 0,
         isComplete: checklistData?.isComplete || false,
       },
@@ -802,21 +845,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get dealer record from Clerk user ID
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1);
-
-    if (dealerResult.length === 0) {
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user);
+    if (!dealerIdResult.success) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Dealer record not found' 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
       }, { status: 404 });
     }
 
-    const dealerId = dealerResult[0].id;
+    const dealerId = dealerIdResult.dealerId!;
 
     const body = await request.json();
     const { stockId, invoiceData }: { stockId: string; invoiceData: Partial<ComprehensiveInvoiceData> } = body;
@@ -846,7 +884,7 @@ export async function POST(request: NextRequest) {
     const dbInvoiceData = {
       stockId,
       dealerId,
-      invoiceNumber: invoiceData.invoiceNumber || `INV-${stockId || 'DRAFT'}-${Date.now()}`,
+      invoiceNumber: invoiceData.invoiceNumber || `INV-${invoiceData.vehicle?.registration || stockId || 'DRAFT'}-${Date.now()}`,
       invoiceTo: invoiceData.invoiceTo || 'Customer',
       saleType: invoiceData.saleType || 'Retail',
       
@@ -889,7 +927,7 @@ export async function POST(request: NextRequest) {
       financeCompanyName: invoiceData.financeCompany?.companyName || '',
       
       // Warranty Information
-      warrantyLevel: invoiceData.warranty?.level || 'None Selected',
+      warrantyLevel: invoiceData.warranty?.level || '',
       warrantyPrice: (invoiceData.pricing?.warrantyPrice || 0).toString(),
       warrantyDetails: invoiceData.warranty?.details || '',
       
@@ -961,7 +999,7 @@ export async function POST(request: NextRequest) {
         customerAddon2Cost: invoiceData.addons?.customer?.addon2?.cost || 0,
         
         // Delivery
-        deliveryType: invoiceData.delivery?.type || 'Collection',
+        deliveryType: invoiceData.delivery?.type || 'collection',
         deliveryCost: invoiceData.delivery?.cost || 0,
         discountOnDelivery: invoiceData.delivery?.discount || 0,
         deliveryCostPostDiscount: invoiceData.delivery?.postDiscountCost || invoiceData.delivery?.cost || 0,
@@ -999,149 +1037,37 @@ export async function POST(request: NextRequest) {
     console.log('✅ Invoice data saved successfully:', result[0]);
 
     // ==========================================
-    // BIDIRECTIONAL SYNC: Update source tables
+    // BIDIRECTIONAL SYNC: Use proper sync service
     // ==========================================
     
     console.log('🔄 Starting bidirectional sync for stockId:', stockId);
     
     try {
-      // 1. Sync Sales Details
-      if (invoiceData.sale || invoiceData.customer || invoiceData.pricing) {
-        console.log('📝 Syncing sales details...');
+      // Use the sync service which handles:
+      // 1. Customer creation/update in CRM
+      // 2. Sales details sync with payment aggregation
+      // 3. Proper data validation and error handling
+      // Only sync if we have complete invoice data
+      if (invoiceData.invoiceNumber && invoiceData.invoiceDate && invoiceData.saleType) {
+        const syncResult = await syncInvoiceData(dealerId, stockId, invoiceData as ComprehensiveInvoiceData);
         
-        // Check if sale details exist
-        const existingSaleResult = await db
-          .select()
-          .from(saleDetails)
-          .where(and(
-            eq(saleDetails.stockId, stockId),
-            eq(saleDetails.dealerId, dealerId)
-          ))
-          .limit(1);
-
-        const saleUpdateData = {
-          // Sale information
-          saleDate: invoiceData.sale?.date ? new Date(invoiceData.sale.date) : undefined,
-          salePrice: invoiceData.pricing?.salePrice?.toString(),
-          monthOfSale: invoiceData.sale?.monthOfSale,
-          quarterOfSale: invoiceData.sale?.quarterOfSale,
-          
-          // Customer information
-          firstName: invoiceData.customer?.firstName,
-          lastName: invoiceData.customer?.lastName,
-          emailAddress: invoiceData.customer?.contact?.email,
-          contactNumber: invoiceData.customer?.contact?.phone,
-          addressFirstLine: invoiceData.customer?.address?.firstLine,
-          addressPostCode: invoiceData.customer?.address?.postCode,
-          
-          // Delivery information
-          deliveryType: invoiceData.delivery?.type,
-          deliveryPrice: invoiceData.delivery?.cost?.toString(),
-          deliveryDate: invoiceData.delivery?.date ? new Date(invoiceData.delivery.date) : undefined,
-          
-          // Payment information
-          paymentMethod: invoiceData.payment?.method || 'cash',
-          depositAmount: (invoiceData.pricing?.amountPaidDepositFinance || invoiceData.pricing?.amountPaidDepositCustomer)?.toString(),
-          
-          updatedAt: new Date()
-        };
-
-        // Remove undefined values
-        const cleanSaleUpdateData = Object.fromEntries(
-          Object.entries(saleUpdateData).filter(([_, value]) => value !== undefined)
-        );
-
-        if (Object.keys(cleanSaleUpdateData).length > 1) { // More than just updatedAt
-          if (existingSaleResult.length > 0) {
-            await db
-              .update(saleDetails)
-              .set(cleanSaleUpdateData)
-              .where(and(
-                eq(saleDetails.stockId, stockId),
-                eq(saleDetails.dealerId, dealerId)
-              ));
-            console.log('✅ Sales details updated');
-          } else {
-            // Create new sale details if they don't exist
-            await db
-              .insert(saleDetails)
-              .values({
-                stockId,
-                dealerId,
-                saleDate: new Date(), // Required field
-                ...cleanSaleUpdateData
-              });
-            console.log('✅ Sales details created');
-          }
+        if (syncResult.success) {
+          console.log('✅ Invoice sync completed successfully:', {
+            customerId: syncResult.customerId,
+            saleDetailsId: syncResult.saleDetailsId
+          });
+        } else {
+          console.log('⚠️ Invoice sync completed with issues:', {
+            errors: syncResult.errors,
+            warnings: syncResult.warnings
+          });
         }
+      } else {
+        console.log('⚠️ Skipping sync - invoice data is incomplete');
       }
 
-      // 2. Sync Vehicle Checklist
-      if (invoiceData.checklist) {
-        console.log('📝 Syncing vehicle checklist...');
-        
-        // Check if checklist exists
-        const existingChecklistResult = await db
-          .select()
-          .from(vehicleChecklist)
-          .where(and(
-            eq(vehicleChecklist.stockId, stockId),
-            eq(vehicleChecklist.dealerId, dealerId)
-          ))
-          .limit(1);
-
-        const checklistUpdateData = {
-          numberOfKeys: invoiceData.checklist.numberOfKeys,
-          userManual: invoiceData.checklist.userManual,
-          serviceBook: invoiceData.checklist.serviceHistoryRecord,
-          wheelLockingNut: invoiceData.checklist.wheelLockingNut,
-          cambeltChainConfirmation: invoiceData.checklist.cambeltChainConfirmation,
-          
-          // Update metadata with additional checklist fields
-          metadata: {
-            mileage: invoiceData.checklist.mileage,
-            vehicleInspectionTestDrive: invoiceData.checklist.vehicleInspectionTestDrive,
-            dealerPreSaleCheck: invoiceData.checklist.dealerPreSaleCheck,
-            fuelType: invoiceData.checklist.fuelType,
-            serviceHistory: invoiceData.checklist.serviceHistory,
-            // Preserve existing metadata if any
-            ...(existingChecklistResult[0]?.metadata as any || {})
-          },
-          
-          updatedAt: new Date()
-        };
-
-        // Remove undefined values
-        const cleanChecklistUpdateData = Object.fromEntries(
-          Object.entries(checklistUpdateData).filter(([_, value]) => value !== undefined)
-        );
-
-        if (Object.keys(cleanChecklistUpdateData).length > 1) { // More than just updatedAt
-          if (existingChecklistResult.length > 0) {
-            await db
-              .update(vehicleChecklist)
-              .set(cleanChecklistUpdateData)
-              .where(and(
-                eq(vehicleChecklist.stockId, stockId),
-                eq(vehicleChecklist.dealerId, dealerId)
-              ));
-            console.log('✅ Vehicle checklist updated');
-          } else {
-            // Create new checklist if it doesn't exist
-            await db
-              .insert(vehicleChecklist)
-              .values({
-                stockId,
-                dealerId,
-                registration: invoiceData.vehicle?.registration,
-                ...cleanChecklistUpdateData
-              });
-            console.log('✅ Vehicle checklist created');
-          }
-        }
-      }
-
-      console.log('✅ Bidirectional sync completed successfully');
+      // Note: Vehicle checklist sync could be added to the sync service if needed
+      // For now, keeping checklist separate as it's specific to invoice workflow
       
     } catch (syncError) {
       console.error('⚠️ Error during bidirectional sync (non-critical):', syncError);

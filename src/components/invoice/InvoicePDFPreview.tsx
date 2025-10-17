@@ -7,7 +7,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { ComprehensiveInvoiceData } from "@/app/api/invoice-data/route";
-import { useTheme } from "@/contexts/ThemeContext";
+import Image from 'next/image';
 
 interface InvoicePDFPreviewProps {
   invoiceData: ComprehensiveInvoiceData;
@@ -15,7 +15,6 @@ interface InvoicePDFPreviewProps {
 }
 
 export default function InvoicePDFPreview({ invoiceData, className = '' }: InvoicePDFPreviewProps) {
-  const { isDarkMode } = useTheme();
   const [currentPage, setCurrentPage] = useState(1);
 
   // Local calculation functions to match PDF
@@ -41,7 +40,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
         : 0;
     })();
-    
+
     // Finance addons - exclude for trade sales and only include for Finance Company invoices
     const financeAddon1Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
     const financeAddon2Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
@@ -96,33 +95,36 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     return invoiceData.payment.customerBalanceDue ?? invoiceData.payment.outstandingBalance ?? 0;
   };
 
+
   // Helper function to render HTML content with proper formatting for preview
   const renderHTMLContentForPreview = (htmlContent: string, fontSize: number = 12) => {
     if (!htmlContent) return null;
     
     return (
       <div 
-        className={`invoice-pdf-preview-content leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-700'}`}
+        className="invoice-pdf-preview-content leading-relaxed text-gray-700"
         style={{
           fontSize: `${fontSize}px`, // Use proper font size matching PDF
           lineHeight: '1.4', // Better line height for readability
-          fontFamily: 'Century Gothic, Arial, sans-serif'
+          fontFamily: 'Century Gothic, Arial, sans-serif',
+          color: '#374151' // Force gray-700 color regardless of theme
         }}
         dangerouslySetInnerHTML={{ __html: `
           <style>
+            .invoice-pdf-preview-content * { color: #374151 !important; } /* Force all text to be dark gray */
             .invoice-pdf-preview-content table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: ${fontSize}px; }
-            .invoice-pdf-preview-content th { background-color: #f3f4f6; padding: 8px; border: 1px solid #d1d5db; font-weight: bold; text-align: left; font-size: ${fontSize + 2}px; }
-            .invoice-pdf-preview-content td { padding: 8px; border: 1px solid #d1d5db; font-size: ${fontSize}px; }
-            .invoice-pdf-preview-content h1, .invoice-pdf-preview-content h2, .invoice-pdf-preview-content h3 { font-weight: bold; margin: 16px 0 8px 0; font-family: 'Century Gothic', Arial, sans-serif; }
+            .invoice-pdf-preview-content th { background-color: #f3f4f6; padding: 8px; border: 1px solid #d1d5db; font-weight: bold; text-align: left; font-size: ${fontSize + 2}px; color: #374151 !important; }
+            .invoice-pdf-preview-content td { padding: 8px; border: 1px solid #d1d5db; font-size: ${fontSize}px; color: #374151 !important; }
+            .invoice-pdf-preview-content h1, .invoice-pdf-preview-content h2, .invoice-pdf-preview-content h3 { font-weight: bold; margin: 16px 0 8px 0; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
             .invoice-pdf-preview-content h1 { font-size: ${fontSize + 4}px; }
             .invoice-pdf-preview-content h2 { font-size: ${fontSize + 2}px; }
             .invoice-pdf-preview-content h3 { font-size: ${fontSize}px; }
-            .invoice-pdf-preview-content p { margin-bottom: 8px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; }
+            .invoice-pdf-preview-content p { margin-bottom: 8px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
             .invoice-pdf-preview-content ul { margin-left: 16px; margin-bottom: 8px; }
-            .invoice-pdf-preview-content li { margin-bottom: 4px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; }
-            .invoice-pdf-preview-content strong, .invoice-pdf-preview-content b { font-weight: bold; }
+            .invoice-pdf-preview-content li { margin-bottom: 4px; font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
+            .invoice-pdf-preview-content strong, .invoice-pdf-preview-content b { font-weight: bold; color: #374151 !important; }
             .invoice-pdf-preview-content br { line-height: 1.4; }
-            .invoice-pdf-preview-content div { font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; }
+            .invoice-pdf-preview-content div { font-size: ${fontSize}px; line-height: 1.4; font-family: 'Century Gothic', Arial, sans-serif; color: #374151 !important; }
           </style>
           ${htmlContent}
         ` }}
@@ -160,13 +162,13 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
       { 
         id: 6, 
         title: 'External Warranty', 
-        description: 'External warranty information (Evolution Warranties)',
+        description: `External warranty information (${invoiceData.warranty.name || ''})`,
         visible: !invoiceData.warranty.inHouse && invoiceData.warranty.level !== 'None Selected'
       }
     ];
 
     return pages.filter(page => page.visible);
-  }, [invoiceData.saleType, invoiceData.invoiceType, invoiceData.warranty.inHouse, invoiceData.warranty.level]);
+  }, [invoiceData.saleType, invoiceData.invoiceType, invoiceData.warranty.inHouse, invoiceData.warranty.level, invoiceData.warranty.name]);
 
   const totalPages = visiblePages.length;
 
@@ -187,7 +189,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 1 - Invoice Core
   const renderPage1 = () => (
-    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ 
+    <div className="bg-white w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
       fontFamily: 'Century Gothic, Arial, sans-serif', 
       fontSize: '7px', 
       lineHeight: '1.1',
@@ -337,6 +339,14 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           </div>
         )}
       </div>
+
+      {/* Thin grey line separator below customer details */}
+      <div style={{ 
+        height: '1px', 
+        backgroundColor: '#d0d0d0', 
+        marginTop: '4px', 
+        marginBottom: '4px' 
+      }} />
 
       {/* Vehicle Information Table - Match PDF Structure */}
       <div style={{ marginBottom: '6px' }}>
@@ -625,27 +635,27 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             })()}
           </>
         )}
-
         {/* Delivery Cost */}
-        {((invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) > 0) && (
+        {(invoiceData.delivery.type === 'delivery') && (
+        // {((invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0) > 0 || (invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) > 0) && (
           <div style={{ 
             display: 'flex', 
             paddingTop: '2px',
             paddingBottom: '2px',
             borderBottom: '1px solid #ccc'
           }}>
-            <div style={{ fontSize: '7px', flex: '3', textAlign: 'left' }}>
+            <div style={{ fontSize: '7px', flex: '3', textAlign: 'left', fontWeight: '600' }}>
               Delivery Cost
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-              {formatCurrency(invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0)}
+              {formatCurrency(invoiceData.delivery?.cost ?? invoiceData.pricing?.deliveryCost ??  0)}
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'center' }}>1</div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
-              {(invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) > 0 ? formatCurrency(invoiceData.pricing?.discountOnDelivery ?? invoiceData.delivery?.discount ?? 0) : '-'}
+              {(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) > 0 ? formatCurrency(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) : '-'}
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-              {formatCurrency(invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? 0)}
+              {formatCurrency(invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? 0)}
             </div>
           </div>
         )}
@@ -868,7 +878,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 DEPOSIT DUE:
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
-                {formatCurrency(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0)}
+                {/* {formatCurrency(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0)} */}
+                {formatCurrency(((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0))}
               </div>
             </div>
             
@@ -885,10 +896,21 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 })()}
               </div>
             </div>
-            
+
+
+            {((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0)) > 0 && <div style={{ display: 'flex', marginBottom: '2px' }}>
+              <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
+                REMAINING DEPOSIT AMOUNT:
+              </div>
+              <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
+                {formatCurrency((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+              </div>
+            </div>}
+
+
             <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
-                DATE OF COLLECTION (ESTIMATED):
+                DATE OF {invoiceData.delivery.type === 'collection' ? 'COLLECTION' : 'DELIVERY'} (ESTIMATED):
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
                 {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
@@ -939,6 +961,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   ((invoiceData.payment?.breakdown?.cashPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0)) +
                   // Add overpayment as Vehicle Reservation Fees ONLY when there's an overpayment (Finance)
                   (invoiceData.invoiceTo === 'Finance Company' && (invoiceData.pricing?.overpaymentsFinance || 0) > 0 ? (invoiceData.pricing?.overpaymentsFinance || 0) : 0) +
+                  // (invoiceData.invoiceTo === 'Finance Company' && (invoiceData.pricing?.overpaymentsFinance || 0) > 0 ? (invoiceData.pricing?.overpaymentsFinance || 0) : 0) +
                   // Add overpayment as Additional Deposit Payment for Customer invoices
                   (invoiceData.invoiceTo === 'Customer' && (invoiceData.pricing?.overpaymentsCustomer || 0) > 0 ? (invoiceData.pricing?.overpaymentsCustomer || 0) : 0)
                 )}
@@ -1171,12 +1194,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ fontSize: '7px' }}>
             {invoiceData.companyInfo.name}
           </div>
-          <div style={{ fontSize: '7px' }}>
-            20-63-28
-          </div>
-          <div style={{ fontSize: '7px' }}>
-            73828913
-          </div>
+          {invoiceData.companyInfo.payment?.bankSortCode && (
+            <div style={{ fontSize: '7px' }}>
+              {invoiceData.companyInfo.payment.bankSortCode}
+            </div>
+          )}
+          {invoiceData.companyInfo.payment?.bankAccountNumber && (
+            <div style={{ fontSize: '7px' }}>
+              {invoiceData.companyInfo.payment.bankAccountNumber}
+            </div>
+          )}
           <div style={{ fontSize: '7px' }}>
             Ref - {invoiceData.invoiceNumber}
           </div>
@@ -1191,24 +1218,36 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
         {/* Right Column - QR Code */}
         <div style={{ flex: '1', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-          <div style={{ 
-            width: '60px', 
-            height: '60px', 
-            border: '1px solid #ddd',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f9f9f9'
-          }}>
+          {invoiceData.companyInfo.qrCode ? (
+            <Image 
+              src={invoiceData.companyInfo.qrCode} 
+              alt="QR Code" 
+              width={60}
+              height={60}
+              style={{ 
+                objectFit: 'contain'
+              }}
+            />
+          ) : (
             <div style={{ 
-              fontSize: '7px', 
-              textAlign: 'center',
-              color: '#000',
-              fontWeight: 'normal'
+              width: '60px', 
+              height: '60px', 
+              border: '1px solid #ddd',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f9f9f9'
             }}>
-              QR Code
+              <div style={{ 
+                fontSize: '7px', 
+                textAlign: 'center',
+                color: '#000',
+                fontWeight: 'normal'
+              }}>
+                QR Code
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -1216,7 +1255,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 2 - Checklist or Trade Disclaimer
   const renderPage2 = () => (
-    <div className="bg-white w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ 
+    <div className="bg-white w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ 
       fontFamily: 'Century Gothic, Arial, sans-serif', 
       fontSize: '7px', 
       lineHeight: '1.1',
@@ -1273,7 +1312,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <div style={{ textAlign: 'left', fontSize: '10px' }}>
-                {invoiceData.delivery?.type === 'Delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
+                {invoiceData.delivery?.type === 'delivery' ? 'DATE OF DELIVERY:' : 'DATE OF COLLECTION:'}
               </div>
               <div style={{ textAlign: 'right', fontSize: '10px' }}>
                 {invoiceData.delivery?.date ? new Date(invoiceData.delivery.date).toLocaleDateString('en-GB') : ''}
@@ -1347,7 +1386,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 CAMBELT/CHAIN CONFIRMATION:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.cambeltChainConfirmation ? 'YES' : 'NO'}
+                {invoiceData.checklist?.cambeltChainConfirmation === 'Yes' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1371,10 +1410,10 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             
             <div style={{ display: 'flex', marginBottom: '4px' }}>
               <div style={{ flex: '1', textAlign: 'right', paddingRight: '8px', fontSize: '7px' }}>
-                SERVICE HISTORY RECORD PRESENT:
+                SERVICE BOOK:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.serviceHistoryRecord ? 'YES' : 'NO'}
+                {invoiceData.checklist?.serviceHistoryRecord || 'Not Available'}
               </div>
             </div>
             
@@ -1383,7 +1422,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 USER MANUAL:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.userManual ? 'YES' : 'NO'}
+                {invoiceData.checklist?.userManual === 'Present' || invoiceData.checklist?.userManual === 'Digital Copy Available' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1392,7 +1431,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 WHEEL LOCKING NUT:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.wheelLockingNut ? 'YES' : 'NO'}
+                {invoiceData.checklist?.wheelLockingNut === 'Present' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1401,7 +1440,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 VEHICLE INSPECTION & TEST DRIVE:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.vehicleInspectionTestDrive ? 'YES' : 'NO'}
+                {invoiceData.checklist?.vehicleInspectionTestDrive === 'Yes' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1410,7 +1449,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 DEALER PRE-SALE CHECK:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.dealerPreSaleCheck ? 'YES' : 'NO'}
+                {invoiceData.checklist?.dealerPreSaleCheck === 'Yes' ? 'YES' : 'NO'}
               </div>
             </div>
           </div>
@@ -1526,7 +1565,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Render Page 3 - Standard T&Cs (only for non-Trade)
   const renderPage3 = () => (
-    <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ isolation: 'isolate' }}>
+    <div className="bg-white p-8 w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
       <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>
         {invoiceData.companyInfo.name.toUpperCase()} STANDARD LIMITED TERMS AND CONDITIONS
       </h2>
@@ -1551,7 +1590,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     if (invoiceData.saleType === 'Trade') return null;
     
     return (
-      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ isolation: 'isolate' }}>
+      <div className="bg-white p-8 w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
         <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>IN-HOUSE ENGINE & TRANSMISSION WARRANTY</h2>
         <div style={{ fontSize: '7px', lineHeight: '1.4' }}>
           {invoiceData.terms.inHouseWarrantyTerms ? (
@@ -1578,8 +1617,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     if (invoiceData.saleType === 'Trade') return null;
     
     return (
-      <div className="bg-white p-8 w-full max-w-[210mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container" style={{ isolation: 'isolate' }}>
-        <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>EXTERNAL WARRANTY — EVOLUTION WARRANTIES</h2>
+      <div className="bg-white p-8 w-full max-w-[310mm] mx-auto shadow-lg min-h-[1000px] pdf-content-container invoice-pdf-light-theme" style={{ isolation: 'isolate' }}>
+        <h2 style={{ fontSize: '9px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center' }}>EXTERNAL WARRANTY{invoiceData.warranty.name ? ` — ${invoiceData.warranty.name.toUpperCase()}` : ''}</h2>
         <div style={{ fontSize: '7px', lineHeight: '1.4' }}>
           {invoiceData.terms.thirdPartyTerms ? (
             <div>{renderHTMLContentForPreview(invoiceData.terms.thirdPartyTerms, 10)}</div>
@@ -1594,7 +1633,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           )}
           
           <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '7px', color: '#000' }}>
-            <p>Evolution Warranties Ltd | Registered in England | Company Registration: [Number]</p>
+            <p>{invoiceData.warranty.name ? `${invoiceData.warranty.name} Ltd` : 'Evolution Warranties Ltd'} | Registered in England | Company Registration: [Number]</p>
             <p>Last Updated: {formatDate(new Date().toISOString())}</p>
           </div>
         </div>
@@ -1619,9 +1658,46 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
   };
 
   return (
-    <div className={`h-full flex flex-col ${className}`} style={{ isolation: 'isolate' }}>
+    <div className={`safari-preview-wrapper ${className}`} style={{ isolation: 'isolate' }}>
+      {/* Add inline styles to force light theme for PDF content */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .invoice-pdf-light-theme,
+          .invoice-pdf-light-theme * {
+            color: #374151 !important;
+          }
+          .invoice-pdf-light-theme {
+            background-color: #ffffff !important;
+          }
+          .invoice-pdf-light-theme .bg-white {
+            background-color: #ffffff !important;
+          }
+          .invoice-pdf-light-theme .text-black {
+            color: #000000 !important;
+          }
+          .invoice-pdf-light-theme .text-gray-700 {
+            color: #374151 !important;
+          }
+          .invoice-pdf-light-theme .text-gray-600 {
+            color: #4b5563 !important;
+          }
+          .invoice-pdf-light-theme .text-slate-600 {
+            color: #475569 !important;
+          }
+          /* Override any dark mode text colors specifically for PDF preview */
+          .dark .invoice-pdf-light-theme,
+          .dark .invoice-pdf-light-theme * {
+            color: #374151 !important;
+            background-color: inherit !important;
+          }
+          .dark .invoice-pdf-light-theme {
+            background-color: #ffffff !important;
+          }
+        `
+      }} />
+      
       {/* Preview Controls */}
-      <div className="flex items-center justify-between p-4 border-b bg-slate-50 dark:bg-slate-800">
+      <div className="flex items-center justify-between p-4 border-b bg-slate-50 dark:bg-slate-800 flex-shrink-0">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <Button
@@ -1683,9 +1759,9 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
       </div>
 
       {/* PDF Preview Area */}
-      <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900 p-4">
+      <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900 p-4 min-h-0">
         <div className="min-h-full flex justify-center items-start">
-          <div className="invoice-pdf-preview-wrapper w-full max-w-4xl min-h-[1000px]" style={{ 
+          <div className="invoice-pdf-preview-wrapper w-full max-w-6xl min-h-[1000px]" style={{ 
             isolation: 'isolate',
             contain: 'style layout'
           }}>

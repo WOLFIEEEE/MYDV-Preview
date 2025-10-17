@@ -153,83 +153,6 @@ function CustomerSearchModal({ isOpen, onClose, onCustomerSelect }: CustomerSear
   };
 
   // Mock customer data for fallback - In real app, this would come from API
-  const mockCustomers: Customer[] = [
-    {
-      id: "1",
-      firstName: "John",
-      lastName: "Smith",
-      email: "john.smith@email.com",
-      phone: "07123456789",
-      dateOfBirth: "1985-03-15",
-      addressLine1: "123 High Street",
-      addressLine2: "",
-      city: "London",
-      county: "Greater London",
-      postcode: "SW1A 1AA",
-      country: "United Kingdom",
-      customerSource: "manual_entry",
-      preferredContactMethod: "email",
-      status: "active",
-      tags: ["individual"],
-      marketingConsent: true,
-      salesConsent: true,
-      gdprConsent: true,
-      consentDate: "2024-01-15T10:30:00Z",
-      notes: "Interested in electric vehicles",
-      createdAt: "2024-01-15T10:30:00Z",
-      updatedAt: "2024-01-20T14:45:00Z"
-    },
-    {
-      id: "2",
-      firstName: "Sarah",
-      lastName: "Johnson",
-      email: "sarah.johnson@business.com",
-      phone: "07987654321",
-      dateOfBirth: "1990-07-22",
-      addressLine1: "456 Business Park",
-      addressLine2: "Unit 12",
-      city: "Manchester",
-      county: "Greater Manchester",
-      postcode: "M1 1AA",
-      country: "United Kingdom",
-      customerSource: "referral",
-      preferredContactMethod: "email",
-      status: "active",
-      tags: ["business"],
-      marketingConsent: false,
-      salesConsent: true,
-      gdprConsent: true,
-      consentDate: "2024-01-10T09:15:00Z",
-      notes: "Fleet manager for tech company",
-      createdAt: "2024-01-10T09:15:00Z",
-      updatedAt: "2024-01-18T11:20:00Z"
-    },
-    {
-      id: "3",
-      firstName: "Mike",
-      lastName: "Wilson",
-      email: "mike.wilson@trade.co.uk",
-      phone: "07555123456",
-      dateOfBirth: "1978-11-08",
-      addressLine1: "789 Industrial Estate",
-      addressLine2: "",
-      city: "Birmingham",
-      county: "West Midlands",
-      postcode: "B1 1AA",
-      country: "United Kingdom",
-      customerSource: "trade",
-      preferredContactMethod: "phone",
-      status: "active",
-      tags: ["trade"],
-      marketingConsent: true,
-      salesConsent: true,
-      gdprConsent: true,
-      consentDate: "2024-01-05T16:45:00Z",
-      notes: "Regular trade customer, bulk purchases",
-      createdAt: "2024-01-05T16:45:00Z",
-      updatedAt: "2024-01-22T13:30:00Z"
-    }
-  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -473,131 +396,100 @@ function CustomerSearchModal({ isOpen, onClose, onCustomerSelect }: CustomerSear
                   isDarkMode ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700' : 'bg-white border-slate-200 hover:bg-slate-50'
                 } transition-all cursor-pointer`} onClick={() => onCustomerSelect(customer)}>
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white ${
-                          customer.tags && customer.tags.includes('individual') ? 'bg-blue-600' :
-                          customer.tags && customer.tags.includes('business') ? 'bg-green-600' : 'bg-purple-600'
-                        }`}>
-                          {customer.firstName.charAt(0)}{customer.lastName.charAt(0)}
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className={`font-semibold ${
-                              isDarkMode ? 'text-white' : 'text-slate-900'
-                            }`}>
-                              {customer.firstName} {customer.lastName}
-                            </h3>
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCustomerTypeColor(customer.tags)}`}>
-                              {customer.tags && customer.tags.length > 0 ? customer.tags[0].charAt(0).toUpperCase() + customer.tags[0].slice(1) : 'Individual'}
-                            </span>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
-                            <div className={`flex items-center gap-2 ${
-                              isDarkMode ? 'text-white' : 'text-slate-600'
-                            }`}>
-                              <Mail className="w-3 h-3" />
-                              {customer.email}
-                            </div>
-                            <div className={`flex items-center gap-2 ${
-                              isDarkMode ? 'text-white' : 'text-slate-600'
-                            }`}>
-                              <Phone className="w-3 h-3" />
-                              {customer.phone}
-                            </div>
-                            <div className={`flex items-center gap-2 ${
-                              isDarkMode ? 'text-white' : 'text-slate-600'
-                            }`}>
-                              <MapPin className="w-3 h-3" />
-                              {customer.city}, {customer.postcode}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-4 mt-2">
-                            <div className="flex items-center gap-1">
-                              {customer.gdprConsent ? (
-                                <CheckCircle className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <XCircle className="w-3 h-3 text-red-500" />
-                              )}
-                              <span className={`text-xs ${
-                                isDarkMode ? 'text-white' : 'text-slate-500'
-                              }`}>GDPR</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {customer.marketingConsent ? (
-                                <CheckCircle className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <XCircle className="w-3 h-3 text-red-500" />
-                              )}
-                              <span className={`text-xs ${
-                                isDarkMode ? 'text-white' : 'text-slate-500'
-                              }`}>Marketing</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {customer.salesConsent ? (
-                                <CheckCircle className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <XCircle className="w-3 h-3 text-red-500" />
-                              )}
-                              <span className={`text-xs ${
-                                isDarkMode ? 'text-white' : 'text-slate-500'
-                              }`}>Sales</span>
-                            </div>
-                          </div>
-                        </div>
+                    <div className="flex items-start gap-4">
+                      {/* Avatar */}
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 ${
+                        customer.tags && customer.tags.includes('individual') ? 'bg-blue-600' :
+                        customer.tags && customer.tags.includes('business') ? 'bg-green-600' : 'bg-purple-600'
+                      }`}>
+                        {customer.firstName.charAt(0)}{customer.lastName.charAt(0)}
                       </div>
                       
-                      <div className="text-right">
-                        <div className={`text-xs ${
-                          isDarkMode ? 'text-white' : 'text-slate-500'
-                        }`}>
-                          Created: {formatDate(customer.createdAt)}
+                      {/* Main Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Name and Type */}
+                        <div className="flex items-center gap-3 mb-3">
+                          <h3 className={`font-semibold text-lg ${
+                            isDarkMode ? 'text-white' : 'text-slate-900'
+                          }`}>
+                            {customer.firstName} {customer.lastName}
+                          </h3>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full flex-shrink-0 ${getCustomerTypeColor(customer.tags)}`}>
+                            {customer.tags && customer.tags.length > 0 ? customer.tags[0].charAt(0).toUpperCase() + customer.tags[0].slice(1) : 'Individual'}
+                          </span>
                         </div>
-                        <div className={`text-xs ${
-                          isDarkMode ? 'text-white' : 'text-slate-500'
-                        }`}>
-                          Updated: {formatDate(customer.updatedAt)}
+                        
+                        {/* Contact Details */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-3">
+                          <div className={`flex items-center gap-2 ${
+                            isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                          }`}>
+                            <Mail className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate text-sm">{customer.email}</span>
+                          </div>
+                          <div className={`flex items-center gap-2 ${
+                            isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                          }`}>
+                            <Phone className="w-4 h-4 flex-shrink-0" />
+                            <span className="text-sm">{customer.phone}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-3">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => handleViewCustomer(customer, e)}
-                            className={`p-2 rounded-lg ${
-                              isDarkMode 
-                                ? 'hover:bg-slate-600 text-slate-400 hover:text-slate-200' 
-                                : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'
-                            }`}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => handleEditCustomer(customer, e)}
-                            className={`p-2 rounded-lg ${
-                              isDarkMode 
-                                ? 'hover:bg-slate-600 text-slate-400 hover:text-slate-200' 
-                                : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'
-                            }`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={(e) => handleDeleteCustomer(customer, e)}
-                            className={`p-2 rounded-lg ${
-                              isDarkMode 
-                                ? 'hover:bg-red-900/50 text-red-400 hover:text-red-300' 
-                                : 'hover:bg-red-50 text-red-600 hover:text-red-700'
-                            }`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        
+                        {/* Address */}
+                        <div className={`flex items-center gap-2 mb-3 ${
+                          isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                        }`}>
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate text-sm">{customer.city}, {customer.postcode}</span>
+                        </div>
+                        
+                        {/* Dates and Actions */}
+                        <div className="flex items-center justify-between">
+                          <div className={`text-xs ${
+                            isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                          }`}>
+                            <div>Created: {formatDate(customer.createdAt)}</div>
+                            <div>Updated: {formatDate(customer.updatedAt)}</div>
+                          </div>
+                          
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => handleViewCustomer(customer, e)}
+                              className={`p-2 rounded-lg ${
+                                isDarkMode 
+                                  ? 'hover:bg-slate-600 text-slate-400 hover:text-slate-200' 
+                                  : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => handleEditCustomer(customer, e)}
+                              className={`p-2 rounded-lg ${
+                                isDarkMode 
+                                  ? 'hover:bg-slate-600 text-slate-400 hover:text-slate-200' 
+                                  : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => handleDeleteCustomer(customer, e)}
+                              className={`p-2 rounded-lg ${
+                                isDarkMode 
+                                  ? 'hover:bg-red-900/50 text-red-400 hover:text-red-300' 
+                                  : 'hover:bg-red-50 text-red-600 hover:text-red-700'
+                              }`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>

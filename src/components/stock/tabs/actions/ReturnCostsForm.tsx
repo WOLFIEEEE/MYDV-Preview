@@ -369,7 +369,7 @@ export default function ReturnCostsForm({ stockData, onSuccess }: ReturnCostsFor
                           onChange={(e) => updateVatableCost(cost.id, 'price', e.target.value)}
                           className={`${inputBaseClass} pl-8`}
                           placeholder="0.00"
-                          min="0"
+                          step="0.01"
                         />
                       </div>
                     </div>
@@ -459,7 +459,7 @@ export default function ReturnCostsForm({ stockData, onSuccess }: ReturnCostsFor
                           onChange={(e) => updateNonVatableCost(cost.id, 'price', e.target.value)}
                           className={`${inputBaseClass} pl-8`}
                           placeholder="0.00"
-                          min="0"
+                          step="0.01"
                         />
                       </div>
                     </div>

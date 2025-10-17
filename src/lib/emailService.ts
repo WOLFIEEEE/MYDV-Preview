@@ -816,32 +816,45 @@ Thank you for your business!
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Invoice Generated</title>
+        <title>Invoice - ${data.invoiceNumber || 'Invoice'}</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Invoice Generated</h1>
+        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Invoice ${data.invoiceNumber || ''}</h1>
+          <p style="color: #e2e8f0; margin: 10px 0 0 0; font-size: 16px;">From ${data.companyName || 'Your Dealership'}</p>
         </div>
         
         <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
-          <p style="font-size: 18px; margin-bottom: 20px;">Dear ${data.customerName},</p>
+          <p style="font-size: 18px; margin-bottom: 20px;">Dear ${data.customerName || 'Customer'},</p>
           
-          <p>Your invoice has been generated and is ready for payment.</p>
+          <p>Please find attached your invoice for the vehicle purchase. The PDF contains all the details of your transaction.</p>
           
-          <div style="background: #fff; padding: 20px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;">
-            <h3 style="margin: 0 0 15px 0; color: #28a745;">Invoice Details</h3>
-            <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${data.invoiceNumber}</p>
-            <p style="margin: 5px 0;"><strong>Amount:</strong> ${data.amount}</p>
-            ${data.vehicleDetails ? `<p style="margin: 5px 0;"><strong>Vehicle:</strong> ${data.vehicleDetails}</p>` : ''}
-          </div>
-          
-          ${data.invoiceUrl ? `
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${data.invoiceUrl}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">View Invoice</a>
+          ${data.message ? `
+          <div style="background: #fff; padding: 15px; border-radius: 5px; border-left: 4px solid #2563eb; margin: 20px 0;">
+            <p style="margin: 0; font-style: italic;">"${data.message}"</p>
           </div>
           ` : ''}
           
+          <div style="background: #fff; padding: 20px; border-radius: 5px; border-left: 4px solid #2563eb; margin: 20px 0;">
+            <h3 style="margin: 0 0 15px 0; color: #2563eb;">Invoice Summary</h3>
+            <p style="margin: 5px 0;"><strong>Invoice Number:</strong> ${data.invoiceNumber || 'N/A'}</p>
+            <p style="margin: 5px 0;"><strong>Vehicle:</strong> ${data.vehicleInfo || 'Vehicle Details'}</p>
+            <p style="margin: 5px 0;"><strong>Sale Price:</strong> £${data.salePrice ? Number(data.salePrice).toFixed(2) : '0.00'}</p>
+          </div>
+          
+          <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0;">
+            <p style="margin: 0; font-size: 14px;"><strong>📎 Attachment:</strong> Your complete invoice is attached as a PDF file to this email.</p>
+          </div>
+          
           <p>Please review the invoice and proceed with payment at your earliest convenience.</p>
+          
+          ${data.senderName ? `
+          <p style="font-size: 14px; color: #666;">
+            Best regards,<br>
+            ${data.senderName}<br>
+            ${data.companyName || 'Your Dealership'}
+          </p>
+          ` : ''}
           
           <p style="font-size: 14px; color: #666; border-top: 1px solid #ddd; padding-top: 20px; margin-top: 30px;">
             If you have any questions about this invoice, please contact us.
@@ -856,16 +869,28 @@ Thank you for your business!
     `
 
     const text = `
-Invoice Generated
+Invoice ${data.invoiceNumber || ''} - From ${data.companyName || 'Your Dealership'}
 
-Dear ${data.customerName},
+Dear ${data.customerName || 'Customer'},
 
-Your invoice has been generated and is ready for payment.
+Please find attached your invoice for the vehicle purchase. The PDF contains all the details of your transaction.
 
-Invoice Details:
-Invoice Number: ${data.invoiceNumber}
-Amount: ${data.amount}
-${data.vehicleDetails ? `Vehicle: ${data.vehicleDetails}` : ''}
+${data.message ? `Message: "${data.message}"` : ''}
+
+Invoice Summary:
+- Invoice Number: ${data.invoiceNumber || 'N/A'}
+- Vehicle: ${data.vehicleInfo || 'Vehicle Details'}
+- Sale Price: £${data.salePrice ? Number(data.salePrice).toFixed(2) : '0.00'}
+
+📎 Attachment: Your complete invoice is attached as a PDF file to this email.
+
+Please review the invoice and proceed with payment at your earliest convenience.
+
+${data.senderName ? `Best regards,
+${data.senderName}
+${data.companyName || 'Your Dealership'}` : ''}
+
+If you have any questions about this invoice, please contact us.
 
 ${data.invoiceUrl ? `View invoice at: ${data.invoiceUrl}` : ''}
 

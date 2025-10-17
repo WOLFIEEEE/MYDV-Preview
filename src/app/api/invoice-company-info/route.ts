@@ -39,6 +39,11 @@ export async function GET(request: NextRequest) {
         companyLogoFileName: companySettings.companyLogoFileName,
         companyLogoMimeType: companySettings.companyLogoMimeType,
         
+        // QR Code
+        qrCodePublicUrl: companySettings.qrCodePublicUrl,
+        qrCodeFileName: companySettings.qrCodeFileName,
+        qrCodeMimeType: companySettings.qrCodeMimeType,
+        
         // Address Information
         addressStreet: companySettings.addressStreet,
         addressCity: companySettings.addressCity,
@@ -51,6 +56,14 @@ export async function GET(request: NextRequest) {
         contactEmail: companySettings.contactEmail,
         contactWebsite: companySettings.contactWebsite,
         contactFax: companySettings.contactFax,
+        
+        // Payment/Banking Information
+        bankName: companySettings.bankName,
+        bankSortCode: companySettings.bankSortCode,
+        bankAccountNumber: companySettings.bankAccountNumber,
+        bankAccountName: companySettings.bankAccountName,
+        bankIban: companySettings.bankIban,
+        bankSwiftCode: companySettings.bankSwiftCode,
         
         // Additional Information
         description: companySettings.description,
@@ -71,6 +84,9 @@ export async function GET(request: NextRequest) {
           companyLogoPublicUrl: null,
           companyLogoFileName: null,
           companyLogoMimeType: null,
+          qrCode: null,
+          qrCodeFileName: null,
+          qrCodeMimeType: null,
           addressLine1: null,
           addressLine2: null,
           city: null,
@@ -102,6 +118,11 @@ export async function GET(request: NextRequest) {
       companyLogoFileName: settings.companyLogoFileName,
       companyLogoMimeType: settings.companyLogoMimeType,
       
+      // QR Code
+      qrCode: settings.qrCodePublicUrl,
+      qrCodeFileName: settings.qrCodeFileName,
+      qrCodeMimeType: settings.qrCodeMimeType,
+      
       // Address Information (formatted for invoice)
       addressLine1: settings.addressStreet,
       addressLine2: null, // Company settings doesn't have addressLine2
@@ -115,6 +136,14 @@ export async function GET(request: NextRequest) {
       email: settings.contactEmail,
       website: settings.contactWebsite,
       fax: settings.contactFax,
+      
+      // Payment/Banking Information
+      bankName: settings.bankName,
+      bankSortCode: settings.bankSortCode,
+      bankAccountNumber: settings.bankAccountNumber,
+      bankAccountName: settings.bankAccountName,
+      bankIban: settings.bankIban,
+      bankSwiftCode: settings.bankSwiftCode,
       
       // Additional Information
       description: settings.description,

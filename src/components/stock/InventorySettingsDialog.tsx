@@ -27,6 +27,7 @@ import AddCostsForm from "@/components/stock/tabs/actions/AddCostsForm";
 import ReturnCostsForm from "@/components/stock/tabs/actions/ReturnCostsForm";
 import SaleDetailsForm from "@/components/stock/tabs/actions/SaleDetailsForm";
 import DetailedMarginsForm from "@/components/stock/tabs/actions/DetailedMarginsForm";
+import GenerateInvoiceForm from "@/components/stock/tabs/actions/GenerateInvoiceForm";
 
 interface InventorySettingsDialogProps {
   isOpen: boolean;
@@ -157,14 +158,7 @@ export default function InventorySettingsDialog({ isOpen, onClose, stockData }: 
   ];
 
   const handleActionClick = (actionId: FormType) => {
-    // For invoice form, navigate to the invoice page
-    if (actionId === 'invoice') {
-      onClose();
-      router.push('/invoice');
-      return;
-    }
-    
-    // For other forms, show them in the dialog
+    // For all forms including invoice, show them in the dialog
     setActiveForm(actionId);
   };
 
@@ -188,6 +182,8 @@ export default function InventorySettingsDialog({ isOpen, onClose, stockData }: 
         return <SaleDetailsForm stockData={stockData} />;
       case 'detailed-margins':
         return <DetailedMarginsForm stockData={stockData} />;
+      case 'invoice':
+        return <GenerateInvoiceForm stockData={stockData} saleDetailsData={null} />;
       default:
         return null;
     }

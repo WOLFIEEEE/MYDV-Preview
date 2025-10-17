@@ -1011,6 +1011,83 @@ function MyStockContent() {
     setShowTestDriveForm(false);
   };
 
+  const handleExportData = () => {
+    // Define CSV headers matching the required fields
+    const headers = [
+      'Vehicle_ID',
+      'Title', 
+      'Registration',
+      'RegistrationDate',
+      'Make',
+      'Model',
+      'Variant',
+      'Category',
+      'Year',
+      'FuelType',
+      'Colour',
+      'Mileage',
+      'Transmission',
+      'P.Owners',
+      'Price',
+      'VatStatus',
+      'Status',
+      'DaysInStock',
+      'StockNumber'
+    ];
+
+    // Convert stock data to CSV rows
+    const csvRows = filteredStock.map((item: StockItem, index: number) => {
+      const vehicle = item.vehicle || {};
+      const metadata = item.metadata || {};
+      const adverts = item.adverts || {};
+      
+      // Calculate days in stock
+      const dateOnForecourt = metadata.dateOnForecourt || item.dateOnForecourt;
+      const daysInStock = dateOnForecourt 
+        ? Math.ceil((new Date().getTime() - new Date(dateOnForecourt).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      return [
+        index + 1, // Serial number starting from 1
+        `${vehicle.make || ''} ${vehicle.model || ''} ${vehicle.derivative || ''}`.trim() || '',
+        vehicle.registration || item.registration || '',
+        vehicle.firstRegistrationDate || '',
+        vehicle.make || item.make || '',
+        vehicle.model || item.model || '',
+        vehicle.derivative || item.derivative || '',
+        vehicle.bodyType || item.bodyType || '',
+        vehicle.yearOfManufacture || item.yearOfManufacture || '',
+        vehicle.fuelType || item.fuelType || '',
+        vehicle.colour || item.colour || '',
+        vehicle.odometerReadingMiles || item.odometerReadingMiles || 0,
+        vehicle.transmissionType || item.transmissionType || '',
+        vehicle.previousOwners || item.previousOwners || 0,
+        (getMainPrice(item) || 0) === 0 ? '-' : getMainPrice(item) || 0,
+        adverts.retailAdverts?.vatStatus || '', // VAT Status from adverts data
+        metadata.lifecycleState || item.lifecycleState || '',
+        daysInStock,
+        item.stockId || ''
+      ];
+    });
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...csvRows.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `stock_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Check if vehicle has registration for conditional menu items
   const hasRegistration = (item: StockItem) => {
     const registration = getVehicleProperty(item, 'registration');
@@ -1106,6 +1183,43 @@ function MyStockContent() {
     );
   }
 
+  // Show skeleton loading during FORCED REFRESH (user clicked refresh button)
+  // This provides clean loading experience - no stale data shown
+  if (showRefreshSkeleton) {
+    return (
+      <>
+        <Header />
+        <div className={`min-h-screen transition-all duration-500 ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
+            : 'bg-gradient-to-br from-slate-50 via-white to-blue-50'
+        }`}>
+          <div className="pt-16">
+            <section className="relative py-12 px-2">
+              <div className="max-w-[2140px] mx-auto">
+                {/* Refresh message banner */}
+                <div className={`mb-6 p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-blue-900/20 border-blue-700/50 text-blue-300' 
+                    : 'bg-blue-50 border-blue-200 text-blue-700'
+                } flex items-center gap-3`}>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <div>
+                    <p className="font-semibold">Refreshing from AutoTrader...</p>
+                    <p className="text-sm opacity-80">Fetching latest vehicle data (this may take 8-12 seconds)</p>
+                  </div>
+                </div>
+                
+                <StockSkeleton viewMode={viewMode} count={12} />
+              </div>
+            </section>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
   if (error) {
     return (
       <>
@@ -1150,6 +1264,59 @@ function MyStockContent() {
             {/* Enhanced Header Section */}
             <section className="relative py-12 px-2">
               <div className="max-w-[2140px] mx-auto">
+
+              {/* Refresh Error Notification - Shows when refresh fails but cached data is displayed */}
+              {refreshError && (
+                <div className={`mb-6 p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-red-900/20 border-red-700/50' 
+                    : 'bg-red-50 border-red-200'
+                } flex items-center justify-between gap-4`}>
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className={`w-5 h-5 flex-shrink-0 ${
+                      isDarkMode ? 'text-red-400' : 'text-red-600'
+                    }`} />
+                    <div>
+                      <p className={`font-semibold ${
+                        isDarkMode ? 'text-red-300' : 'text-red-700'
+                      }`}>
+                        Refresh Failed
+                      </p>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-red-400/80' : 'text-red-600/80'
+                      }`}>
+                        {refreshError} - Showing cached data instead. Please try refreshing again later.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      size="sm"
+                      variant="outline"
+                      className={isDarkMode 
+                        ? 'border-red-700 text-red-300 hover:bg-red-900/30' 
+                        : 'border-red-300 text-red-700 hover:bg-red-100'
+                      }
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      Try Again
+                    </Button>
+                    <button
+                      onClick={() => setRefreshError(null)}
+                      className={`p-1 rounded-md transition-colors ${
+                        isDarkMode 
+                          ? 'hover:bg-red-900/30 text-red-400' 
+                          : 'hover:bg-red-100 text-red-600'
+                      }`}
+                      aria-label="Dismiss error"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Enhanced Stats Cards - Cool Modern Layout */}
               <div className="relative mb-8">
@@ -1357,6 +1524,7 @@ function MyStockContent() {
                       </div>
                     </Button>
                   </div>
+
                 </div>
               </div>
 
@@ -1867,6 +2035,19 @@ function MyStockContent() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Export Data Button */}
+                    <Button
+                      onClick={handleExportData}
+                      className={`flex items-center gap-2 ${
+                        isDarkMode 
+                          ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
+                          : 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                      }`}
+                    >
+                      <Download className="w-4 h-4" />
+                      Export Data
+                    </Button>
 
                     {/* Advanced Filters Toggle */}
                     <Button
@@ -2472,7 +2653,7 @@ function MyStockContent() {
                                     {item.media?.images && item.media.images.length > 0 ? (
                                       <div className="relative w-12 h-8 rounded-md overflow-hidden shadow-sm ring-1 ring-white/20 hover:ring-blue-400/50 transition-all duration-300 hover:scale-105">
                                         <Image 
-                                          src={item.media.images[0].href} 
+                                          src={item.media.images[0].href?.replace('{resize}', 'w200h150') || item.media.images[0].href} 
                                           alt={`${getVehicleProperty(item, 'make')} ${getVehicleProperty(item, 'model')}`}
                                           fill
                                           className="object-cover"

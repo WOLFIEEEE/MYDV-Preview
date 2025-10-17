@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, RotateCcw, Search as SearchIcon, Car, Database, Filter, Sparkles } from "lucide-react";
+import { CheckCircle, RotateCcw, Search as SearchIcon, Car, Database, Filter, Sparkles, FileText } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
@@ -18,6 +19,7 @@ import AdvertiserData from "@/components/vehicle-finder/AdvertiserData";
 import AdvertData from "@/components/vehicle-finder/AdvertData";
 import ImageUpload from "@/components/vehicle-finder/ImageUpload";
 import EnhancedAddToStockButton from "@/components/vehicle-finder/EnhancedAddToStockButton";
+import InvoiceTypeDialog from "@/components/vehicle-finder/InvoiceTypeDialog";
 
 interface VehicleInfo {
   registration: string;
@@ -47,6 +49,15 @@ interface VehicleInfo {
   owners?: number;
   vin?: string;
   emissionClass?: string;
+  engineNumber?: string;
+  // Additional fields for VehicleDetails component
+  ownershipCondition?: string;
+  engineCapacityCC?: number;
+  startStop?: boolean;
+  gears?: number;
+  drivetrain?: string;
+  cylinders?: number;
+  driveType?: string;
   features?: Array<{
     name: string;
     genericName?: string;
@@ -93,10 +104,12 @@ interface VehicleResult {
 }
 
 export default function VehicleFinder() {
+  const router = useRouter();
   const [vehicleData, setVehicleData] = useState<VehicleInfo | VehicleResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isTaxonomyDialogOpen, setIsTaxonomyDialogOpen] = useState(false);
+  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
 
   // Unified data collection states
   const [advertiserData, setAdvertiserData] = useState<{
@@ -231,6 +244,15 @@ export default function VehicleFinder() {
           owners: vehicle.owners,
           vin: vehicle.vin,
           emissionClass: vehicle.emissionClass,
+          engineNumber: vehicle.engineNumber,
+          // Additional fields for VehicleDetails component
+          ownershipCondition: vehicle.ownershipCondition,
+          engineCapacityCC: vehicle.engineCapacityCC,
+          startStop: vehicle.startStop,
+          gears: vehicle.gears,
+          drivetrain: vehicle.drivetrain,
+          cylinders: vehicle.cylinders,
+          driveType: vehicle.driveType,
           // Features data for VehicleFeatures component
           features: vehicle.features || [],
           // Valuation data from AutoTrader API (extracted from data.data.valuations)
@@ -375,6 +397,52 @@ export default function VehicleFinder() {
         setSelectedFeatures([]);
         setError('');
       }
+    }
+  };
+
+  const handleCreateInvoice = (vehicleData: VehicleInfo, saleType: 'Retail' | 'Trade' | 'Commercial', invoiceTo: 'Customer' | 'Finance Company') => {
+    // Convert vehicle data to URL parameters for the dynamic invoice editor
+    const params = new URLSearchParams({
+      source: 'vehicle_finder',
+      // Sale type and invoice to parameters
+      saleType: saleType,
+      invoiceTo: invoiceTo,
+      // Vehicle basic info
+      vehicleRegistration: vehicleData.registration || '',
+      make: vehicleData.make || '',
+      model: vehicleData.model || '',
+      derivative: vehicleData.derivative || '',
+      derivativeId: vehicleData.derivativeId || '',
+      mileage: vehicleData.mileage || '',
+      colour: vehicleData.color || '',
+      fuelType: vehicleData.fuelType || '',
+      engineSize: vehicleData.engineSize || '',
+      engineNumber: vehicleData.engineNumber || '',
+      vin: vehicleData.vin || '',
+      firstRegDate: vehicleData.dateOfFirstRegistration || '',
+      // Additional vehicle details
+      year: vehicleData.year || '',
+      bodyType: vehicleData.bodyType || '',
+      transmissionType: vehicleData.transmissionType || '',
+      doors: vehicleData.doors?.toString() || '',
+      seats: vehicleData.seats?.toString() || '',
+      enginePowerBHP: vehicleData.enginePowerBHP?.toString() || '',
+      owners: vehicleData.owners?.toString() || '',
+      emissionClass: vehicleData.emissionClass || '',
+      // Valuation data if available
+      retailValue: vehicleData.valuations?.retail?.amountGBP?.toString() || '',
+      partExchangeValue: vehicleData.valuations?.partExchange?.amountGBP?.toString() || '',
+      tradeValue: vehicleData.valuations?.trade?.amountGBP?.toString() || '',
+      privateValue: vehicleData.valuations?.private?.amountGBP?.toString() || ''
+    });
+
+    // Navigate to dynamic invoice editor with vehicle data
+    router.push(`/dynamic-invoice-editor?${params.toString()}`);
+  };
+
+  const handleInvoiceDialogConfirm = (saleType: 'Retail' | 'Trade' | 'Commercial', invoiceTo: 'Customer' | 'Finance Company') => {
+    if (vehicleData && !Array.isArray(vehicleData)) {
+      handleCreateInvoice(vehicleData, saleType, invoiceTo);
     }
   };
 
@@ -648,22 +716,31 @@ export default function VehicleFinder() {
                 } border-2 ${isDarkMode ? 'border-slate-600' : 'border-blue-200'}`}>
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-blue-600 text-white mb-4">
                     <Car className="w-8 h-8" />
-                          </div>
+                  </div>
                   <h3 className={`text-2xl font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Ready to Add to Stock?
-                      </h3>
+                  </h3>
                   <p className={`text-lg mb-6 max-w-2xl mx-auto ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                     All vehicle information has been verified and is ready to be added to your stock inventory with complete details and documentation.
                   </p>
-                  <EnhancedAddToStockButton 
-                    vehicleData={vehicleData}
-                    advertiserData={advertiserData}
-                    advertData={advertData}
-                    vehicleImages={vehicleImages}
-                    selectedFeatures={selectedFeatures}
-                    onAddToStock={handleAddToStock}
-                    className="px-12 py-4 text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-                  />
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <EnhancedAddToStockButton 
+                      vehicleData={vehicleData}
+                      advertiserData={advertiserData}
+                      advertData={advertData}
+                      vehicleImages={vehicleImages}
+                      selectedFeatures={selectedFeatures}
+                      onAddToStock={handleAddToStock}
+                      className="px-12 py-4 text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                    />
+                    <Button
+                      onClick={() => setIsInvoiceDialogOpen(true)}
+                      className="px-12 py-4 text-xl font-bold rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
+                    >
+                      <FileText className="w-6 h-6 mr-3" />
+                      Create Invoice
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -672,6 +749,14 @@ export default function VehicleFinder() {
       )}
       
       <Footer />
+      
+      {/* Invoice Type Dialog */}
+      <InvoiceTypeDialog
+        isOpen={isInvoiceDialogOpen}
+        onClose={() => setIsInvoiceDialogOpen(false)}
+        onConfirm={handleInvoiceDialogConfirm}
+        vehicleRegistration={vehicleData && !Array.isArray(vehicleData) ? vehicleData.registration : undefined}
+      />
     </div>
   );
 } 

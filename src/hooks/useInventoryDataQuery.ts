@@ -37,12 +37,16 @@ export interface InventoryItem {
   // Additional useful data
   make: string;
   model: string;
+  derivative?: string; // Add derivative field for variant export
   yearOfManufacture?: number;
   fuelType?: string;
   bodyType?: string;
   lifecycleState?: string;
   forecourtPriceGBP: number;
   dateOnForecourt?: string;
+  
+  // Published status data from stock cache
+  advertsData?: any; // Contains the published status information
 }
 
 export interface InventoryAPIResponse {

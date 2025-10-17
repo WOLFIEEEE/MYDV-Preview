@@ -103,6 +103,7 @@ export async function GET() {
         registration: stockCache.registration,
         make: stockCache.make,
         model: stockCache.model,
+        derivative: stockCache.derivative, // Add derivative field for variant export
         yearOfManufacture: stockCache.yearOfManufacture,
         fuelType: stockCache.fuelType,
         bodyType: stockCache.bodyType,
@@ -110,6 +111,7 @@ export async function GET() {
         forecourtPriceGBP: stockCache.forecourtPriceGBP,
         odometerReadingMiles: stockCache.odometerReadingMiles,
         metadataRaw: stockCache.metadataRaw,
+        advertsData: stockCache.advertsData, // Add advertsData for published status
         
         // Costs data (prioritize current dealer, fallback to default)
         costsGrandTotal: vehicleCosts.grandTotal,
@@ -386,12 +388,16 @@ export async function GET() {
         // Additional useful data
         make: row.make || 'Unknown',
         model: row.model || '',
+        derivative: row.derivative || '', // Add derivative field for variant export
         yearOfManufacture: row.yearOfManufacture,
         fuelType: row.fuelType,
         bodyType: row.bodyType,
         lifecycleState: row.lifecycleState,
         forecourtPriceGBP: Number(row.forecourtPriceGBP) || 0,
         dateOnForecourt: (row.metadataRaw as Record<string, unknown>)?.dateOnForecourt,
+        
+        // CRITICAL FIX: Include advertsData for published status filtering
+        advertsData: row.advertsData,
       };
     });
 

@@ -75,7 +75,7 @@ export const customers = pgTable('customers', {
   // Personal Information
   firstName: varchar('first_name', { length: 255 }).notNull(),
   lastName: varchar('last_name', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
   dateOfBirth: timestamp('date_of_birth'),
   
@@ -523,6 +523,19 @@ export const stockCache = pgTable('stock_cache', {
   yearMileageIdx: index('idx_stock_cache_year_mileage').on(table.yearOfManufacture, table.odometerReadingMiles),
   staleIdx: index('idx_stock_cache_stale').on(table.isStale),
 }))
+// Temporary Invoice Data Storage - For handling form data between pages
+export const tempInvoiceData = pgTable('temp_invoice_data', {
+  id: serial('id').primaryKey(),
+  tempId: varchar('temp_id', { length: 100 }).notNull().unique(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  data: jsonb('data').notNull(), // Store the complete invoice form data
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at').notNull(), // Auto-cleanup after 24 hours
+}, (table) => ({
+  tempIdIdx: index('idx_temp_invoice_data_temp_id').on(table.tempId),
+  userIdIdx: index('idx_temp_invoice_data_user_id').on(table.userId),
+  expiresAtIdx: index('idx_temp_invoice_data_expires_at').on(table.expiresAt),
+}))
 
 // Stock Cache Sync Log - Track synchronization operations
 export const stockCacheSyncLog = pgTable('stock_cache_sync_log', {
@@ -637,8 +650,32 @@ export const saleDetails = pgTable('sale_details', {
   // Vulnerability Support
   requiresAdditionalSupport: boolean('requires_additional_support').default(false),
   
+  // New Completion Checklist Fields
+  wheelNuts: boolean('wheel_nuts').default(false),
+  tyrePressures: boolean('tyre_pressures').default(false),
+  tyreSensors: boolean('tyre_sensors').default(false),
+  oilLevel: boolean('oil_level').default(false),
+  coolantLevel: boolean('coolant_level').default(false),
+  screenWash: boolean('screen_wash').default(false),
+  lockingNutGloveBox: boolean('locking_nut_glove_box').default(false),
+  bookPackGloveBox: boolean('book_pack_glove_box').default(false),
+  inflationKit: boolean('inflation_kit').default(false),
+  keyBatteries: boolean('key_batteries').default(false),
+  batteryTest: boolean('battery_test').default(false),
+  testDriver: boolean('test_driver').default(false),
+  adequateDriveAwayFuel: boolean('adequate_drive_away_fuel').default(false),
+  washerJets: boolean('washer_jets').default(false),
+  wipers: boolean('wipers').default(false),
+  bulbs: boolean('bulbs').default(false),
+  additionalText: text('additional_text'),
+  completionDate: timestamp('completion_date'),
+  
   // Additional Notes
   notes: text('notes'),
+  
+  // Add-on Totals (for tracking total finance and customer add-ons)
+  totalFinanceAddOn: decimal('total_finance_add_on', { precision: 10, scale: 2 }),
+  totalCustomerAddOn: decimal('total_customer_add_on', { precision: 10, scale: 2 }),
   
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -884,6 +921,7 @@ export const inventoryDetails = pgTable('inventory_details', {
   registration: varchar('registration', { length: 50 }), // Vehicle registration (read-only)
   dateOfPurchase: timestamp('date_of_purchase'),
   costOfPurchase: decimal('cost_of_purchase', { precision: 10, scale: 2 }), // Purchase cost
+  purchaseFrom: varchar('purchase_from', { length: 255 }), // Who/where the vehicle was purchased from
   
   // Funding Fields
   fundingAmount: decimal('funding_amount', { precision: 10, scale: 2 }), // Amount funded from external source
@@ -1685,6 +1723,13 @@ export const companySettings = pgTable('company_settings', {
   companyLogoFileSize: integer('company_logo_file_size'), // File size in bytes
   companyLogoMimeType: varchar('company_logo_mime_type', { length: 100 }), // e.g., 'image/png'
   
+  // QR Code - stored as base64 or URL
+  qrCodeFileName: varchar('qr_code_file_name', { length: 255 }), // Original filename
+  qrCodeSupabaseFileName: varchar('qr_code_supabase_file_name', { length: 255 }), // Supabase storage filename
+  qrCodePublicUrl: text('qr_code_public_url'), // Supabase public URL or base64 data
+  qrCodeFileSize: integer('qr_code_file_size'), // File size in bytes
+  qrCodeMimeType: varchar('qr_code_mime_type', { length: 100 }), // e.g., 'image/png'
+  
   // Address Information
   addressStreet: varchar('address_street', { length: 255 }),
   addressCity: varchar('address_city', { length: 100 }),
@@ -1697,6 +1742,14 @@ export const companySettings = pgTable('company_settings', {
   contactEmail: varchar('contact_email', { length: 255 }),
   contactWebsite: varchar('contact_website', { length: 255 }),
   contactFax: varchar('contact_fax', { length: 50 }),
+  
+  // Payment/Banking Information
+  bankName: varchar('bank_name', { length: 255 }),
+  bankSortCode: varchar('bank_sort_code', { length: 20 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 50 }),
+  bankAccountName: varchar('bank_account_name', { length: 255 }),
+  bankIban: varchar('bank_iban', { length: 50 }),
+  bankSwiftCode: varchar('bank_swift_code', { length: 20 }),
   
   // Additional Information
   description: text('description'),

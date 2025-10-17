@@ -9,7 +9,8 @@ import LicensePlate from "@/components/ui/license-plate";
 import EditInventoryForm from "@/components/stock/tabs/actions/EditInventoryForm";
 import { useInventoryDataQuery, type InventoryItem } from "@/hooks/useInventoryDataQuery";
 import { createOrGetDealer } from "@/lib/database";
-import { Package, Calendar, PoundSterling, Search, Filter, Download, RefreshCw, Edit, Trash2, X, Plus } from "lucide-react";
+import { getStatusLabel, getStatusColor, getStatusOptions } from "@/lib/statusMapping";
+import { Package, Calendar, PoundSterling, Search, Filter, Download, RefreshCw, Edit, Trash2, X, Plus, Activity, Globe } from "lucide-react";
 
 interface InventoryDetail {
   id: number;
@@ -17,6 +18,7 @@ interface InventoryDetail {
   registration: string;
   dateOfPurchase: string;
   costOfPurchase: string;
+  purchaseFrom: string;
   fundingAmount: string;
   businessAmount: string;
   fundingSourceName: string;
@@ -31,12 +33,30 @@ export default function PurchaseInfoPage() {
   const [inventoryDetails, setInventoryDetails] = useState<InventoryDetail[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBy, setFilterBy] = useState<"all" | "has-data" | "no-data">("all");
+  const [filterLifecycleState, setFilterLifecycleState] = useState<string[]>([]);
+  const [filterPublishStatus, setFilterPublishStatus] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"dateOfPurchase" | "costOfPurchase" | "stockId">("dateOfPurchase");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<InventoryItem | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  // Channel filter options mapping (same as mystock page)
+  const channelFilterOptions = [
+    { key: 'autotraderAdvert', label: 'AT Search & Find' },
+    { key: 'profileAdvert', label: 'AT Dealer Page' },
+    { key: 'advertiserAdvert', label: 'Dealer Website' },
+    { key: 'exportAdvert', label: 'AT Linked Advertisers' },
+    { key: 'locatorAdvert', label: 'Manufacturer Website / Used Vehicle Locators' },
+    { key: 'notAdvertisedAnywhere', label: 'Not Advertised Anywhere' },
+  ];
+  
+  // Helper function to get label from key
+  const getChannelLabel = (key: string): string => {
+    const option = channelFilterOptions.find(opt => opt.key === key);
+    return option ? option.label : key;
+  };
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -114,35 +134,301 @@ export default function PurchaseInfoPage() {
     fetchInventoryDetails();
   }, [fetchInventoryDetails]);
 
-  // Merge inventory data with purchase info data
+  // Debug: Log the raw API response
+  console.log('📡 RAW INVENTORY API RESPONSE:', {
+    isLoading: isLoading,
+    hasError: !!inventoryError,
+    error: inventoryError,
+    hasData: !!inventoryData,
+    dataLength: inventoryData?.length || 0,
+    firstItemKeys: inventoryData?.[0] ? Object.keys(inventoryData[0]) : 'No data',
+    firstItemAdvertsData: inventoryData?.[0]?.advertsData,
+    firstItemHasAdvertsData: inventoryData?.[0] ? 'advertsData' in inventoryData[0] : 'No first item',
+    // CRITICAL: Show the complete first item structure
+    firstItemComplete: inventoryData?.[0] || 'No data',
+    sampleItems: inventoryData?.slice(0, 3).map(item => ({
+      stockId: item.stockId,
+      hasAdvertsData: 'advertsData' in item,
+      advertsDataType: typeof item.advertsData,
+      advertsDataValue: item.advertsData,
+      // Show all available fields
+      availableFields: Object.keys(item)
+    })) || 'No data'
+  });
+
+  // Merge inventory data with purchase info data (optimized - no individual API calls)
   const mergedVehicleData = (inventoryData || []).map(vehicle => {
     const purchaseData = inventoryDetails.find(detail => detail.stockId === vehicle.stockId);
+    
+        // Debug: Log the advertsData structure for the first vehicle
+        if (vehicle.stockId && inventoryData.indexOf(vehicle) === 0) {
+          console.log('🔍 DEBUG: First vehicle advertsData structure:', {
+            stockId: vehicle.stockId,
+            advertsData: vehicle.advertsData,
+            hasRetailAdverts: !!vehicle.advertsData?.retailAdverts,
+            retailAdverts: vehicle.advertsData?.retailAdverts,
+            currentFilter: filterPublishStatus.length > 0 ? {
+              key: filterPublishStatus[0],
+              label: getChannelLabel(filterPublishStatus[0])
+            } : 'No filter applied',
+            // CRITICAL: Check what fields are actually available on the vehicle object
+            availableFields: Object.keys(vehicle),
+            // Check if advertsData exists but is null/empty
+            advertsDataType: typeof vehicle.advertsData,
+            advertsDataValue: vehicle.advertsData,
+            // Check the raw vehicle object structure
+            rawVehicleStructure: {
+              hasAdvertsData: 'advertsData' in vehicle,
+              advertsDataKeys: vehicle.advertsData ? Object.keys(vehicle.advertsData) : 'N/A'
+            }
+          });
+        }
     
     return {
       ...vehicle,
       purchaseData,
       hasPurchaseData: !!purchaseData,
-      dateOfPurchase: purchaseData?.dateOfPurchase || '',
-      costOfPurchase: purchaseData?.costOfPurchase || '0',
-      fundingAmount: purchaseData?.fundingAmount || '0',
-      businessAmount: purchaseData?.businessAmount || '0',
+        dateOfPurchase: purchaseData?.dateOfPurchase || '',
+        costOfPurchase: purchaseData?.costOfPurchase || '0',
+        purchaseFrom: purchaseData?.purchaseFrom || '', // Add purchaseFrom field
+        fundingAmount: purchaseData?.fundingAmount || '0',
+        businessAmount: purchaseData?.businessAmount || '0',
       fundingSourceName: purchaseData?.fundingSourceName || '',
       lastUpdated: purchaseData?.updatedAt || null,
+      // CRITICAL FIX: Map advertsData to adverts to match mystock data structure
+      adverts: vehicle.advertsData, // This makes it compatible with mystock filtering logic
+      // Extract published status information using the SAME structure as mystock
+      publishedChannels: vehicle.advertsData?.retailAdverts ? {
+        autotraderAdvert: vehicle.advertsData.retailAdverts.autotraderAdvert?.status,
+        advertiserAdvert: vehicle.advertsData.retailAdverts.advertiserAdvert?.status,
+        locatorAdvert: vehicle.advertsData.retailAdverts.locatorAdvert?.status,
+        profileAdvert: vehicle.advertsData.retailAdverts.profileAdvert?.status,
+        exportAdvert: vehicle.advertsData.retailAdverts.exportAdvert?.status,
+      } : null,
     };
+  });
+
+  // Debug: Log filter changes
+  useEffect(() => {
+    console.log('🔄 FILTER CHANGE DETECTED:', {
+      filterLifecycleState,
+      filterPublishStatus,
+      filterPublishStatusLabels: filterPublishStatus.map(key => getChannelLabel(key)),
+      searchTerm,
+      filterBy,
+      timestamp: new Date().toISOString()
+    });
+  }, [filterLifecycleState, filterPublishStatus, searchTerm, filterBy]);
+
+  // Debug: Log the complete mergedVehicleData structure
+  console.log('🚗 MERGED VEHICLE DATA ANALYSIS:', {
+    totalVehicles: mergedVehicleData.length,
+    firstVehicleComplete: mergedVehicleData[0] ? {
+      stockId: mergedVehicleData[0].stockId,
+      make: mergedVehicleData[0].make,
+      model: mergedVehicleData[0].model,
+      hasAdvertsData: !!mergedVehicleData[0].advertsData,
+      hasAdverts: !!mergedVehicleData[0].adverts,
+      advertsDataKeys: mergedVehicleData[0].advertsData ? Object.keys(mergedVehicleData[0].advertsData) : 'none',
+      advertsKeys: mergedVehicleData[0].adverts ? Object.keys(mergedVehicleData[0].adverts) : 'none',
+      retailAdverts: mergedVehicleData[0].adverts?.retailAdverts,
+      retailAdvertsKeys: mergedVehicleData[0].adverts?.retailAdverts ? Object.keys(mergedVehicleData[0].adverts.retailAdverts) : 'none'
+    } : 'No vehicles found'
   });
 
   // Filter and sort merged data
   const filteredAndSortedData = mergedVehicleData
-    .filter(item => {
+    .filter((item, index) => {
+      // Debug: Log each filter step for first few items
+      const isDebugItem = index < 5;
+      
       const matchesSearch = item.stockId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.registration.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesFilter = filterBy === "all" || 
         (filterBy === "has-data" && item.hasPurchaseData) ||
         (filterBy === "no-data" && !item.hasPurchaseData);
+
+      // Lifecycle state filter
+      const matchesLifecycleState = filterLifecycleState.length === 0 ||
+        filterLifecycleState.some(state => 
+          item.lifecycleState?.toLowerCase() === state.toLowerCase()
+        );
       
-      return matchesSearch && matchesFilter;
-    })
+      if (isDebugItem) {
+        console.log(`🔍 FILTER DEBUG - Item ${index} (${item.stockId}):`, {
+          item: {
+            stockId: item.stockId,
+            registration: item.registration,
+            lifecycleState: item.lifecycleState,
+            hasAdverts: !!item.adverts,
+            hasRetailAdverts: !!item.adverts?.retailAdverts
+          },
+          filterSteps: {
+            matchesSearch: { result: matchesSearch, searchTerm, checked: [item.stockId, item.registration] },
+            matchesFilter: { result: matchesFilter, filterBy, hasPurchaseData: item.hasPurchaseData },
+            matchesLifecycleState: { result: matchesLifecycleState, filterLifecycleState, itemState: item.lifecycleState }
+          },
+          currentFilters: {
+            searchTerm,
+            filterBy,
+            filterLifecycleState,
+            filterPublishStatus
+          }
+        });
+      }
+      
+      // Publish status filter - using EXACT same logic as mystock page
+      const matchesPublishStatus = filterPublishStatus.length === 0 || 
+        filterPublishStatus.some(channelKey => {
+          // Use the SAME data access pattern as mystock: item.adverts?.retailAdverts
+          const adverts = item.adverts?.retailAdverts;
+          
+          // Enhanced Debug: Log filter matching for debug items
+          if (isDebugItem && filterPublishStatus.length > 0) {
+            console.log(`🔍 PUBLISH FILTER DEBUG - Item ${index} (${item.stockId}) for ${getChannelLabel(channelKey)}:`, {
+              channelKey,
+              label: getChannelLabel(channelKey),
+              hasAdverts: !!item.adverts,
+              hasRetailAdverts: !!adverts,
+              advertsStructure: adverts,
+              allChannelStatuses: {
+                autotraderStatus: adverts?.autotraderAdvert?.status,
+                advertiserStatus: adverts?.advertiserAdvert?.status,
+                locatorStatus: adverts?.locatorAdvert?.status,
+                profileStatus: adverts?.profileAdvert?.status,
+                exportStatus: adverts?.exportAdvert?.status
+              },
+              // CRITICAL: Show the original advertsData field too
+              originalAdvertsData: item.advertsData,
+              originalAdvertsDataType: typeof item.advertsData
+            });
+          }
+          
+          // CRITICAL FIX: If no adverts data, handle gracefully based on filter type
+          if (!adverts) {
+            if (isDebugItem && filterPublishStatus.length > 0) {
+              console.log(`❌ NO ADVERTS DATA for ${item.stockId} - checking filter type: ${channelKey}`);
+            }
+            
+            // For "Not Advertised Anywhere" filter, vehicles without adverts data should match
+            // (they're definitely not advertised if there's no adverts data)
+            if (channelKey === 'notAdvertisedAnywhere') {
+              if (isDebugItem) {
+                console.log(`✅ NO ADVERTS DATA but filtering for "Not Advertised Anywhere" - returning TRUE`);
+              }
+              return true;
+            }
+            
+            // For specific channel filters, vehicles without adverts data don't match
+            if (isDebugItem) {
+              console.log(`❌ NO ADVERTS DATA for specific channel filter "${channelKey}" - returning FALSE`);
+            }
+            return false;
+          }
+          
+          // Use the EXACT same switch logic as mystock page
+          let switchResult = false;
+          switch (channelKey) {
+            case 'autotraderAdvert':
+              switchResult = adverts?.autotraderAdvert?.status?.toLowerCase() === 'published';
+              break;
+            case 'notAdvertisedAnywhere':
+              // Check if vehicle is not advertised on any channel (EXACT same logic as mystock)
+              switchResult = (
+                adverts?.autotraderAdvert?.status?.toLowerCase() !== 'published' &&
+                adverts?.advertiserAdvert?.status?.toLowerCase() !== 'published' &&
+                adverts?.locatorAdvert?.status?.toLowerCase() !== 'published' &&
+                adverts?.profileAdvert?.status?.toLowerCase() !== 'published' &&
+                adverts?.exportAdvert?.status?.toLowerCase() !== 'published'
+              );
+              break;
+            case 'advertiserAdvert':
+              switchResult = adverts?.advertiserAdvert?.status?.toLowerCase() === 'published';
+              break;
+            case 'locatorAdvert':
+              switchResult = adverts?.locatorAdvert?.status?.toLowerCase() === 'published';
+              break;
+            case 'profileAdvert':
+              switchResult = adverts?.profileAdvert?.status?.toLowerCase() === 'published';
+              break;
+            case 'exportAdvert':
+              switchResult = adverts?.exportAdvert?.status?.toLowerCase() === 'published';
+              break;
+            default:
+              switchResult = true;
+              break;
+          }
+          
+          // Enhanced Debug: Show switch evaluation
+          if (isDebugItem && filterPublishStatus.length > 0) {
+            console.log(`🎯 SWITCH RESULT for ${item.stockId} - ${getChannelLabel(channelKey)}:`, {
+              channelKey,
+              switchResult,
+              rawStatuses: {
+                autotrader: adverts?.autotraderAdvert?.status,
+                advertiser: adverts?.advertiserAdvert?.status,
+                locator: adverts?.locatorAdvert?.status,
+                profile: adverts?.profileAdvert?.status,
+                export: adverts?.exportAdvert?.status
+              },
+              lowercaseStatuses: {
+                autotrader: adverts?.autotraderAdvert?.status?.toLowerCase(),
+                advertiser: adverts?.advertiserAdvert?.status?.toLowerCase(),
+                locator: adverts?.locatorAdvert?.status?.toLowerCase(),
+                profile: adverts?.profileAdvert?.status?.toLowerCase(),
+                export: adverts?.exportAdvert?.status?.toLowerCase()
+              },
+              specificEvaluation: channelKey === 'notAdvertisedAnywhere' ? {
+                autotraderNotPublished: adverts?.autotraderAdvert?.status?.toLowerCase() !== 'published',
+                advertiserNotPublished: adverts?.advertiserAdvert?.status?.toLowerCase() !== 'published',
+                locatorNotPublished: adverts?.locatorAdvert?.status?.toLowerCase() !== 'published',
+                profileNotPublished: adverts?.profileAdvert?.status?.toLowerCase() !== 'published',
+                exportNotPublished: adverts?.exportAdvert?.status?.toLowerCase() !== 'published'
+              } : `${channelKey} === 'published'? ${switchResult}`
+            });
+          }
+          
+          return switchResult;
+        });
+      
+      const finalResult = matchesSearch && matchesFilter && matchesLifecycleState && matchesPublishStatus;
+      
+      if (isDebugItem) {
+        console.log(`🏁 FINAL FILTER RESULT - Item ${index} (${item.stockId}):`, {
+          matchesSearch,
+          matchesFilter,
+          matchesLifecycleState,
+          matchesPublishStatus,
+          finalResult,
+          willBeIncluded: finalResult
+        });
+      }
+      
+      return finalResult;
+    });
+
+  // Debug: Log filtering summary
+  console.log('📊 FILTERING SUMMARY:', {
+    totalVehicles: mergedVehicleData.length,
+    filteredVehicles: filteredAndSortedData.length,
+    activeFilters: {
+      search: searchTerm ? `"${searchTerm}"` : 'none',
+      dataFilter: filterBy,
+      lifecycleState: filterLifecycleState.length > 0 ? filterLifecycleState : 'none',
+      publishStatus: filterPublishStatus.length > 0 ? filterPublishStatus.map(key => getChannelLabel(key)) : 'none'
+    },
+    sampleVehicleData: filteredAndSortedData.slice(0, 2).map(item => ({
+      stockId: item.stockId,
+      make: item.make,
+      model: item.model,
+      lifecycleState: item.lifecycleState,
+      hasAdverts: !!item.adverts,
+      advertsChannels: item.adverts?.retailAdverts ? Object.keys(item.adverts.retailAdverts) : 'none'
+    }))
+  });
+
+  const sortedData = filteredAndSortedData
     .sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
@@ -175,7 +461,7 @@ export default function PurchaseInfoPage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterBy, sortBy, sortOrder]);
+  }, [searchTerm, filterBy, sortBy, sortOrder, filterLifecycleState, filterPublishStatus]);
 
   const formatCurrency = (amount: string) => {
     const num = parseFloat(amount);
@@ -242,19 +528,37 @@ export default function PurchaseInfoPage() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Stock ID', 'Registration', 'Purchase Date', 'Purchase Cost', 'Funding Amount', 'Business Amount', 'Funding Source', 'Last Updated'];
+    // Headers matching the required column order with ID as first column
+    const headers = [
+      'ID', 'Purchase date', 'VRM', 'Make', 'Model', 'Variant', 'Year', 'Status', 
+      'Purchased from', 'Purchase price', 
+      // Keep existing funded columns
+      'Funding Amount', 'Business Amount', 'Funding Source'
+    ];
+    
     const csvContent = [
       headers.join(','),
-      ...filteredAndSortedData.map(item => [
-        item.stockId,
-        item.registration,
-        formatDate(item.dateOfPurchase),
-        item.costOfPurchase,
-        item.fundingAmount || '0.00',
-        item.businessAmount || '0.00',
-        item.fundingSourceName || 'N/A',
-        item.lastUpdated ? formatDate(item.lastUpdated) : 'N/A'
-      ].join(','))
+      ...filteredAndSortedData.map((item, index) => {
+        // Find matching inventory item to get vehicle details
+        const inventoryItem = inventoryData?.find(inv => inv.stockId === item.stockId);
+        
+        return [
+          (index + 1).toString(), // Sequential ID starting from 1
+          formatDate(item.dateOfPurchase),
+          item.registration || '',
+          inventoryItem?.make || '',
+          inventoryItem?.model || '',
+          inventoryItem?.derivative || '', // Using derivative field (displays as Variant in UI)
+          inventoryItem?.yearOfManufacture || '',
+          inventoryItem?.lifecycleState || 'Listed',
+          item.purchaseFrom || '', // Use purchaseFrom from merged data
+          item.costOfPurchase || '0.00',
+          // Keep existing funded columns
+          item.fundingAmount || '0.00',
+          item.businessAmount || '0.00',
+          item.fundingSourceName || 'N/A'
+        ].map(cell => `"${cell}"`).join(',')
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -338,6 +642,51 @@ export default function PurchaseInfoPage() {
                   <option value="has-data">Has Purchase Info</option>
                   <option value="no-data">No Purchase Info</option>
                 </select>
+                
+                {/* Lifecycle State Filter */}
+                <select
+                  value={filterLifecycleState.length === 1 ? filterLifecycleState[0] : ''}
+                  onChange={(e) => setFilterLifecycleState(e.target.value ? [e.target.value.toUpperCase()] : [])}
+                  className={`px-3 py-2 rounded-lg border text-sm ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-white' 
+                      : 'bg-white border-slate-300 text-slate-900'
+                  } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                >
+                  <option value="">All Status</option>
+                  {getStatusOptions().map(({ value, label }) => (
+                    <option key={value} value={value.toUpperCase()}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Publish Status Filter */}
+                <select
+                  value={filterPublishStatus.length === 1 ? filterPublishStatus[0] : ''}
+                  onChange={(e) => {
+                    const newValue = e.target.value ? [e.target.value] : [];
+                    console.log('🎯 PUBLISH FILTER CHANGE:', {
+                      oldValue: filterPublishStatus,
+                      newValue,
+                      selectedLabel: e.target.value ? getChannelLabel(e.target.value) : 'None'
+                    });
+                    setFilterPublishStatus(newValue);
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-sm ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-white' 
+                      : 'bg-white border-slate-300 text-slate-900'
+                  } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                >
+                  <option value="">All Publish Status</option>
+                  {channelFilterOptions.map(({ key, label }) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "dateOfPurchase" | "costOfPurchase" | "stockId")}

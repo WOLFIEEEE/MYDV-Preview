@@ -25,7 +25,8 @@ import {
   Sparkles,
   Building,
   Calculator,
-  AlertCircle
+  AlertCircle,
+  Download
 } from "lucide-react";
 
 interface SaleDetailsFormProps {
@@ -138,6 +139,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     deliveryType: 'collection', // 'delivery' or 'collection'
     deliveryPrice: '',
     deliveryDate: '',
+    deliveryAddress: '',
     notes: '',
     documentationComplete: false,
     keyHandedOver: false,
@@ -166,10 +168,30 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     // Conditional vulnerability follow-ups
     requiresAdditionalSupport: false,
     preferredContactTime: '',
-    vulnerabilityNotes: ''
+    vulnerabilityNotes: '',
+    // New completion checklist fields
+    wheelNuts: false,
+    tyrePressures: false,
+    tyreSensors: false,
+    oilLevel: false,
+    coolantLevel: false,
+    screenWash: false,
+    lockingNutGloveBox: false,
+    bookPackGloveBox: false,
+    inflationKit: false,
+    keyBatteries: false,
+    batteryTest: false,
+    testDriver: false,
+        adequateDriveAwayFuel: false,
+        washerJets: false,
+        wipers: false,
+        bulbs: false,
+        additionalText: '',
+        completionDate: ''
   });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>('basic');
 
@@ -203,6 +225,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               deliveryType: data.deliveryType || 'collection',
               deliveryPrice: data.deliveryPrice?.toString() || '',
               deliveryDate: data.deliveryDate ? new Date(data.deliveryDate).toISOString().split('T')[0] : '',
+              deliveryAddress: data.deliveryAddress || '',
               notes: data.notes || '',
               documentationComplete: data.documentationComplete || false,
               keyHandedOver: data.keyHandedOver || false,
@@ -228,7 +251,26 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               salesMarketingConsent: data.salesMarketingConsent || false,
               requiresAdditionalSupport: data.requiresAdditionalSupport || false,
               preferredContactTime: data.preferredContactTime || '',
-              vulnerabilityNotes: data.vulnerabilityNotes || ''
+              vulnerabilityNotes: data.vulnerabilityNotes || '',
+              // New completion checklist fields
+              wheelNuts: data.wheelNuts || false,
+              tyrePressures: data.tyrePressures || false,
+              tyreSensors: data.tyreSensors || false,
+              oilLevel: data.oilLevel || false,
+              coolantLevel: data.coolantLevel || false,
+              screenWash: data.screenWash || false,
+              lockingNutGloveBox: data.lockingNutGloveBox || false,
+              bookPackGloveBox: data.bookPackGloveBox || false,
+              inflationKit: data.inflationKit || false,
+              keyBatteries: data.keyBatteries || false,
+              batteryTest: data.batteryTest || false,
+              testDriver: data.testDriver || false,
+              adequateDriveAwayFuel: data.adequateDriveAwayFuel || false,
+              washerJets: data.washerJets || false,
+              wipers: data.wipers || false,
+              bulbs: data.bulbs || false,
+              additionalText: data.additionalText || '',
+              completionDate: data.completionDate ? new Date(data.completionDate).toISOString().split('T')[0] : ''
             });
           }
         }
@@ -335,6 +377,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         deliveryType: formData.deliveryType || 'collection',
         deliveryPrice: formData.deliveryPrice || null,
         deliveryDate: formData.deliveryDate || null, // Send as string or null
+        deliveryAddress: formData.deliveryAddress || null,
         documentationComplete: formData.documentationComplete || false,
         keyHandedOver: formData.keyHandedOver || false,
         customerSatisfied: formData.customerSatisfied || false,
@@ -347,7 +390,26 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         requiresAdditionalSupport: formData.requiresAdditionalSupport || false,
         preferredContactTime: formData.preferredContactTime || null,
         vulnerabilityNotes: formData.vulnerabilityNotes || null,
-        notes: formData.notes || null
+        notes: formData.notes || null,
+        // New completion checklist fields
+        wheelNuts: formData.wheelNuts || false,
+        tyrePressures: formData.tyrePressures || false,
+        tyreSensors: formData.tyreSensors || false,
+        oilLevel: formData.oilLevel || false,
+        coolantLevel: formData.coolantLevel || false,
+        screenWash: formData.screenWash || false,
+        lockingNutGloveBox: formData.lockingNutGloveBox || false,
+        bookPackGloveBox: formData.bookPackGloveBox || false,
+        inflationKit: formData.inflationKit || false,
+        keyBatteries: formData.keyBatteries || false,
+        batteryTest: formData.batteryTest || false,
+        testDriver: formData.testDriver || false,
+        adequateDriveAwayFuel: formData.adequateDriveAwayFuel || false,
+        washerJets: formData.washerJets || false,
+        wipers: formData.wipers || false,
+        bulbs: formData.bulbs || false,
+        additionalText: formData.additionalText || null,
+        completionDate: formData.completionDate || null
       };
 
       console.log('📝 Saving sale details:', apiData);
@@ -384,6 +446,71 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
       alert('Failed to save sale details');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    
+    try {
+      // First save the form data
+      await handleSubmit(new Event('submit') as any);
+      
+      // Then generate and download PDF
+      const response = await fetch('/api/stock-actions/sale-details/export-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stockId: formData.stockReference,
+          registration: formData.registration,
+          saleDate: formData.saleDate,
+          customerName: `${formData.firstName} ${formData.lastName}`.trim(),
+          completionData: {
+            wheelNuts: formData.wheelNuts,
+            tyrePressures: formData.tyrePressures,
+            tyreSensors: formData.tyreSensors,
+            oilLevel: formData.oilLevel,
+            coolantLevel: formData.coolantLevel,
+            screenWash: formData.screenWash,
+            lockingNutGloveBox: formData.lockingNutGloveBox,
+            bookPackGloveBox: formData.bookPackGloveBox,
+            inflationKit: formData.inflationKit,
+            keyBatteries: formData.keyBatteries,
+            batteryTest: formData.batteryTest,
+            testDriver: formData.testDriver,
+            adequateDriveAwayFuel: formData.adequateDriveAwayFuel,
+            washerJets: formData.washerJets,
+            wipers: formData.wipers,
+            bulbs: formData.bulbs,
+            additionalText: formData.additionalText,
+            completionDate: formData.completionDate
+          }
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales-completion-${formData.registration || formData.stockReference}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        alert('Sales completion PDF exported successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Failed to export PDF: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('Failed to export PDF');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -654,12 +781,12 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       focusedField === 'salePrice' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                     }`}
                     placeholder="0.00"
-                    min="0"
+                    step="0.01"
                   />
                 </div>
               </div>
 
-              <div>
+              {/* <div>
                 <label className={labelClass}>
                   <Shield className="inline h-4 w-4 mr-2" />
                   Warranty Type
@@ -679,7 +806,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
 
             </div>
           </Card>
@@ -886,7 +1013,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('requiredAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -911,7 +1038,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('depositAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -931,7 +1058,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('cashAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -948,7 +1075,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('bacsAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -965,7 +1092,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('financeAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -982,7 +1109,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('partExAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -999,7 +1126,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       onChange={(e) => handleInputChange('cardAmount', e.target.value)}
                       className={`${inputBaseClass} pl-8`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>
@@ -1154,7 +1281,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                           focusedField === 'deliveryPrice' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                         }`}
                         placeholder="0.00"
-                        min="0"
+                        step="0.01"
                       />
                     </div>
                   </div>
@@ -1173,6 +1300,24 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       className={`${inputBaseClass} ${
                         focusedField === 'deliveryDate' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                       }`}
+                    />
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <label className={labelClass}>
+                      <MapPin className="inline h-4 w-4 mr-2" />
+                      Delivery Address
+                    </label>
+                    <textarea
+                      value={formData.deliveryAddress}
+                      onChange={(e) => handleInputChange('deliveryAddress', e.target.value)}
+                      onFocus={() => setFocusedField('deliveryAddress')}
+                      onBlur={() => setFocusedField(null)}
+                      className={`${inputBaseClass} ${
+                        focusedField === 'deliveryAddress' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                      }`}
+                      placeholder="Full delivery address (if different from customer address)"
+                      rows={3}
                     />
                   </div>
 
@@ -1216,32 +1361,148 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Vehicle Registration Display */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                    Vehicle Registration
+                  </h4>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Vehicle being sold
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <LicensePlate 
+                    registration={formData.registration || 'N/A'} 
+                    size="lg" 
+                    className="" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* New Completion Checklist */}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <YesNoToggle
+                  label="Wheel nuts"
+                  value={formData.wheelNuts}
+                  onChange={(val) => handleInputChange('wheelNuts', val)}
+                />
+                <YesNoToggle
+                  label="Tyre pressures"
+                  value={formData.tyrePressures}
+                  onChange={(val) => handleInputChange('tyrePressures', val)}
+                />
+                <YesNoToggle
+                  label="Tyre Sensors"
+                  value={formData.tyreSensors}
+                  onChange={(val) => handleInputChange('tyreSensors', val)}
+                />
+                <YesNoToggle
+                  label="Oil level"
+                  value={formData.oilLevel}
+                  onChange={(val) => handleInputChange('oilLevel', val)}
+                />
+                <YesNoToggle
+                  label="Coolant level"
+                  value={formData.coolantLevel}
+                  onChange={(val) => handleInputChange('coolantLevel', val)}
+                />
+                <YesNoToggle
+                  label="Screen wash"
+                  value={formData.screenWash}
+                  onChange={(val) => handleInputChange('screenWash', val)}
+                />
+                <YesNoToggle
+                  label="Locking nut – glove box"
+                  value={formData.lockingNutGloveBox}
+                  onChange={(val) => handleInputChange('lockingNutGloveBox', val)}
+                />
+                <YesNoToggle
+                  label="Book pack – glove box"
+                  value={formData.bookPackGloveBox}
+                  onChange={(val) => handleInputChange('bookPackGloveBox', val)}
+                />
+                <YesNoToggle
+                  label="Inflation kit"
+                  value={formData.inflationKit}
+                  onChange={(val) => handleInputChange('inflationKit', val)}
+                />
+                <YesNoToggle
+                  label="Key batteries"
+                  value={formData.keyBatteries}
+                  onChange={(val) => handleInputChange('keyBatteries', val)}
+                />
+                <YesNoToggle
+                  label="Battery Test"
+                  value={formData.batteryTest}
+                  onChange={(val) => handleInputChange('batteryTest', val)}
+                />
               <YesNoToggle
-                label="Documentation Complete"
-                value={formData.documentationComplete}
-                onChange={(val) => handleInputChange('documentationComplete', val)}
+                label="Test Drive"
+                value={formData.testDriver}
+                onChange={(val) => handleInputChange('testDriver', val)}
               />
-              <YesNoToggle
-                label="Keys Handed Over"
-                value={formData.keyHandedOver}
-                onChange={(val) => handleInputChange('keyHandedOver', val)}
-              />
-              <YesNoToggle
-                label="Customer Satisfied"
-                value={formData.customerSatisfied}
-                onChange={(val) => handleInputChange('customerSatisfied', val)}
-              />
-              <YesNoToggle
-                label="Deposit Paid"
-                value={formData.depositPaid}
-                onChange={(val) => handleInputChange('depositPaid', val)}
-              />
-              <YesNoToggle
-                label="Vehicle Purchased"
-                value={formData.vehiclePurchased}
-                onChange={(val) => handleInputChange('vehiclePurchased', val)}
-              />
+                <YesNoToggle
+                  label="Adequate Drive Away Fuel"
+                  value={formData.adequateDriveAwayFuel}
+                  onChange={(val) => handleInputChange('adequateDriveAwayFuel', val)}
+                />
+                <YesNoToggle
+                  label="Washer Jets"
+                  value={formData.washerJets}
+                  onChange={(val) => handleInputChange('washerJets', val)}
+                />
+                <YesNoToggle
+                  label="Wipers"
+                  value={formData.wipers}
+                  onChange={(val) => handleInputChange('wipers', val)}
+                />
+                <YesNoToggle
+                  label="Bulbs"
+                  value={formData.bulbs}
+                  onChange={(val) => handleInputChange('bulbs', val)}
+                />
+              </div>
+
+              {/* Additional Text Field */}
+              <div>
+                <label className={labelClass}>
+                  <AlertTriangle className="inline h-4 w-4 mr-2" />
+                  Additional Text
+                </label>
+                <textarea
+                  value={formData.additionalText}
+                  onChange={(e) => handleInputChange('additionalText', e.target.value)}
+                  onFocus={() => setFocusedField('additionalText')}
+                  onBlur={() => setFocusedField(null)}
+                  className={`${inputBaseClass} ${
+                    focusedField === 'additionalText' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                  }`}
+                  placeholder="Any additional notes or comments"
+                  rows={3}
+                />
+              </div>
+
+              {/* Completion Date Field */}
+              <div>
+                <label className={labelClass}>
+                  <Calendar className="inline h-4 w-4 mr-2" />
+                  Completion Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.completionDate}
+                  onChange={(e) => handleInputChange('completionDate', e.target.value)}
+                  onFocus={() => setFocusedField('completionDate')}
+                  onBlur={() => setFocusedField(null)}
+                  className={`${inputBaseClass} ${
+                    focusedField === 'completionDate' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                  }`}
+                />
+              </div>
             </div>
           </Card>
         )}
@@ -1270,6 +1531,33 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               <>
                 <Save className="h-5 w-5 mr-3" />
                 Save Sale Details
+              </>
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isExporting || isSubmitting}
+            className={`flex items-center justify-center px-8 py-3 rounded-xl font-semibold transition-all duration-200 ${
+              isExporting 
+                ? 'scale-95' 
+                : 'hover:scale-105 hover:shadow-lg'
+            } ${
+              isDarkMode
+                ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/20'
+                : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/20'
+            }`}
+          >
+            {isExporting ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white mr-3" />
+                Exporting PDF...
+              </>
+            ) : (
+              <>
+                <Download className="h-5 w-5 mr-3" />
+                Export Completion PDF
               </>
             )}
           </Button>

@@ -447,7 +447,7 @@ export default function AddCostsForm({ stockData, onSuccess, isEditMode = false 
                                     focusedField === `${group}-${key}-${idx}-amount` ? 'ring-2 ring-blue-500/20 border-blue-500 scale-[1.02]' : ''
                                   }`}
                                   placeholder="0.00"
-                                  min="0"
+                                  step="0.01"
                                 />
                               </div>
                               
@@ -662,7 +662,7 @@ export default function AddCostsForm({ stockData, onSuccess, isEditMode = false 
                         focusedField === item.field ? 'ring-2 ring-blue-500/20 border-blue-500 scale-[1.02]' : ''
                       }`}
                       placeholder="0.00"
-                      min="0"
+                      step="0.01"
                     />
                   </div>
                 </div>

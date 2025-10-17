@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
-import { dealers, invoices } from '@/db/schema'
+import { dealers, invoices, teamMembers } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { EmailService } from '@/lib/emailService'
+import { getDealerIdForUser } from '@/lib/dealerHelper'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,21 +14,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get dealer record from Clerk user ID
-    const dealerResult = await db
-      .select({ id: dealers.id })
-      .from(dealers)
-      .where(eq(dealers.clerkUserId, user.id))
-      .limit(1)
-
-    if (dealerResult.length === 0) {
+    // Get dealer ID using helper function (supports team member credential delegation)
+    const dealerIdResult = await getDealerIdForUser(user)
+    if (!dealerIdResult.success) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Dealer record not found' 
+        error: dealerIdResult.error || 'Failed to resolve dealer ID' 
       }, { status: 404 })
     }
 
-    const dealerId = dealerResult[0].id
+    const dealerId = dealerIdResult.dealerId!
     const formData = await request.json()
     
     console.log('Invoice submission received:', {
@@ -40,7 +36,7 @@ export async function POST(request: NextRequest) {
     })
     
     // Generate invoice ID if not provided
-    const invoiceId = formData.invoiceNumber || `INV-${Date.now()}`
+    const invoiceId = formData.invoiceNumber || `INV-${formData.vehicleRegistration || 'DRAFT'}-${Date.now()}`
     
     // Prepare invoice data for database
     const invoiceData = {
