@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { usePrefetchStockDetail } from "@/hooks/useStockDataQuery";
+import { useStockDataQuery, usePrefetchStockDetail } from "@/hooks/useStockDataQuery";
+import { crossPageSyncService } from "@/lib/crossPageSyncService";
 import { useOptimizedStockData } from "@/hooks/useOptimizedStockData";
 import type { StockItem, ViewMode, VehicleInfo, MetadataInfo } from "@/types/stock";
 import Image from "next/image";
@@ -47,7 +48,8 @@ import {
   Store,
   Plus,
   MapPin,
-  QrCode
+  QrCode,
+  Download
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Header from "@/components/shared/Header";
@@ -86,6 +88,8 @@ function MyStockContent() {
   const [yearRange, setYearRange] = useState({ min: "", max: "" });
   const [mileageRange, setMileageRange] = useState({ min: "", max: "" });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showRefreshSkeleton, setShowRefreshSkeleton] = useState(false); // Show skeleton during forced refresh
+  const [refreshError, setRefreshError] = useState<string | null>(null); // Track refresh errors
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showTestDriveForm, setShowTestDriveForm] = useState(false);
@@ -464,10 +468,12 @@ function MyStockContent() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    console.log('🔄 MyStock: Refresh triggered - forcing fresh AutoTrader data fetch');
+    setShowRefreshSkeleton(true); // Show skeleton loading - hide old data
+    setRefreshError(null); // Clear any previous errors
+    console.log('🔄 MyStock: Force refresh - fetching fresh data from AutoTrader...');
     
     try {
-      // Step 1: Force refresh from AutoTrader API and update cache
+      // Force refresh from AutoTrader API - GUARANTEED FRESH DATA
       console.log('📡 Calling stock refresh API to fetch fresh data from AutoTrader...');
       const refreshResponse = await fetch('/api/stock/refresh', {
         method: 'POST',
@@ -480,7 +486,8 @@ function MyStockContent() {
       });
 
       if (!refreshResponse.ok) {
-        throw new Error(`Refresh failed: ${refreshResponse.status}`);
+        const errorData = await refreshResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || `Refresh failed with status: ${refreshResponse.status}`);
       }
 
       const refreshData = await refreshResponse.json();
@@ -490,22 +497,31 @@ function MyStockContent() {
         forceRefresh: refreshData.data?.cache?.forceRefresh
       });
 
-      // Step 2: Invalidate React Query cache to force refetch from updated database
-      console.log('🗑️ Invalidating React Query cache...');
-      invalidateStockCache();
+      // Trigger cross-page synchronization
+      console.log('🔄 Triggering cross-page sync to update all stock-related pages...');
+      if (user?.id) {
+        await crossPageSyncService.triggerStockRefresh(user.id, 'mystock-refresh');
+      }
       
-      // Step 3: Force refetch to get the fresh data from updated cache
-      console.log('🔄 Refetching data from updated cache...');
+      // Also trigger local refetch to update UI with fresh data
       await refetch();
       
-      console.log('✅ Refresh completed successfully');
+      console.log('✅ Refresh completed successfully - displaying fresh data!');
+      setRefreshError(null); // Clear any errors
       
     } catch (error) {
       console.error('❌ Error during refresh:', error);
-      // Still try to refetch in case of partial success
+      const errorMessage = error instanceof Error ? error.message : 'Failed to refresh data from AutoTrader';
+      setRefreshError(errorMessage);
+      
+      // Still try to refetch cached data as fallback
+      console.log('⚠️ Falling back to cached data...');
       await refetch();
+      
     } finally {
       setIsRefreshing(false);
+      // Delay hiding skeleton slightly to show the data has loaded
+      setTimeout(() => setShowRefreshSkeleton(false), 300);
     }
   };
 

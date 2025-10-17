@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { uploadFileToStorage, generateStorageFileName } from '@/lib/storage';
 import { createStockImage, createOrGetDealer, getDealerKeys } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 import { db } from '@/lib/db';
 import { stockCache, dealers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -136,16 +137,43 @@ export async function POST(request: NextRequest) {
       dealer = dealerResult.dealer;
     } else {
       // Regular authenticated upload
-      const { userId } = await auth();
-      if (!userId) {
+      const user = await currentUser();
+      if (!user) {
         return NextResponse.json({ 
           success: false, 
           message: 'Unauthorized' 
         }, { status: 401 });
       }
       
-      // Get dealer information for authenticated user
-      dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+      // Get or create dealer record using enhanced resolution
+      let dealerId: string;
+      const dealerResult = await getDealerIdForUser(user);
+      
+      if (dealerResult.success && dealerResult.dealerId) {
+        dealerId = dealerResult.dealerId;
+        console.log(`✅ Enhanced dealer resolution for upload: ${dealerId}`);
+        
+        // Get the full dealer record
+        const fullDealerResult = await db
+          .select()
+          .from(dealers)
+          .where(eq(dealers.id, dealerId))
+          .limit(1);
+        
+        if (fullDealerResult.length > 0) {
+          dealer = fullDealerResult[0];
+        } else {
+          return NextResponse.json({ 
+            success: false, 
+            message: 'Dealer record not found' 
+          }, { status: 400 });
+        }
+      } else {
+        console.log(`⚠️ Enhanced dealer resolution failed, falling back to createOrGetDealer`);
+        // Fallback to traditional dealer resolution
+        dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+        console.log(`🏢 Fallback dealer resolution for upload: ${dealer.id}`);
+      }
     }
 
     // Get form data parameters
@@ -184,6 +212,7 @@ export async function POST(request: NextRequest) {
     const uploadedStockImages = [];
     const errors = [];
     const autoTraderImageIds = [];
+    const total = files.length;
 
     // Get AutoTrader credentials if this is for QR upload (to add images to stock)
     let autoTraderToken = null;
@@ -217,6 +246,9 @@ export async function POST(request: NextRequest) {
     // Process each file
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const progress = Math.round(((i + 1) / total) * 100);
+      
+      console.log(`📷 Processing file ${i + 1}/${total}: ${file.name} (${progress}%)`);
 
       try {
         // Validate file
@@ -234,7 +266,7 @@ export async function POST(request: NextRequest) {
         const storageFileName = generateStorageFileName(file.name, 'stock', dealer.id);
         
         // Upload to Supabase Storage
-        const uploadResult = await uploadFileToStorage(file, storageFileName);
+        const uploadResult = await uploadFileToStorage(file, storageFileName, 'templates');
         
         if (!uploadResult.success || !uploadResult.publicUrl) {
           errors.push(`${file.name}: Upload failed - ${uploadResult.error}`);
