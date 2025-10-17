@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { stockCache, dvlaVehicleData } from '@/db/schema';
-import { eq, and, isNull, or, lt, ne, isNotNull } from 'drizzle-orm';
+import { eq, and, ne, isNotNull } from 'drizzle-orm';
 import type { DVLAVehicleResponse } from '@/app/api/dvla/vehicle-enquiry/route';
 
 // Configuration for DVLA service
@@ -268,19 +268,8 @@ async function getVehiclesNeedingDVLARefresh(options: DVLAServiceOptions = {}): 
       whereConditions = and(whereConditions, eq(stockCache.dealerId, dealerId));
     }
 
-    // Add refresh conditions
-    if (!forceRefresh) {
-      // Only refresh if never checked or older than threshold
-      whereConditions = and(
-        whereConditions,
-        or(
-          isNull(stockCache.dvlaLastChecked),
-          lt(stockCache.dvlaLastChecked, refreshThreshold)
-        )
-      );
-    }
-
-    const vehicles = await db
+    // Get all stock vehicles that could need DVLA refresh
+    const stockVehicles = await db
       .select({
         stockId: stockCache.stockId,
         registration: stockCache.registration,
@@ -290,8 +279,47 @@ async function getVehiclesNeedingDVLARefresh(options: DVLAServiceOptions = {}): 
       .where(whereConditions)
       .orderBy(stockCache.createdAt);
 
-    console.log(`🔍 Found ${vehicles.length} vehicles needing DVLA refresh`);
-    return vehicles.filter(v => v.registration) as Array<{
+    if (forceRefresh) {
+      // If force refresh, return all vehicles
+      console.log(`🔍 Force refresh: Found ${stockVehicles.length} vehicles for DVLA refresh`);
+      return stockVehicles.filter(v => v.registration) as Array<{
+        stockId: string;
+        registration: string;
+        dealerId: string;
+      }>;
+    }
+
+    // Get DVLA data to check which vehicles need refresh
+    console.log('🔍 Checking refresh status from NEW dvlaVehicleData table');
+    const dvlaData = await db
+      .select({
+        registrationNumber: dvlaVehicleData.registrationNumber,
+        dvlaLastChecked: dvlaVehicleData.dvlaLastChecked
+      })
+      .from(dvlaVehicleData);
+
+    // Create a map of DVLA data by registration
+    const dvlaMap = new Map();
+    dvlaData.forEach(record => {
+      dvlaMap.set(record.registrationNumber, record);
+    });
+
+    // Filter vehicles that need refresh based on DVLA table data
+    const vehiclesNeedingRefresh = stockVehicles.filter(vehicle => {
+      const dvlaRecord = dvlaMap.get(vehicle.registration);
+      
+      if (!dvlaRecord || !dvlaRecord.dvlaLastChecked) {
+        // No DVLA data exists, needs refresh
+        return true;
+      }
+      
+      // Check if DVLA data is older than threshold
+      const lastChecked = new Date(dvlaRecord.dvlaLastChecked);
+      return lastChecked < refreshThreshold;
+    });
+
+    console.log(`🔍 Found ${vehiclesNeedingRefresh.length} vehicles needing DVLA refresh (${stockVehicles.length} total vehicles)`);
+    return vehiclesNeedingRefresh as Array<{
       stockId: string;
       registration: string;
       dealerId: string;
@@ -487,25 +515,48 @@ export async function getDVLAStats(dealerId?: string): Promise<{
   unknownMOT: number;
 }> {
   try {
-    const baseCondition = eq(stockCache.isStale, false);
-    const whereCondition = dealerId 
+    // Get all active vehicles with registrations
+    const baseCondition = and(
+      eq(stockCache.isStale, false),
+      isNotNull(stockCache.registration),
+      ne(stockCache.registration, '')
+    );
+    
+    const stockCondition = dealerId 
       ? and(baseCondition, eq(stockCache.dealerId, dealerId))
       : baseCondition;
 
-    const vehicles = await db
+    // Get vehicles from stockCache (for total count and dealer filtering)
+    const stockVehicles = await db
       .select({
-        motStatus: stockCache.motStatus,
-        dvlaLastChecked: stockCache.dvlaLastChecked,
-        motExpiryDate: stockCache.motExpiryDate
+        registration: stockCache.registration,
+        dealerId: stockCache.dealerId
       })
       .from(stockCache)
-      .where(whereCondition);
+      .where(stockCondition);
+
+    // Get DVLA data from the new dvlaVehicleData table
+    console.log('📊 Reading DVLA statistics from NEW dvlaVehicleData table');
+    const dvlaData = await db
+      .select({
+        registrationNumber: dvlaVehicleData.registrationNumber,
+        motStatus: dvlaVehicleData.motStatus,
+        dvlaLastChecked: dvlaVehicleData.dvlaLastChecked,
+        motExpiryDate: dvlaVehicleData.motExpiryDate
+      })
+      .from(dvlaVehicleData);
+
+    // Create a map of DVLA data by registration for quick lookup
+    const dvlaMap = new Map();
+    dvlaData.forEach(record => {
+      dvlaMap.set(record.registrationNumber, record);
+    });
 
     const refreshThreshold = new Date();
     refreshThreshold.setDate(refreshThreshold.getDate() - DVLA_CONFIG.REFRESH_THRESHOLD_DAYS);
 
     const stats = {
-      totalVehicles: vehicles.length,
+      totalVehicles: stockVehicles.length,
       withDVLAData: 0,
       needingRefresh: 0,
       validMOT: 0,
@@ -513,22 +564,28 @@ export async function getDVLAStats(dealerId?: string): Promise<{
       unknownMOT: 0
     };
 
-    for (const vehicle of vehicles) {
-      if (vehicle.dvlaLastChecked) {
+    // Process each stock vehicle and check if it has DVLA data
+    for (const stockVehicle of stockVehicles) {
+      const dvlaRecord = dvlaMap.get(stockVehicle.registration);
+      
+      if (dvlaRecord && dvlaRecord.dvlaLastChecked) {
         stats.withDVLAData++;
         
-        if (vehicle.dvlaLastChecked < refreshThreshold) {
+        // Check if needs refresh (convert string to Date for comparison)
+        const lastChecked = new Date(dvlaRecord.dvlaLastChecked);
+        if (lastChecked < refreshThreshold) {
           stats.needingRefresh++;
         }
       } else {
         stats.needingRefresh++;
       }
 
-      if (vehicle.motStatus) {
-        if (vehicle.motStatus.toLowerCase().includes('valid')) {
+      // Count MOT status from DVLA table
+      if (dvlaRecord && dvlaRecord.motStatus) {
+        if (dvlaRecord.motStatus.toLowerCase().includes('valid')) {
           stats.validMOT++;
-        } else if (vehicle.motStatus.toLowerCase().includes('invalid') || 
-                   vehicle.motStatus.toLowerCase().includes('expired')) {
+        } else if (dvlaRecord.motStatus.toLowerCase().includes('invalid') || 
+                   dvlaRecord.motStatus.toLowerCase().includes('expired')) {
           stats.expiredMOT++;
         } else {
           stats.unknownMOT++;
