@@ -32,7 +32,6 @@ import {
   ChevronRight,
   ImageIcon,
   LogIn,
-  UserCheck,
   Filter,
   ChevronUp,
   ChevronDown,
@@ -49,6 +48,7 @@ import {
   Store,
   Plus,
   MapPin,
+  QrCode,
   Download
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -62,6 +62,7 @@ import TestDriveEntryForm from "@/components/shared/TestDriveEntryForm";
 import StockDataError from "@/components/shared/StockDataError";
 import StockSkeleton from "@/components/shared/StockSkeleton";
 import ProgressiveLoader from "@/components/shared/ProgressiveLoader";
+import QRCodeModal from "@/components/shared/QRCodeModal";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -112,6 +113,10 @@ function MyStockContent() {
   const [selectedStock, setSelectedStock] = useState<StockItem | null>(null);
   const [isInventorySettingsOpen, setIsInventorySettingsOpen] = useState(false);
   
+  // QR Code modal state
+  const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
+  const [selectedQRStock, setSelectedQRStock] = useState<StockItem | null>(null);
+  
   // AutoTrader limits state
   const [autoTraderLimit, setAutoTraderLimit] = useState<{
     current: number;
@@ -121,8 +126,6 @@ function MyStockContent() {
   } | null>(null);
   const [selectedInventoryStock, setSelectedInventoryStock] = useState<StockItem | null>(null);
 
-  // Loading states for stock actions (kept for backward compatibility)
-  const [loadingStockActions, setLoadingStockActions] = useState<{[key: string]: 'sold' | 'delete' | null}>({});
   
   // Modal states for stock actions
   const [actionModal, setActionModal] = useState<{
@@ -302,7 +305,6 @@ function MyStockContent() {
     error, 
     loadingState,
     pagination: apiPagination, 
-    cacheStatus,
     refetch,
     isFetching,
     isStale,
@@ -550,6 +552,57 @@ function MyStockContent() {
     return `${mileage.toLocaleString()} mi`;
   };
 
+  // MOT helper functions
+  const calculateMOTExpiryDays = (motExpiryDate?: string | null): number | null => {
+    if (!motExpiryDate) return null;
+    
+    const today = new Date();
+    const expiryDate = new Date(motExpiryDate);
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+
+  const getMOTStatusColor = (daysLeft: number | null): string => {
+    if (daysLeft === null) return 'text-gray-500';
+    
+    if (daysLeft > 180) {
+      return 'text-green-600'; // Green for over 180 days
+    } else if (daysLeft >= 30) {
+      return 'text-amber-600'; // Amber for 30-180 days
+    } else {
+      return 'text-red-600'; // Red for under 30 days
+    }
+  };
+
+  const getMOTStatusBgColor = (daysLeft: number | null, isDark: boolean = false): string => {
+    if (daysLeft === null) return isDark ? 'bg-gray-700' : 'bg-gray-100';
+    
+    if (daysLeft > 180) {
+      return isDark ? 'bg-green-900/30' : 'bg-green-50'; // Green background
+    } else if (daysLeft >= 30) {
+      return isDark ? 'bg-amber-900/30' : 'bg-amber-50'; // Amber background
+    } else {
+      return isDark ? 'bg-red-900/30' : 'bg-red-50'; // Red background
+    }
+  };
+
+  const formatMOTExpiry = (motExpiryDate?: string | null): string => {
+    if (!motExpiryDate) return 'N/A';
+    
+    const daysLeft = calculateMOTExpiryDays(motExpiryDate);
+    if (daysLeft === null) return 'N/A';
+    
+    if (daysLeft < 0) {
+      return `Expired ${Math.abs(daysLeft)} days ago`;
+    } else if (daysLeft === 0) {
+      return 'Expires today';
+    } else {
+      return `${daysLeft} days left`;
+    }
+  };
+
 
 
   const calculateDaysInStock = (item: StockItem) => {
@@ -759,7 +812,6 @@ function MyStockContent() {
         message: `Deleting ${vehicleName} and unpublishing from all channels...`
       }));
 
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: 'delete' }));
 
       const response = await fetch(`/api/stock/${stockId}?advertiserId=${advertiserId}`, {
         method: 'PATCH',
@@ -827,7 +879,6 @@ function MyStockContent() {
         message: error instanceof Error ? error.message : 'Failed to delete stock'
       }));
     } finally {
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: null }));
     }
   };
 
@@ -883,7 +934,6 @@ function MyStockContent() {
         message: `Marking ${vehicleName} as sold and unpublishing from all channels...`
       }));
 
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: 'sold' }));
 
       // Get current date for soldDate
       const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
@@ -955,7 +1005,6 @@ function MyStockContent() {
         message: error instanceof Error ? error.message : 'Failed to mark stock as sold'
       }));
     } finally {
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: null }));
     }
   };
 
@@ -992,6 +1041,11 @@ function MyStockContent() {
     } else {
       alert('No registration number found for this vehicle');
     }
+  };
+
+  const handleShowQRCode = (item: StockItem) => {
+    setSelectedQRStock(item);
+    setIsQRCodeModalOpen(true);
   };
 
   const handleInventorySettings = (item: StockItem) => {
@@ -2316,6 +2370,7 @@ function MyStockContent() {
                             alt={`${getVehicleProperty(item, 'make')} ${getVehicleProperty(item, 'model')}`}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            quality={75}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -2370,6 +2425,27 @@ function MyStockContent() {
                             <Gauge className="w-3 h-3" />
                             {formatMileage(getVehicleProperty(item, 'odometerReadingMiles') as number)}
                           </div>
+                          
+                          {/* MOT Status in Card View */}
+                          {(() => {
+                            const motStatus = item.motStatus || item.vehicle?.motStatus;
+                            const motExpiryDate = item.motExpiryDate || item.vehicle?.motExpiryDate;
+                            const daysLeft = calculateMOTExpiryDays(motExpiryDate as string);
+                            
+                            return (
+                              <div className={`flex items-center gap-1 ${
+                                isDarkMode ? 'text-white' : 'text-slate-600'
+                              }`}>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className={`text-xs ${motStatus && motExpiryDate ? getMOTStatusColor(daysLeft) : 'text-gray-500'}`}>
+                                  MOT: {motStatus || 'N/A'} {motExpiryDate ? `(${formatMOTExpiry(motExpiryDate as string)})` : '(N/A)'}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                          
                           <div className={`flex items-center gap-1 ${
                             isDarkMode ? 'text-white' : 'text-slate-600'
                           }`}>
@@ -2482,6 +2558,10 @@ function MyStockContent() {
                                 Vehicle Check
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem onClick={() => handleShowQRCode(item)}>
+                              <QrCode className="w-4 h-4 text-orange-500 mr-2" />
+                              QR Code Upload
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
                               setSelectedStock(item);
                               setIsSettingsDialogOpen(true);
@@ -2623,6 +2703,10 @@ function MyStockContent() {
                                           Vehicle Check
                                         </DropdownMenuItem>
                                       )}
+                                      <DropdownMenuItem onClick={() => handleShowQRCode(item)}>
+                                        <QrCode className="w-4 h-4 text-orange-500 mr-2" />
+                                        QR Code Upload
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => {
                                         setSelectedStock(item);
                                         setIsSettingsDialogOpen(true);
@@ -2645,6 +2729,7 @@ function MyStockContent() {
                                           alt={`${getVehicleProperty(item, 'make')} ${getVehicleProperty(item, 'model')}`}
                                           fill
                                           className="object-cover"
+                                          quality={60}
                                         />
                                       </div>
                                     ) : (
@@ -2691,6 +2776,8 @@ function MyStockContent() {
                               { key: 'price', label: 'Price', width: 'min-w-[100px]' },
                               { key: 'priceIndicator', label: 'Price Rating', width: 'min-w-[90px]' },
                               { key: 'mileage', label: 'Miles', width: 'min-w-[80px]' },
+                              // { key: 'motStatus', label: 'MOT Status', width: 'min-w-[90px]' },
+                              { key: 'motExpiry', label: 'MOT Expiry', width: 'min-w-[100px]' },
                               { key: 'lifecycleState', label: 'Status', width: 'min-w-[100px]' },
                               { key: 'daysInStock', label: 'Days', width: 'min-w-[60px]' },
                                 // Basic Vehicle Info
@@ -2744,7 +2831,6 @@ function MyStockContent() {
                                
                                 { key: 'hoursUsed', label: 'Hours', width: 'min-w-[60px]' },
                                 { key: 'firstReg', label: 'First Reg', width: 'min-w-[90px]' },
-                                { key: 'motExpiry', label: 'MOT', width: 'min-w-[90px]' },
                                 { key: 'lastService', label: 'Service', width: 'min-w-[90px]' },
                                 { key: 'serviceHistory', label: 'Svc History', width: 'min-w-[90px]' },
                                 
@@ -2924,6 +3010,48 @@ function MyStockContent() {
                                     {formatMileage(apiItem.vehicle?.odometerReadingMiles || apiItem.odometerReadingMiles)}
                                   </td>
 
+                                {/* MOT Status */}
+                                {/* <td className={`p-2 text-xs align-middle border-r ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
+                                  {(() => {
+                                    const motStatus = apiItem.motStatus || apiItem.vehicle?.motStatus;
+                                    const motExpiryDate = apiItem.motExpiryDate || apiItem.vehicle?.motExpiryDate;
+                                    const daysLeft = calculateMOTExpiryDays(motExpiryDate);
+                                    
+                                    if (!motStatus && !motExpiryDate) {
+                                      return <span className="text-gray-500">N/A</span>;
+                                    }
+                                    
+                                    return (
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMOTStatusBgColor(daysLeft, isDarkMode)} ${getMOTStatusColor(daysLeft)}`}>
+                                        {motStatus || 'N/A'}
+                                      </span>
+                                    );
+                                  })()}
+                                </td> */}
+
+                                {/* MOT Expiry */}
+                                <td className={`p-2 text-xs align-middle border-r ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
+                                  {(() => {
+                                    const motExpiryDate = apiItem.motExpiryDate || apiItem.vehicle?.motExpiryDate;
+                                    const daysLeft = calculateMOTExpiryDays(motExpiryDate);
+                                    
+                                    if (!motExpiryDate) {
+                                      return <span className="text-gray-500">N/A</span>;
+                                    }
+                                    
+                                    return (
+                                      <div className="flex flex-col">
+                                        <span className={`text-xs font-medium ${getMOTStatusColor(daysLeft)}`}>
+                                          {formatMOTExpiry(motExpiryDate)}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(motExpiryDate).toLocaleDateString('en-GB')}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
+
                                 <td className={`px-2 py-1 border-r align-middle text-center ${isDarkMode ? 'border-slate-700/20' : 'border-slate-200/30'}`}>
                                   <div className="flex flex-col gap-1 items-center justify-center">
                                     <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium border text-center ${getStatusColor(apiItem.metadata?.lifecycleState || apiItem.lifecycleState, isDarkMode)}`}>
@@ -3096,12 +3224,6 @@ function MyStockContent() {
                                   <td className={`px-2 py-1 text-xs align-middle border-r ${isDarkMode ? 'text-slate-300 border-slate-700/20' : 'text-slate-700 border-slate-200/30'}`}>
                                     {(() => {
                                       const date = getVehicleProperty(apiItem, 'firstRegistrationDate');
-                                      return date ? new Date(date as string).toLocaleDateString() : 'N/A';
-                                    })()}
-                                  </td>
-                                  <td className={`px-2 py-1 text-xs align-middle border-r ${isDarkMode ? 'text-slate-300 border-slate-700/20' : 'text-slate-700 border-slate-200/30'}`}>
-                                    {(() => {
-                                      const date = getVehicleProperty(apiItem, 'motExpiryDate');
                                       return date ? new Date(date as string).toLocaleDateString() : 'N/A';
                                     })()}
                                   </td>
@@ -3388,6 +3510,18 @@ function MyStockContent() {
             stockData={selectedInventoryStock}
           />
         )}
+
+        {/* QR Code Modal */}
+        <QRCodeModal
+          isOpen={isQRCodeModalOpen}
+          onClose={() => {
+            setIsQRCodeModalOpen(false);
+            setSelectedQRStock(null);
+          }}
+          stockId={selectedQRStock?.stockId || ''}
+          registration={selectedQRStock ? getVehicleProperty(selectedQRStock, 'registration') as string : undefined}
+          vehicleTitle={selectedQRStock ? `${getVehicleProperty(selectedQRStock, 'make')} ${getVehicleProperty(selectedQRStock, 'model')} ${getVehicleProperty(selectedQRStock, 'derivative') || ''}` : undefined}
+        />
 
         {/* Stock Action Modal */}
         {actionModal.isOpen && (

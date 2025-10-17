@@ -476,6 +476,12 @@ export const stockCache = pgTable('stock_cache', {
   fuelType: varchar('fuel_type', { length: 50 }), // Petrol, Diesel, Electric, etc.
   bodyType: varchar('body_type', { length: 50 }), // Hatchback, SUV, Saloon, etc.
   
+  // DVLA/MOT Information (fetched from DVLA API)
+  motStatus: varchar('mot_status', { length: 50 }), // Valid, Invalid, Not due, etc.
+  motExpiryDate: timestamp('mot_expiry_date'), // MOT expiry date from DVLA
+  dvlaLastChecked: timestamp('dvla_last_checked'), // When DVLA data was last fetched
+  dvlaDataRaw: jsonb('dvla_data_raw'), // Complete DVLA response for reference
+  
   // Pricing Information (most accessed for listings)
   forecourtPriceGBP: decimal('forecourt_price_gbp', { precision: 10, scale: 2 }), // Main price
   totalPriceGBP: decimal('total_price_gbp', { precision: 10, scale: 2 }), // Retail price including fees
@@ -563,6 +569,53 @@ export const stockCacheSyncLog = pgTable('stock_cache_sync_log', {
   startTimeIdx: index('idx_sync_log_start_time').on(table.startTime),
 }))
 
+// DVLA Vehicle Data table - Separate table for DVLA/MOT information linked by registration
+export const dvlaVehicleData = pgTable('dvla_vehicle_data', {
+  id: serial('id').primaryKey(),
+  registrationNumber: varchar('registration_number', { length: 20 }).notNull().unique(), // Vehicle registration
+  
+  // DVLA Core Data
+  make: varchar('make', { length: 100 }), // e.g., SKODA, BMW
+  colour: varchar('colour', { length: 50 }), // e.g., SILVER, BLACK
+  fuelType: varchar('fuel_type', { length: 50 }), // e.g., PETROL, DIESEL
+  yearOfManufacture: integer('year_of_manufacture'), // e.g., 2012
+  engineCapacity: integer('engine_capacity'), // e.g., 1197 (cc)
+  co2Emissions: integer('co2_emissions'), // e.g., 124 (g/km)
+  
+  // MOT Information
+  motStatus: varchar('mot_status', { length: 50 }), // Valid, Invalid, Not due, etc.
+  motExpiryDate: date('mot_expiry_date'), // MOT expiry date
+  
+  // Tax Information
+  taxStatus: varchar('tax_status', { length: 50 }), // Taxed, SORN, Untaxed
+  taxDueDate: date('tax_due_date'), // Tax due date
+  
+  // Vehicle Classification
+  typeApproval: varchar('type_approval', { length: 10 }), // e.g., M1
+  wheelplan: varchar('wheelplan', { length: 100 }), // e.g., 2 AXLE RIGID BODY
+  revenueWeight: integer('revenue_weight'), // e.g., 1585 (kg)
+  
+  // Export Status
+  markedForExport: boolean('marked_for_export').default(false),
+  
+  // V5C Information
+  dateOfLastV5CIssued: date('date_of_last_v5c_issued'),
+  monthOfFirstRegistration: varchar('month_of_first_registration', { length: 10 }), // e.g., 2012-09
+  
+  // DVLA API Metadata
+  dvlaLastChecked: timestamp('dvla_last_checked').notNull().defaultNow(), // When this data was fetched
+  dvlaDataRaw: jsonb('dvla_data_raw'), // Complete DVLA API response for reference
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  registrationIdx: index('idx_dvla_registration').on(table.registrationNumber),
+  motStatusIdx: index('idx_dvla_mot_status').on(table.motStatus),
+  motExpiryIdx: index('idx_dvla_mot_expiry').on(table.motExpiryDate),
+  lastCheckedIdx: index('idx_dvla_last_checked').on(table.dvlaLastChecked),
+}))
+
 // Relations for stock cache
 export const stockCacheRelations = relations(stockCache, ({ one }) => ({
   dealer: one(dealers, {
@@ -582,7 +635,11 @@ export const stockCacheSyncLogRelations = relations(stockCacheSyncLog, ({ one })
 export type StockCache = typeof stockCache.$inferSelect
 export type NewStockCache = typeof stockCache.$inferInsert
 export type StockCacheSyncLog = typeof stockCacheSyncLog.$inferSelect
-export type NewStockCacheSyncLog = typeof stockCacheSyncLog.$inferInsert 
+export type NewStockCacheSyncLog = typeof stockCacheSyncLog.$inferInsert
+
+// Types for DVLA vehicle data
+export type DVLAVehicleData = typeof dvlaVehicleData.$inferSelect
+export type NewDVLAVehicleData = typeof dvlaVehicleData.$inferInsert 
 
 // ================================
 // STOCK ACTION FORMS SCHEMA

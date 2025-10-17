@@ -398,7 +398,7 @@ export default function InvoicesPage() {
                           </TableCell>
                           
                           <TableCell className="font-medium">
-                            {invoice.invoiceNumber}
+                            INV-{invoice.vehicleRegistration}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">

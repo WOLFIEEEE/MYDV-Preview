@@ -326,26 +326,29 @@ const SimplifiedVehicleBrochurePDFDocument: React.FC<SimplifiedVehicleBrochurePD
   // Use only the attributes that have data - no padding to 36
   const gridAttributes = vehicleAttributes;
 
-  // Use actual descriptions from adverts data, showing both when available
-  const getVehicleDescription = () => {
-    const description1 = adverts.retailAdverts?.description;
-    const description2 = adverts.retailAdverts?.description2;
-
-    const descriptions = [];
-
-    if (description1 && description1.trim()) {
-      descriptions.push(description1.trim());
+  // Create description from available data
+  const createDescription = () => {
+    const parts = [];
+    
+    if (vehicle.make && vehicle.model) {
+      parts.push(`This ${vehicle.make} ${vehicle.model} represents excellent value and quality.`);
     }
-
-    if (description2 && description2.trim() && description2.trim() !== description1?.trim()) {
-      descriptions.push(description2.trim());
+    
+    if (vehicle.yearOfManufacture) {
+      parts.push(`Manufactured in ${vehicle.yearOfManufacture}.`);
     }
-
-    if (descriptions.length > 0) {
-      return descriptions.join('\n\n');
+    
+    if (vehicle.odometerReadingMiles) {
+      parts.push(`With ${vehicle.odometerReadingMiles.toLocaleString()} miles on the clock.`);
     }
-
-    return 'No vehicle description';
+    
+    if (vehicle.fuelType && vehicle.transmissionType) {
+      parts.push(`Featuring ${vehicle.fuelType} engine with ${vehicle.transmissionType} transmission.`);
+    }
+    
+    parts.push('This vehicle has been carefully inspected and is ready for its new owner.');
+    
+    return parts.join(' ');
   };
 
   return (
@@ -444,7 +447,7 @@ const SimplifiedVehicleBrochurePDFDocument: React.FC<SimplifiedVehicleBrochurePD
         {/* Vehicle Description */}
         <View style={styles.descriptionSection}>
           <Text style={styles.sectionTitle}>Vehicle Description</Text>
-          <Text style={styles.description}>{getVehicleDescription()}</Text>
+          <Text style={styles.description}>{createDescription()}</Text>
         </View>
 
         {/* Enhanced Business Footer */}

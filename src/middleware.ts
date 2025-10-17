@@ -14,7 +14,8 @@ const isPublicRoute = createRouteMatcher([
   '/terms',
   '/cookies',
   '/join',
-  '/accept-invitation'
+  '/accept-invitation',
+  '/qr-upload(.*)'
 ]);
 
 // Define routes that should be explicitly protected
@@ -54,7 +55,12 @@ export default clerkMiddleware(async (auth, req) => {
   // Protect API routes (except public ones)
   if (req.nextUrl.pathname.startsWith('/api/')) {
     // Allow some public API endpoints if needed
-    const publicApiRoutes = ['/api/webhooks'];
+    const publicApiRoutes = [
+      '/api/webhooks',
+      '/api/stock-images/upload', // Allow stock-images upload for QR code functionality
+      '/api/vehicle-documents/upload', // Allow vehicle-documents upload for QR code functionality
+      '/api/stock/' // Allow basic stock info for QR code functionality (covers /api/stock/[stockId]/basic-info)
+    ];
     const isPublicApi = publicApiRoutes.some(route => req.nextUrl.pathname.startsWith(route));
     
     if (!isPublicApi) {

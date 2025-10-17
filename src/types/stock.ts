@@ -45,6 +45,8 @@ export interface VehicleInfo {
   bootSpaceSeatsUpLitres?: number;
   bootSpaceSeatsDownLitres?: number;
   motExpiryDate?: string;
+  motStatus?: string; // MOT status from DVLA (Valid, Invalid, Not due, etc.)
+  dvlaLastChecked?: string; // When DVLA data was last fetched
   warrantyMonthsOnPurchase?: number;
   serviceHistory?: string;
   lastServiceDate?: string;
@@ -217,6 +219,8 @@ export interface StockItem {
   bootSpaceSeatsUpLitres?: number;
   bootSpaceSeatsDownLitres?: number;
   motExpiryDate?: string;
+  motStatus?: string; // MOT status from DVLA (Valid, Invalid, Not due, etc.)
+  dvlaLastChecked?: string; // When DVLA data was last fetched
   warrantyMonthsOnPurchase?: number;
   serviceHistory?: string;
   lastServiceDate?: string;

@@ -30,6 +30,7 @@ export const LICENSES_BUCKET = 'licenses'
 export const COMPANY_LOGOS_BUCKET = 'company-logos'
 export const DEALER_LOGOS_BUCKET = 'dealer-logos'
 export const VEHICLE_DOCUMENTS_BUCKET = 'vehicle-documents'
+export const QR_STOCK_IMAGES_BUCKET = 'qr-stock-images'
 
 /**
  * Ensure a storage bucket exists, create it if it doesn't
@@ -214,6 +215,32 @@ export function generateStorageFileName(
 
   // Structure: dealerId/category/filename_timestamp_randomId.ext
   return `${dealerId}/${category}/${sanitizedName}_${timestamp}_${randomId}.${fileExtension}`
+}
+
+/**
+ * Generate QR-specific filename with registration information for better filtering
+ */
+export function generateQRStorageFileName(
+  originalName: string,
+  dealerId: string,
+  stockId: string,
+  registration?: string
+): string {
+  const timestamp = Date.now()
+  const randomId = Math.random().toString(36).substring(2, 15)
+  const fileExtension = originalName.split('.').pop()
+  const sanitizedName = originalName
+    .replace(/\.[^/.]+$/, '') // Remove extension
+    .replace(/[^a-zA-Z0-9]/g, '_') // Replace special chars
+    .substring(0, 30) // Shorter limit to accommodate registration
+
+  // Sanitize registration for filename
+  const sanitizedRegistration = registration
+    ? registration.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 15)
+    : 'NO_REG'
+
+  // Structure: dealerId/qr-uploads/registration/stockId_filename_timestamp_randomId.ext
+  return `${dealerId}/qr-uploads/${sanitizedRegistration}/${stockId}_${sanitizedName}_${timestamp}_${randomId}.${fileExtension}`
 }
 
 /**

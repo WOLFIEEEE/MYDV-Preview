@@ -1620,7 +1620,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 Invoice:
               </Text>
               <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
-                {invoiceData.invoiceNumber}
+                INV-{invoiceData.vehicle.registration}
               </Text>
               
               <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
@@ -1689,7 +1689,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             ) : (
               <>
                 <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
-                  {invoiceData.invoiceNumber} - {invoiceData.customer.firstName} {invoiceData.customer.lastName}
+                  INV-{invoiceData.vehicle.registration} - {invoiceData.customer.title} {invoiceData.customer.firstName} {invoiceData.customer.lastName}
                 </Text>
                 <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                   {invoiceData.customer.address.firstLine}
@@ -2612,7 +2612,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 </Text>
               )}
               <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
-                Ref - {invoiceData.invoiceNumber}
+                Ref - INV-{invoiceData.vehicle.registration}
             </Text>
             </View>
 
