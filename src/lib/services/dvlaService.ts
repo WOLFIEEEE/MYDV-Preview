@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { stockCache } from '@/db/schema';
+import { stockCache, dvlaVehicleData } from '@/db/schema';
 import { eq, and, isNull, or, lt, ne, isNotNull } from 'drizzle-orm';
 import type { DVLAVehicleResponse } from '@/app/api/dvla/vehicle-enquiry/route';
 
@@ -141,13 +141,83 @@ async function fetchDVLAData(registration: string): Promise<{ success: boolean; 
 }
 
 /**
- * Update stock record with DVLA data
+ * Update both DVLA table and stock record with DVLA data
  */
 async function updateStockWithDVLAData(
   stockId: string, 
   dvlaData: DVLAVehicleResponse
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // First, get the registration from the stock record
+    const stockRecord = await db
+      .select({ registration: stockCache.registration })
+      .from(stockCache)
+      .where(eq(stockCache.stockId, stockId))
+      .limit(1);
+
+    if (stockRecord.length === 0) {
+      return { success: false, error: 'Stock record not found' };
+    }
+
+    const registration = stockRecord[0].registration;
+    if (!registration) {
+      return { success: false, error: 'No registration found for stock record' };
+    }
+
+    // Update or insert into DVLA table
+    const dvlaRecord = {
+      registrationNumber: registration,
+      make: dvlaData.make,
+      colour: dvlaData.colour,
+      fuelType: dvlaData.fuelType,
+      yearOfManufacture: dvlaData.yearOfManufacture,
+      engineCapacity: dvlaData.engineCapacity,
+      co2Emissions: dvlaData.co2Emissions,
+      motStatus: dvlaData.motStatus,
+      motExpiryDate: dvlaData.motExpiryDate || null,
+      taxStatus: dvlaData.taxStatus,
+      taxDueDate: dvlaData.taxDueDate || null,
+      typeApproval: dvlaData.typeApproval,
+      wheelplan: dvlaData.wheelplan,
+      revenueWeight: dvlaData.revenueWeight,
+      markedForExport: dvlaData.markedForExport || false,
+      dateOfLastV5CIssued: dvlaData.dateOfLastV5CIssued || null,
+      monthOfFirstRegistration: dvlaData.monthOfFirstRegistration,
+      dvlaLastChecked: new Date(),
+      dvlaDataRaw: dvlaData,
+      updatedAt: new Date()
+    };
+
+    // Use upsert (insert or update) for DVLA table
+    await db
+      .insert(dvlaVehicleData)
+      .values(dvlaRecord)
+      .onConflictDoUpdate({
+        target: dvlaVehicleData.registrationNumber,
+        set: {
+          make: dvlaRecord.make,
+          colour: dvlaRecord.colour,
+          fuelType: dvlaRecord.fuelType,
+          yearOfManufacture: dvlaRecord.yearOfManufacture,
+          engineCapacity: dvlaRecord.engineCapacity,
+          co2Emissions: dvlaRecord.co2Emissions,
+          motStatus: dvlaRecord.motStatus,
+          motExpiryDate: dvlaRecord.motExpiryDate,
+          taxStatus: dvlaRecord.taxStatus,
+          taxDueDate: dvlaRecord.taxDueDate,
+          typeApproval: dvlaRecord.typeApproval,
+          wheelplan: dvlaRecord.wheelplan,
+          revenueWeight: dvlaRecord.revenueWeight,
+          markedForExport: dvlaRecord.markedForExport,
+          dateOfLastV5CIssued: dvlaRecord.dateOfLastV5CIssued,
+          monthOfFirstRegistration: dvlaRecord.monthOfFirstRegistration,
+          dvlaLastChecked: dvlaRecord.dvlaLastChecked,
+          dvlaDataRaw: dvlaRecord.dvlaDataRaw,
+          updatedAt: dvlaRecord.updatedAt
+        }
+      });
+
+    // Also update the stock cache for backward compatibility and quick access
     await db
       .update(stockCache)
       .set({
@@ -159,7 +229,7 @@ async function updateStockWithDVLAData(
       })
       .where(eq(stockCache.stockId, stockId));
 
-    console.log(`✅ Updated stock ${stockId} with DVLA data`);
+    console.log(`✅ Updated both DVLA table and stock ${stockId} with DVLA data for registration ${registration}`);
     return { success: true };
 
   } catch (error) {

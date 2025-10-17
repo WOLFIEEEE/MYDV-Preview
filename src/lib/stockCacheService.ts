@@ -945,6 +945,10 @@ export class StockCacheService {
             fuelType: cached.fuelType || (vehicleData as any).fuelType,
             bodyType: cached.bodyType || (vehicleData as any).bodyType,
             ownershipCondition: cached.ownershipCondition || (vehicleData as any).ownershipCondition,
+            // MOT and DVLA data in vehicle object too
+            motStatus: cached.motStatus,
+            motExpiryDate: cached.motExpiryDate,
+            dvlaLastChecked: cached.dvlaLastChecked,
           },
           
           // Top-level fields that frontend expects
@@ -979,6 +983,11 @@ export class StockCacheService {
           suppliedPrice: (cached.advertsData as any)?.retailAdverts?.suppliedPrice,
           forecourtPrice: cached.forecourtPriceGBP ? { amountGBP: Number(cached.forecourtPriceGBP) } : undefined,
           priceIndicatorRating: (cached.advertsData as any)?.retailAdverts?.priceIndicatorRating,
+          
+          // MOT and DVLA data
+          motStatus: cached.motStatus,
+          motExpiryDate: cached.motExpiryDate,
+          dvlaLastChecked: cached.dvlaLastChecked,
           
           // Extended data objects
           advertiser: cached.advertiserData,
@@ -1086,6 +1095,10 @@ export class StockCacheService {
             fuelType: cached.fuelType || (vehicleData as any).fuelType,
             bodyType: cached.bodyType || (vehicleData as any).bodyType,
             ownershipCondition: cached.ownershipCondition || (vehicleData as any).ownershipCondition,
+            // MOT and DVLA data in vehicle object too
+            motStatus: cached.motStatus,
+            motExpiryDate: cached.motExpiryDate,
+            dvlaLastChecked: cached.dvlaLastChecked,
           },
           make: cached.make,
           model: cached.model,
@@ -1114,6 +1127,12 @@ export class StockCacheService {
           suppliedPrice: (cached.advertsData as any)?.retailAdverts?.suppliedPrice,
           forecourtPrice: cached.forecourtPriceGBP ? { amountGBP: Number(cached.forecourtPriceGBP) } : undefined,
           priceIndicatorRating: (cached.advertsData as any)?.retailAdverts?.priceIndicatorRating,
+          
+          // MOT and DVLA data
+          motStatus: cached.motStatus,
+          motExpiryDate: cached.motExpiryDate,
+          dvlaLastChecked: cached.dvlaLastChecked,
+          
           advertiser: cached.advertiserData,
           adverts: cached.advertsData,
           features: cached.featuresData,
@@ -1851,6 +1870,29 @@ export class StockCacheService {
       // Update existing entries
       for (const entry of toUpdate) {
         try {
+          // Get existing MOT data to preserve it during refresh
+          const existingRecord = await db
+            .select({
+              motStatus: stockCache.motStatus,
+              motExpiryDate: stockCache.motExpiryDate,
+              dvlaLastChecked: stockCache.dvlaLastChecked,
+              dvlaDataRaw: stockCache.dvlaDataRaw
+            })
+            .from(stockCache)
+            .where(and(
+              eq(stockCache.stockId, entry.stockId),
+              eq(stockCache.dealerId, dealerId),
+              eq(stockCache.advertiserId, advertiserId)
+            ))
+            .limit(1);
+
+          const existingMOTData = existingRecord[0] || {};
+          
+          // Log MOT data preservation
+          if (existingMOTData.motStatus || existingMOTData.dvlaLastChecked) {
+            console.log(`🔒 Preserving MOT data for ${entry.stockId}: ${existingMOTData.motStatus || 'No status'} (checked: ${existingMOTData.dvlaLastChecked || 'Never'})`);
+          }
+
           await db
             .update(stockCache)
             .set({
@@ -1882,6 +1924,11 @@ export class StockCacheService {
               highlightsData: entry.highlightsData,
               valuationsData: entry.valuationsData,
               responseMetricsData: entry.responseMetricsData,
+              // PRESERVE EXISTING MOT DATA - Don't overwrite with null
+              motStatus: existingMOTData.motStatus,
+              motExpiryDate: existingMOTData.motExpiryDate,
+              dvlaLastChecked: existingMOTData.dvlaLastChecked,
+              dvlaDataRaw: existingMOTData.dvlaDataRaw,
               updatedAt: new Date(),
             })
             .where(and(

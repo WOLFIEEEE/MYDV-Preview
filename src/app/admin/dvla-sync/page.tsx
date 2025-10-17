@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth, useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertCircle, Clock, Shield } from 'lucide-react';
+import AdminHeader from '@/components/admin/AdminHeader';
+import Footer from '@/components/shared/Footer';
 
 interface DVLAStats {
   totalVehicles: number;
@@ -31,18 +35,60 @@ interface ProcessingResult {
 }
 
 export default function DVLASyncPage() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
+  const router = useRouter();
+  
   const [stats, setStats] = useState<DVLAStats | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [results, setResults] = useState<ProcessingResult[]>([]);
   const [totalProcessed, setTotalProcessed] = useState(0);
   const [batchSize, setBatchSize] = useState(3);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch current statistics
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      if (!isLoaded || !isSignedIn || !user) {
+        if (isLoaded && !isSignedIn) {
+          router.replace('/sign-in');
+        }
+        return;
+      }
+
+      // Check admin access
+      const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.trim()).filter(email => email.length > 0) || [];
+      const userEmail = user.emailAddresses?.[0]?.emailAddress || '';
+      
+      const isUserAdmin = adminEmails.includes(userEmail);
+      
+      console.log('🔍 DVLA Sync admin access check:');
+      console.log('📧 User email:', userEmail);
+      console.log('📋 Admin emails:', adminEmails);
+      console.log('✅ Is user admin?', isUserAdmin);
+      
+      if (!isUserAdmin) {
+        setIsAdmin(false);
+        setTimeout(() => {
+          router.push('/store-owner/dashboard');
+        }, 3000);
+        return;
+      }
+      
+      setIsAdmin(true);
+      setLoading(false);
+    };
+
+    checkAdminAccess();
+  }, [isLoaded, isSignedIn, user, router]);
+
+  // Fetch current statistics (admin endpoint for all dealers)
   const fetchStats = async () => {
     setIsLoadingStats(true);
     try {
-      const response = await fetch('/api/dvla/batch-process');
+      const response = await fetch('/api/admin/dvla/batch-process');
       const data = await response.json();
       if (data.success) {
         setStats(data.data.stats);
@@ -54,10 +100,10 @@ export default function DVLASyncPage() {
     }
   };
 
-  // Process a single batch
+  // Process a single batch (admin endpoint for all dealers)
   const processBatch = async (forceRefresh = false) => {
     try {
-      const response = await fetch('/api/dvla/batch-process', {
+      const response = await fetch('/api/admin/dvla/batch-process', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,13 +173,60 @@ export default function DVLASyncPage() {
     return Math.round((stats.withDVLAData / stats.totalVehicles) * 100);
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-2 border-slate-300 border-t-slate-600 mx-auto"></div>
+          <div className="mt-6 space-y-2">
+            <p className="text-xl font-semibold text-slate-700 dark:text-white">
+              Loading DVLA Sync
+            </p>
+            <p className="text-sm text-slate-500 dark:text-white">
+              Verifying admin access...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Access denied state
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-lg bg-white dark:bg-slate-800 border-0 shadow-xl rounded-lg p-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+            <h1 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">
+              Access Restricted
+            </h1>
+            <p className="text-slate-600 dark:text-white mb-4">
+              Administrative privileges required to access DVLA sync
+            </p>
+            <p className="text-sm text-slate-500 dark:text-white">
+              Redirecting to store owner dashboard...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+      <AdminHeader />
+      
+      <div className="pt-16">
+        <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">DVLA MOT Data Sync</h1>
+          <h1 className="text-3xl font-bold">DVLA MOT Data Sync (Admin)</h1>
           <p className="text-muted-foreground">
-            Sync MOT status and expiry dates for all vehicles from DVLA
+            Sync MOT status and expiry dates for ALL vehicles across ALL dealers from DVLA
           </p>
         </div>
         <Button 
@@ -151,7 +244,7 @@ export default function DVLASyncPage() {
         <CardHeader>
           <CardTitle>Current Status</CardTitle>
           <CardDescription>
-            Overview of MOT data coverage in your vehicle database
+            Overview of MOT data coverage across ALL dealers in the database
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -214,7 +307,7 @@ export default function DVLASyncPage() {
         <CardHeader>
           <CardTitle>Process Vehicles</CardTitle>
           <CardDescription>
-            Fetch MOT data from DVLA for your vehicles
+            Fetch MOT data from DVLA for ALL vehicles across ALL dealers
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -315,6 +408,10 @@ export default function DVLASyncPage() {
           </CardContent>
         </Card>
       )}
+        </div>
+      </div>
+      
+      <Footer />
     </div>
   );
 }
