@@ -476,6 +476,12 @@ export const stockCache = pgTable('stock_cache', {
   fuelType: varchar('fuel_type', { length: 50 }), // Petrol, Diesel, Electric, etc.
   bodyType: varchar('body_type', { length: 50 }), // Hatchback, SUV, Saloon, etc.
   
+  // DVLA/MOT Information (fetched from DVLA API)
+  motStatus: varchar('mot_status', { length: 50 }), // Valid, Invalid, Not due, etc.
+  motExpiryDate: timestamp('mot_expiry_date'), // MOT expiry date from DVLA
+  dvlaLastChecked: timestamp('dvla_last_checked'), // When DVLA data was last fetched
+  dvlaDataRaw: jsonb('dvla_data_raw'), // Complete DVLA response for reference
+  
   // Pricing Information (most accessed for listings)
   forecourtPriceGBP: decimal('forecourt_price_gbp', { precision: 10, scale: 2 }), // Main price
   totalPriceGBP: decimal('total_price_gbp', { precision: 10, scale: 2 }), // Retail price including fees
