@@ -10,14 +10,12 @@ import Footer from "@/components/shared/Footer";
 import StockDetailLayout from "@/components/stock/StockDetailLayout";
 import VehicleCheckAlert from "@/components/stock/VehicleCheckAlert";
 import DocumentViewerModal from "@/components/stock/DocumentViewerModal";
+import CompactQRCode from "@/components/shared/CompactQRCode";
 import { 
   ArrowLeft, 
   Home, 
   Car,  
   ChevronRight, 
-  Edit3,
-  Clock,
-  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LicensePlate from "@/components/ui/license-plate";
@@ -285,10 +283,21 @@ export default function StockDetailView() {
                 </div>
 
               </div>
+
+              {/* Right Side - QR Code */}
+              <div className="flex-shrink-0">
+                <CompactQRCode
+                  stockId={stockId}
+                  registration={registration}
+                  vehicleTitle={vehicleTitle}
+                  className="w-56"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
+
 
       {/* Main Content with Enhanced Layout - Full Width */}
       <div className="w-full">
@@ -310,6 +319,7 @@ export default function StockDetailView() {
         registration={registration}
         vehicleTitle={vehicleTitle}
       />
+
       
       <Footer />
     </div>

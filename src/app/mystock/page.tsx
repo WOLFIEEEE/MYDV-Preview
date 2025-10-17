@@ -32,7 +32,6 @@ import {
   ChevronRight,
   ImageIcon,
   LogIn,
-  UserCheck,
   Filter,
   ChevronUp,
   ChevronDown,
@@ -49,6 +48,7 @@ import {
   Store,
   Plus,
   MapPin,
+  QrCode,
   Download
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -62,6 +62,7 @@ import TestDriveEntryForm from "@/components/shared/TestDriveEntryForm";
 import StockDataError from "@/components/shared/StockDataError";
 import StockSkeleton from "@/components/shared/StockSkeleton";
 import ProgressiveLoader from "@/components/shared/ProgressiveLoader";
+import QRCodeModal from "@/components/shared/QRCodeModal";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -112,6 +113,10 @@ function MyStockContent() {
   const [selectedStock, setSelectedStock] = useState<StockItem | null>(null);
   const [isInventorySettingsOpen, setIsInventorySettingsOpen] = useState(false);
   
+  // QR Code modal state
+  const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
+  const [selectedQRStock, setSelectedQRStock] = useState<StockItem | null>(null);
+  
   // AutoTrader limits state
   const [autoTraderLimit, setAutoTraderLimit] = useState<{
     current: number;
@@ -121,8 +126,6 @@ function MyStockContent() {
   } | null>(null);
   const [selectedInventoryStock, setSelectedInventoryStock] = useState<StockItem | null>(null);
 
-  // Loading states for stock actions (kept for backward compatibility)
-  const [loadingStockActions, setLoadingStockActions] = useState<{[key: string]: 'sold' | 'delete' | null}>({});
   
   // Modal states for stock actions
   const [actionModal, setActionModal] = useState<{
@@ -302,7 +305,6 @@ function MyStockContent() {
     error, 
     loadingState,
     pagination: apiPagination, 
-    cacheStatus,
     refetch,
     isFetching,
     isStale,
@@ -759,7 +761,6 @@ function MyStockContent() {
         message: `Deleting ${vehicleName} and unpublishing from all channels...`
       }));
 
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: 'delete' }));
 
       const response = await fetch(`/api/stock/${stockId}?advertiserId=${advertiserId}`, {
         method: 'PATCH',
@@ -827,7 +828,6 @@ function MyStockContent() {
         message: error instanceof Error ? error.message : 'Failed to delete stock'
       }));
     } finally {
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: null }));
     }
   };
 
@@ -883,7 +883,6 @@ function MyStockContent() {
         message: `Marking ${vehicleName} as sold and unpublishing from all channels...`
       }));
 
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: 'sold' }));
 
       // Get current date for soldDate
       const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
@@ -955,7 +954,6 @@ function MyStockContent() {
         message: error instanceof Error ? error.message : 'Failed to mark stock as sold'
       }));
     } finally {
-      setLoadingStockActions(prev => ({ ...prev, [stockId]: null }));
     }
   };
 
@@ -992,6 +990,11 @@ function MyStockContent() {
     } else {
       alert('No registration number found for this vehicle');
     }
+  };
+
+  const handleShowQRCode = (item: StockItem) => {
+    setSelectedQRStock(item);
+    setIsQRCodeModalOpen(true);
   };
 
   const handleInventorySettings = (item: StockItem) => {
@@ -2316,6 +2319,7 @@ function MyStockContent() {
                             alt={`${getVehicleProperty(item, 'make')} ${getVehicleProperty(item, 'model')}`}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            quality={75}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -2482,6 +2486,10 @@ function MyStockContent() {
                                 Vehicle Check
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem onClick={() => handleShowQRCode(item)}>
+                              <QrCode className="w-4 h-4 text-orange-500 mr-2" />
+                              QR Code Upload
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
                               setSelectedStock(item);
                               setIsSettingsDialogOpen(true);
@@ -2623,6 +2631,10 @@ function MyStockContent() {
                                           Vehicle Check
                                         </DropdownMenuItem>
                                       )}
+                                      <DropdownMenuItem onClick={() => handleShowQRCode(item)}>
+                                        <QrCode className="w-4 h-4 text-orange-500 mr-2" />
+                                        QR Code Upload
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => {
                                         setSelectedStock(item);
                                         setIsSettingsDialogOpen(true);
@@ -2645,6 +2657,7 @@ function MyStockContent() {
                                           alt={`${getVehicleProperty(item, 'make')} ${getVehicleProperty(item, 'model')}`}
                                           fill
                                           className="object-cover"
+                                          quality={60}
                                         />
                                       </div>
                                     ) : (
@@ -3388,6 +3401,18 @@ function MyStockContent() {
             stockData={selectedInventoryStock}
           />
         )}
+
+        {/* QR Code Modal */}
+        <QRCodeModal
+          isOpen={isQRCodeModalOpen}
+          onClose={() => {
+            setIsQRCodeModalOpen(false);
+            setSelectedQRStock(null);
+          }}
+          stockId={selectedQRStock?.stockId || ''}
+          registration={selectedQRStock ? getVehicleProperty(selectedQRStock, 'registration') as string : undefined}
+          vehicleTitle={selectedQRStock ? `${getVehicleProperty(selectedQRStock, 'make')} ${getVehicleProperty(selectedQRStock, 'model')} ${getVehicleProperty(selectedQRStock, 'derivative') || ''}` : undefined}
+        />
 
         {/* Stock Action Modal */}
         {actionModal.isOpen && (
