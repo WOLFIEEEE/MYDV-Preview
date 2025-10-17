@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
-import { uploadFileToStorage, generateStorageFileName } from '@/lib/storage';
+import { uploadFileToStorage, generateStorageFileName, generateQRStorageFileName, QR_STOCK_IMAGES_BUCKET } from '@/lib/storage';
 import { createStockImage, createOrGetDealer, getDealerKeys } from '@/lib/database';
 import { getDealerIdForUser } from '@/lib/dealerHelper';
 import { db } from '@/lib/db';
@@ -71,16 +71,23 @@ async function uploadImageToAutoTrader(
   }
 }
 
-// Helper function to get dealer info from stockId for QR code uploads
-async function getDealerFromStockId(stockId: string): Promise<{ success: boolean; dealer?: typeof dealers.$inferSelect; error?: string }> {
+// Helper function to get dealer info and registration from stockId for QR code uploads
+async function getDealerAndRegistrationFromStockId(stockId: string): Promise<{ 
+  success: boolean; 
+  dealer?: typeof dealers.$inferSelect; 
+  registration?: string;
+  error?: string 
+}> {
   try {
-    console.log('🔍 Getting dealer info from stockId:', stockId);
+    console.log('🔍 Getting dealer info and registration from stockId:', stockId);
     
     // Find the stock record and its associated dealer
     const stockRecord = await db
       .select({
         dealerId: stockCache.dealerId,
-        dealer: dealers
+        dealer: dealers,
+        vehicleData: stockCache.vehicleData,
+        registration: stockCache.registration // Direct registration field
       })
       .from(stockCache)
       .innerJoin(dealers, eq(stockCache.dealerId, dealers.id))
@@ -97,19 +104,34 @@ async function getDealerFromStockId(stockId: string): Promise<{ success: boolean
       };
     }
     
-    console.log('✅ Found dealer for stock:', stockRecord[0].dealer.id);
+    const stock = stockRecord[0];
+    const vehicleData = (stock.vehicleData as Record<string, unknown>) || {};
+    
+    // Get registration from multiple possible sources
+    const registration = stock.registration || 
+                        (vehicleData.registration as string) || 
+                        (vehicleData.plate as string) || 
+                        'UNKNOWN_REG';
+    
+    console.log('✅ Found dealer and registration for stock:', {
+      dealerId: stock.dealer.id,
+      registration: registration
+    });
+    
     return {
       success: true,
-      dealer: stockRecord[0].dealer
+      dealer: stock.dealer,
+      registration: registration
     };
   } catch (error) {
-    console.error('❌ Error getting dealer from stockId:', error);
+    console.error('❌ Error getting dealer and registration from stockId:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -120,14 +142,15 @@ export async function POST(request: NextRequest) {
     
     let dealer;
     let isQRUpload = false;
+    let registration: string | undefined;
     
     // Check if this is a QR code upload (unauthenticated)
     if (uploadSource === 'qr_code' && stockId) {
       console.log('📱 QR Code upload detected for stockId:', stockId);
       isQRUpload = true;
       
-      // Get dealer info from stockId
-      const dealerResult = await getDealerFromStockId(stockId);
+      // Get dealer info and registration from stockId
+      const dealerResult = await getDealerAndRegistrationFromStockId(stockId);
       if (!dealerResult.success) {
         return NextResponse.json({ 
           success: false, 
@@ -135,6 +158,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
       dealer = dealerResult.dealer;
+      registration = dealerResult.registration;
     } else {
       // Regular authenticated upload
       const user = await currentUser();
@@ -269,11 +293,23 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Generate storage filename
-        const storageFileName = generateStorageFileName(file.name, 'stock', dealer.id);
+        // Generate storage filename based on upload type
+        let storageFileName: string;
+        let bucketName: string;
+        
+        if (isQRUpload && stockId) {
+          // Use QR-specific storage with registration-based organization
+          storageFileName = generateQRStorageFileName(file.name, dealer.id, stockId, registration);
+          bucketName = QR_STOCK_IMAGES_BUCKET;
+          console.log(`📱 QR Upload - Using QR bucket with registration: ${registration}`);
+        } else {
+          // Use regular template storage
+          storageFileName = generateStorageFileName(file.name, 'stock', dealer.id);
+          bucketName = 'templates';
+        }
         
         // Upload to Supabase Storage
-        const uploadResult = await uploadFileToStorage(file, storageFileName, 'templates');
+        const uploadResult = await uploadFileToStorage(file, storageFileName, bucketName);
         
         if (!uploadResult.success || !uploadResult.publicUrl) {
           errors.push(`${file.name}: Upload failed - ${uploadResult.error}`);
@@ -287,12 +323,23 @@ export async function POST(request: NextRequest) {
         const baseTags = [imageName.toLowerCase(), 'stock'];
         if (isQRUpload) {
           baseTags.push('qr_upload', stockId);
+          // Add registration-based tags for filtering
+          if (registration && registration !== 'UNKNOWN_REG') {
+            baseTags.push(`reg_${registration.toLowerCase().replace(/[^a-z0-9]/g, '_')}`);
+            baseTags.push('has_registration');
+          } else {
+            baseTags.push('no_registration');
+          }
+          // Add bucket identifier for easy filtering
+          baseTags.push('qr_bucket');
+        } else {
+          baseTags.push('template_bucket');
         }
         
         const stockImageResult = await createStockImage({
           dealerId: dealer.id,
           name: stockImageName,
-          description: description || (isQRUpload ? `Uploaded via QR code for stock ${stockId}` : ''),
+          description: description || (isQRUpload ? `Uploaded via QR code for stock ${stockId}${registration ? ` (Registration: ${registration})` : ''}` : ''),
           fileName: file.name,
           supabaseFileName: storageFileName,
           publicUrl: uploadResult.publicUrl,
