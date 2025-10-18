@@ -150,18 +150,17 @@ function ListingsManagementContent() {
       return { disabled: true };
     }
     
-    // IMPORTANT: Show all vehicles on listings page (don't filter by lifecycle state)
-    // Users can filter by lifecycle state using the filters if needed
+    // IMPORTANT: Only show FORECOURT vehicles on listings page
     const options = { 
       pageSize: 100, // Large page size to get all data
-      // lifecycleState: 'FORECOURT', // REMOVED: Don't filter by default to show all vehicles
+      lifecycleState: 'FORECOURT', // Only show vehicles on forecourt
       disabled: false // Explicitly enable when conditions are met
     };
     
     console.log('✅ LISTINGS: Query ENABLED');
     console.log('📝 Query options:', options);
-    console.log('⚠️ NOTE: Showing all vehicles (no lifecycle state filter)');
-    console.log('⚠️ Users can filter by lifecycle state using the UI filters');
+    console.log('⚠️ NOTE: Filtering for FORECOURT vehicles only');
+    console.log('⚠️ If no results, check console logs to see available lifecycle states');
     
     return options;
   }, [isSignedIn, isLoaded, user?.id]); // Added user?.id dependency
@@ -175,15 +174,62 @@ function ListingsManagementContent() {
 
   // 🔍 DEBUG: Log stock data whenever it changes
   useEffect(() => {
-    // Simplified logging - only log when there's an issue or first load
-    if (stockData && stockData.length > 0) {
-      console.log('✅ LISTINGS: Loaded', stockData.length, 'vehicles');
-    } else if (stockData?.length === 0) {
-      console.warn('⚠️ LISTINGS: No vehicles found - check your stock data');
-    }
+    console.log('\n📦 ===== LISTINGS: STOCK DATA RECEIVED =====');
+    console.log('📊 Total items:', stockData?.length || 0);
+    console.log('⏳ Loading:', loading);
+    console.log('❌ Error:', error);
+    console.log('⏰ Time:', new Date().toISOString());
     
-    if (error) {
-      console.error('❌ LISTINGS: Error loading stock data:', error);
+    if (stockData && stockData.length > 0) {
+      console.log('\n✅ ===== STOCK DATA ANALYSIS =====');
+      
+      // Analyze lifecycle states
+      const lifecycleStates = new Map<string, number>();
+      const withAdverts = stockData.filter(v => v.adverts).length;
+      const withMedia = stockData.filter(v => v.media).length;
+      const withMake = stockData.filter(v => v.vehicle?.make || v.make).length;
+      
+      stockData.forEach(v => {
+        const state = v.metadata?.lifecycleState || v.lifecycleState || 'UNKNOWN';
+        lifecycleStates.set(state, (lifecycleStates.get(state) || 0) + 1);
+      });
+      
+      console.log('📊 Lifecycle States:');
+      lifecycleStates.forEach((count, state) => {
+        console.log(`   ${state}: ${count} vehicles`);
+      });
+      
+      console.log('📊 With Adverts:', withAdverts);
+      console.log('📊 With Media:', withMedia);
+      console.log('📊 With Make:', withMake);
+      
+      // Log first vehicle sample
+      const firstVehicle = stockData[0];
+      console.log('\n🚗 ===== FIRST VEHICLE SAMPLE =====');
+      console.log('🆔 Stock ID:', firstVehicle.stockId);
+      console.log('🚗 Make:', firstVehicle.vehicle?.make || firstVehicle.make);
+      console.log('🚗 Model:', firstVehicle.vehicle?.model || firstVehicle.model);
+      console.log('📋 Registration:', firstVehicle.vehicle?.registration || firstVehicle.registration);
+      console.log('📊 Lifecycle State:', firstVehicle.metadata?.lifecycleState || firstVehicle.lifecycleState);
+      console.log('💰 Price:', firstVehicle.adverts?.retailAdverts?.forecourtPrice?.amountGBP || 'N/A');
+      console.log('📢 Has Adverts:', !!firstVehicle.adverts);
+      console.log('🏗️ Top-level keys:', Object.keys(firstVehicle));
+    } else if (stockData?.length === 0) {
+      console.warn('\n⚠️ ===== NO FORECOURT VEHICLES FOUND =====');
+      console.warn('📭 Stock data array is empty (filtering for FORECOURT only)');
+      console.warn('🔍 Possible causes:');
+      console.warn('   1. No vehicles with lifecycleState = "FORECOURT" in database');
+      console.warn('   2. All vehicles have different lifecycle states (ACTIVE, RESERVED, SOLD, etc.)');
+      console.warn('   3. No dealer record for this user');
+      console.warn('   4. Wrong advertiser ID');
+      console.warn('   5. Team member not linked to store owner');
+      console.warn('');
+      console.warn('💡 SOLUTION:');
+      console.warn('   - Check backend logs for "NO CACHE DATA FOUND" message');
+      console.warn('   - Look for "Total records for dealer (any advertiser)" count');
+      console.warn('   - If count > 0, vehicles exist but might not be FORECOURT state');
+      console.warn('   - Check what lifecycle states exist in your data');
+      console.warn('⏰ Time:', new Date().toISOString());
     }
   }, [stockData, loading, error]);
 
@@ -234,13 +280,17 @@ function ListingsManagementContent() {
 
   // Initialize channel status from stock data - OPTIMIZED with useMemo
   const channelStatus = useMemo(() => {
+    console.log('\n🎯 ===== LISTINGS: INITIALIZING CHANNEL STATUS =====');
+    console.log('📊 Stock data length:', stockData?.length || 0);
+    
     if (!stockData || stockData.length === 0) {
+      console.log('⚠️ No stock data available for channel status initialization');
       return {};
     }
     
     const initialStatus: ChannelStatus = {};
     
-    stockData.forEach((vehicle: StockItem) => {
+    stockData.forEach((vehicle: StockItem, index: number) => {
       const vehicleId = vehicle.stockId;
       initialStatus[vehicleId] = {};
       
@@ -248,53 +298,109 @@ function ListingsManagementContent() {
       const adverts = vehicle.adverts?.retailAdverts;
       
       // AutoTrader channel
-      initialStatus[vehicleId]['autotrader'] = adverts?.autotraderAdvert?.status === 'PUBLISHED' ||
+      const autotraderStatus = adverts?.autotraderAdvert?.status === 'PUBLISHED' ||
         vehicle.advertStatus === 'PUBLISHED';
+      initialStatus[vehicleId]['autotrader'] = autotraderStatus;
       
       // Advertiser channel  
-      initialStatus[vehicleId]['advertiser'] = adverts?.advertiserAdvert?.status === 'PUBLISHED' ||
+      const advertiserStatus = adverts?.advertiserAdvert?.status === 'PUBLISHED' ||
         vehicle.advertiserAdvertStatus === 'PUBLISHED';
+      initialStatus[vehicleId]['advertiser'] = advertiserStatus;
         
       // Locator channel
-      initialStatus[vehicleId]['locator'] = adverts?.locatorAdvert?.status === 'PUBLISHED';
+      const locatorStatus = adverts?.locatorAdvert?.status === 'PUBLISHED';
+      initialStatus[vehicleId]['locator'] = locatorStatus;
         
       // Export channel (Partner Sites)
-      initialStatus[vehicleId]['export'] = adverts?.exportAdvert?.status === 'PUBLISHED';
+      const exportStatus = adverts?.exportAdvert?.status === 'PUBLISHED';
+      initialStatus[vehicleId]['export'] = exportStatus;
         
       // Profile channel
-      initialStatus[vehicleId]['profile'] = adverts?.profileAdvert?.status === 'PUBLISHED';
+      const profileStatus = adverts?.profileAdvert?.status === 'PUBLISHED';
+      initialStatus[vehicleId]['profile'] = profileStatus;
+      
+      // Log channel status for first few vehicles
+      if (index < 3) {
+        console.log(`🎯 Vehicle ${vehicleId} channel status:`, {
+          autotrader: autotraderStatus,
+          advertiser: advertiserStatus,
+          locator: locatorStatus,
+          export: exportStatus,
+          profile: profileStatus,
+          advertStatus: vehicle.advertStatus,
+          advertiserAdvertStatus: vehicle.advertiserAdvertStatus
+        });
+      }
     });
     
     console.log('✅ Channel status initialized for', Object.keys(initialStatus).length, 'vehicles');
     return initialStatus;
   }, [stockData]);
 
-  // Simplified data state logging - only log issues
+  // Enhanced logging for production debugging
   useEffect(() => {
-    if (error) {
-      console.error('❌ LISTINGS: Error loading data:', error);
+    console.log('\n🔍 ===== LISTINGS PAGE DATA STATE =====');
+    console.log('👤 User signed in:', isSignedIn);
+    console.log('📊 Loading state:', loading);
+    console.log('❌ Error state:', error);
+    console.log('📦 Stock data received:', !!stockData);
+    console.log('📊 Stock data length:', stockData?.length || 0);
+    
+    if (stockData && stockData.length > 0) {
+      console.log('\n🚗 ===== LISTINGS: FIRST VEHICLE ANALYSIS =====');
+      const firstVehicle = stockData[0];
+      console.log('🏗️ Vehicle keys:', Object.keys(firstVehicle));
+      console.log('🆔 Stock ID:', firstVehicle.stockId);
+      console.log('🚗 Vehicle make:', getVehicleProperty(firstVehicle, 'make'));
+      console.log('🚗 Vehicle model:', getVehicleProperty(firstVehicle, 'model'));
+      console.log('📋 Registration:', getVehicleProperty(firstVehicle, 'registration'));
+      console.log('💰 Price:', getPrice(firstVehicle));
+      console.log('📊 Lifecycle state:', firstVehicle.lifecycleState || firstVehicle.metadata?.lifecycleState);
+      console.log('📢 Advert status:', firstVehicle.advertStatus);
+      console.log('🎯 Channel status for this vehicle:', channelStatus[firstVehicle.stockId]);
+      
+      // Check for missing critical data
+      const missingData = [];
+      if (!getVehicleProperty(firstVehicle, 'make')) missingData.push('make');
+      if (!getVehicleProperty(firstVehicle, 'model')) missingData.push('model');
+      if (!getVehicleProperty(firstVehicle, 'registration')) missingData.push('registration');
+      if (getPrice(firstVehicle) === 0) missingData.push('price');
+      
+      if (missingData.length > 0) {
+        console.warn('⚠️ LISTINGS: Missing critical data in first vehicle:', missingData);
+      }
+    } else if (stockData && stockData.length === 0) {
+      console.warn('⚠️ LISTINGS: Stock data is empty array - no vehicles found');
+    } else if (!stockData) {
+      console.warn('⚠️ LISTINGS: Stock data is null/undefined');
     }
     
-    if (!loading && stockData && stockData.length === 0) {
-      console.warn('⚠️ LISTINGS: No vehicles found - check your stock data or filters');
+    if (error) {
+      console.error('❌ LISTINGS: Error details:', error);
     }
-  }, [stockData, loading, error, isSignedIn, channelStatus]);
+  }, [stockData, loading, error, isSignedIn, channelStatus, getVehicleProperty, getPrice]);
 
   // Filter and paginate stock data
   const filteredAndPaginatedData = useMemo(() => {
+    console.log('\n🔍 ===== LISTINGS: FILTERING DATA =====');
+    console.log('📊 Input stock data length:', stockData?.length || 0);
+    
     if (!stockData || stockData.length === 0) {
+      console.log('⚠️ LISTINGS: No stock data to filter');
       return { filteredStock: [], paginatedStock: [], totalPages: 0, totalItems: 0 };
     }
 
     // Apply filters
     const filtered = stockData.filter((vehicle: StockItem) => {
-      // FORECOURT ONLY - Hardcoded filter (no UI option)
-      // Only show vehicles with FORECOURT lifecycle state on listings page
-      const vehicleLifecycleState = vehicle.lifecycleState || vehicle.metadata?.lifecycleState;
-      if (vehicleLifecycleState?.toUpperCase() !== 'FORECOURT') {
+      // Lifecycle status filter - only show FORECOURT vehicles (exclude sold, etc.)
+      const lifecycleState = vehicle.lifecycleState || vehicle.metadata?.lifecycleState;
+      console.log(`🔍 Vehicle ${vehicle.stockId}: lifecycle state = "${lifecycleState}"`);
+      
+      if (lifecycleState?.toLowerCase() !== 'forecourt') {
+        console.log(`❌ Vehicle ${vehicle.stockId}: filtered out due to lifecycle state "${lifecycleState}"`);
         return false;
       }
-      
+
       // Search filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
@@ -331,6 +437,10 @@ function ListingsManagementContent() {
           if (!isNotAdvertised) {
             return false;
           }
+        } else if (selectedChannelFilters.includes('capped')) {
+          if (vehicle.adverts?.retailAdverts?.autotraderAdvert?.status?.toLowerCase() !== 'capped') {
+            return false;
+          }
         } else {
           // Check for specific channel matches
           const hasMatchingChannel = selectedChannelFilters.some(channelId => {
@@ -351,6 +461,14 @@ function ListingsManagementContent() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedStock = filtered.slice(startIndex, endIndex);
+
+    console.log('\n📊 ===== LISTINGS: FILTERING RESULTS =====');
+    console.log('✅ Vehicles passing filters:', totalItems);
+    console.log('📄 Current page:', currentPage);
+    console.log('📄 Total pages:', totalPages);
+    console.log('📄 Items per page:', itemsPerPage);
+    console.log('📄 Showing items:', startIndex + 1, 'to', Math.min(endIndex, totalItems));
+    console.log('📄 Paginated stock length:', paginatedStock.length);
 
     return { filteredStock: filtered, paginatedStock, totalPages, totalItems };
   }, [stockData, searchTerm, filterMake, filterModel, selectedChannelFilters, channelStatus, currentPage, itemsPerPage, getVehicleProperty]);
@@ -553,13 +671,9 @@ function ListingsManagementContent() {
       if (hasChannelChanges) {
         updateData.channels = changedChannels;
       }
-      
-      // ALWAYS send price to AutoTrader (prevents stuck loading dialog)
-      updateData.price = newPrice;
 
-      // ALWAYS make API call - even if no changes detected locally
-      // This prevents the loading dialog from getting stuck when user clicks save without changes
-      try {
+      // Only make API call if there are changes
+      if (updateData.price !== undefined || updateData.channels !== undefined) {
         const response = await fetch('/api/listings/update-row', {
           method: 'POST',
           headers: {
@@ -574,14 +688,28 @@ function ListingsManagementContent() {
           throw new Error(result.error || 'Failed to update listing on AutoTrader');
         }
 
-        // Show success message
-        setUpdateStatus({ 
-          loading: false, 
-          success: true, 
-          error: false, 
-          message: 'AutoTrader listing updated successfully!',
-          details: `Price: £${newPrice.toLocaleString()}`
-        });
+        // Note: Channel status will be recalculated from stock data after refetch
+        // No need to update local state manually
+
+        // Show success message in the loading dialog
+        const updatedPrice = result.data?.price;
+        const updatedChannels = result.data?.channels;
+        const successMsg = 'AutoTrader listing updated successfully!';
+        
+        // Add details about what was updated
+        const updates = [];
+        if (updatedPrice) updates.push(`Price: £${updatedPrice.toLocaleString()}`);
+        if (updatedChannels) {
+          const channelNames = Object.entries(updatedChannels)
+            .filter(([, status]) => status)
+            .map(([channel]) => channel.charAt(0).toUpperCase() + channel.slice(1))
+            .join(', ');
+          if (channelNames) updates.push(`Published on: ${channelNames}`);
+        }
+        
+        const details = updates.length > 0 ? updates.join(' • ') : 'All changes have been synced';
+        
+        setUpdateStatus({ loading: false, success: true, error: false, message: successMsg, details });
         
         // Auto-dismiss success after 3 seconds
         setTimeout(() => {
@@ -592,26 +720,12 @@ function ListingsManagementContent() {
         
         // Refresh the data to show updated values
         await refetch();
-        
-      } catch (apiError) {
-        // Handle API errors
-        console.error('Error updating listing:', apiError);
-        setUpdateStatus({
-          loading: false,
-          success: false,
-          error: true,
-          message: 'Failed to update listing',
-          details: apiError instanceof Error ? apiError.message : 'Unknown error'
-        });
-        
-        // Auto-dismiss error after 5 seconds
-        setTimeout(() => {
-          setUpdateStatus({ loading: false, success: false, error: false, message: '' });
-        }, 5000);
       }
       
+      setEditingRow(null);
+      
     } catch (error) {
-      console.error('Failed to update row (outer catch):', error);
+      console.error('Failed to update row:', error);
       
       // Parse error message for better user feedback
       let errorMsg = 'Failed to update listing';
@@ -640,9 +754,8 @@ function ListingsManagementContent() {
         setUpdateStatus({ loading: false, success: false, error: false, message: '' });
       }, 5000);
     } finally {
-      // ALWAYS clear state to prevent stuck dialog
       setSavingRow(null);
-      setEditingRow(null);
+      setEditingRow(null); // Clear editing state on completion
     }
   }, [editingRow, stockData, channelStatus, refetch, getPrice]);
 
@@ -1049,6 +1162,52 @@ function ListingsManagementContent() {
                 }).length : 0}
               </span>
             </label>
+
+            <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-200 hover:scale-105 ${
+              selectedChannelFilters.includes('capped')
+                ? 'bg-yellow-500 text-white border-transparent shadow-md'
+                : isDarkMode
+                  ? 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+            }`}>
+              <input
+                type="checkbox"
+                checked={selectedChannelFilters.includes('capped')}
+                onChange={() => handleChannelFilterToggle('capped')}
+                className="sr-only"
+              />
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                selectedChannelFilters.includes('capped')
+                  ? 'bg-white border-white'
+                  : isDarkMode
+                    ? 'border-gray-400'
+                    : 'border-gray-300'
+              }`}>
+                {selectedChannelFilters.includes('capped') && (
+                  <Check className="w-3 h-3 text-gray-800" />
+                )}
+              </div>
+              <span className="text-sm font-medium">
+                CAPPED Advertisements
+              </span>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                selectedChannelFilters.includes('capped')
+                  ? 'bg-white/20 text-white'
+                  : isDarkMode
+                    ? 'bg-gray-600 text-gray-300'
+                    : 'bg-gray-200 text-gray-600'
+              }`}>
+                {stockData ? stockData.filter((vehicle: StockItem) => {
+                  const lifecycleState = vehicle.adverts?.retailAdverts?.autotraderAdvert?.status;
+                  if (lifecycleState?.toLowerCase() !== 'capped') return false;
+                  
+                  // return !ADVERTISING_CHANNELS.some(channel => 
+                  //   channelStatus[vehicle.stockId]?.[channel.id] === true
+                  // );
+                  return true
+                }).length : 0}
+              </span>
+            </label>
           </div>
         </div>
 
@@ -1101,6 +1260,17 @@ function ListingsManagementContent() {
                       Channel: {channel.name}
                     </span>
                   ) : null;
+                })}
+                {selectedChannelFilters.map(channelId => {
+                  if (channelId === 'capped') {
+                    return (
+                      <span key={channelId} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        isDarkMode ? 'bg-yellow-600/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        Capped
+                      </span>
+                    );
+                  }
                 })}
               </div>
               <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>

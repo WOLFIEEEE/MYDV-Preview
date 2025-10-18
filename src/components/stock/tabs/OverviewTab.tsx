@@ -55,10 +55,31 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     });
   }
   
-  // Extract description from retailAdverts.description2 or description
-  const vehicleDescription = adverts.retailAdverts?.description2 || 
-                            adverts.retailAdverts?.description || 
-                            'No description available for this vehicle.';
+  // Extract descriptions from retailAdverts - show both when available
+  const getVehicleDescription = () => {
+    const description1 = adverts.retailAdverts?.description;
+    const description2 = adverts.retailAdverts?.description2;
+    
+    const descriptions = [];
+    
+    // Add both descriptions if they exist and are different
+    if (description1 && description1.trim()) {
+      descriptions.push(description1.trim());
+    }
+    
+    if (description2 && description2.trim() && description2.trim() !== description1?.trim()) {
+      descriptions.push(description2.trim());
+    }
+    
+    // If we have actual descriptions, use them
+    if (descriptions.length > 0) {
+      return descriptions.join('\n\n'); // Separate multiple descriptions with double line break
+    }
+    
+    return 'No description available for this vehicle.';
+  };
+  
+  const vehicleDescription = getVehicleDescription();
   
   // Extract key highlights from the highlights array
   const keyHighlights = highlights.map((highlight: any) => ({
@@ -173,9 +194,13 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               <Zap className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
               Vehicle Description
             </h3>
-            <p className={`leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-              {vehicleDescription}
-            </p>
+            <div className={`leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
+              {vehicleDescription.split('\n\n').map((paragraph, index) => (
+                <p key={index} className={index > 0 ? 'mt-4' : ''}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
           </div>
 
           {/* Key Highlights */}

@@ -196,11 +196,12 @@ export async function getLogoWithCache(
 /**
  * Invalidate cache when logo is updated
  * Call this after logo upload/update
+ * OPTIMIZED: Immediate invalidation with minimal delay
  */
 export function invalidateLogoCache(): void {
   clearLogoCache();
   
-  // Dispatch custom event for components to react with debouncing
+  // Dispatch custom event immediately for instant UI updates
   if (typeof window !== 'undefined') {
     // Clear any existing timeout to prevent rapid successive invalidations
     const globalWindow = window as Window & { __logoInvalidateTimeout?: NodeJS.Timeout };
@@ -208,11 +209,12 @@ export function invalidateLogoCache(): void {
       clearTimeout(globalWindow.__logoInvalidateTimeout);
     }
     
-    // Debounce the invalidation event
+    // Minimal debounce - only to prevent multiple rapid calls
     globalWindow.__logoInvalidateTimeout = setTimeout(() => {
       window.dispatchEvent(new CustomEvent(LOGO_CACHE_INVALIDATE_EVENT));
       delete globalWindow.__logoInvalidateTimeout;
-    }, 200); // 200ms debounce
+      console.log('🔔 Logo cache invalidation event dispatched');
+    }, 50); // Reduced to 50ms for faster response
   }
 }
 

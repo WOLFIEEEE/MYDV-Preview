@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { stockCache, stockCacheSyncLog, dealers, storeConfig, teamMembers, inventoryDetails, saleDetails } from '@/db/schema';
+import { stockCache, stockCacheSyncLog, dealers, storeConfig, teamMembers, inventoryDetails, saleDetails, dvlaVehicleData } from '@/db/schema';
 import { eq, and, gte, lte, inArray, or, desc, asc, sql } from 'drizzle-orm';
 import type { NewStockCache, StockCache, NewStockCacheSyncLog } from '@/db/schema';
 import { getAutoTraderToken, clearTokenCache, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
@@ -530,9 +530,22 @@ export class StockCacheService {
     }
     
     try {
-      const cached = await db
-        .select()
+      const queryResult = await db
+        .select({
+          // All stock cache fields
+          stockCacheData: stockCache,
+          // DVLA fields (from authoritative source)
+          dvlaMotStatus: dvlaVehicleData.motStatus,
+          dvlaMotExpiryDate: dvlaVehicleData.motExpiryDate,
+          dvlaTaxStatus: dvlaVehicleData.taxStatus,
+          dvlaTaxDueDate: dvlaVehicleData.taxDueDate,
+          dvlaLastChecked: dvlaVehicleData.dvlaLastChecked,
+        })
         .from(stockCache)
+        .leftJoin(
+          dvlaVehicleData,
+          eq(stockCache.registration, dvlaVehicleData.registrationNumber)
+        )
         .where(and(
           eq(stockCache.stockId, stockId),
           eq(stockCache.dealerId, dealerId),
@@ -540,12 +553,20 @@ export class StockCacheService {
         ))
         .limit(1);
       
-      if (cached.length === 0) {
+      if (queryResult.length === 0) {
         console.log('❌ Stock not found in cache:', stockId);
         return null;
       }
       
-      const stockData = cached[0];
+      const cached = queryResult[0].stockCacheData;
+      const dvlaData = {
+        motStatus: queryResult[0].dvlaMotStatus,
+        motExpiryDate: queryResult[0].dvlaMotExpiryDate,
+        taxStatus: queryResult[0].dvlaTaxStatus,
+        taxDueDate: queryResult[0].dvlaTaxDueDate,
+        dvlaLastChecked: queryResult[0].dvlaLastChecked,
+      };
+      const stockData = cached;
       
       // Reconstruct the stock object from cached data in the format frontend expects
       const vehicleData = stockData.vehicleData || {};
@@ -608,6 +629,12 @@ export class StockCacheService {
           engineCapacityCC: (vehicleData as any).engineCapacityCC,
           engineNumber: (vehicleData as any).engineNumber,
           firstRegistrationDate: (vehicleData as any).firstRegistrationDate,
+          // MOT and DVLA data from DVLA table (authoritative source by registration)
+          motStatus: dvlaData.motStatus || stockData.motStatus, // Prefer DVLA table data
+          motExpiryDate: dvlaData.motExpiryDate || stockData.motExpiryDate, // Prefer DVLA table data
+          taxStatus: dvlaData.taxStatus, // From DVLA table
+          taxDueDate: dvlaData.taxDueDate, // From DVLA table
+          dvlaLastChecked: dvlaData.dvlaLastChecked || stockData.dvlaLastChecked, // Prefer DVLA table data
         },
         
         // Include inventory details if available
@@ -648,6 +675,13 @@ export class StockCacheService {
         suppliedPrice: (stockData.advertsData as any)?.retailAdverts?.suppliedPrice,
         forecourtPrice: stockData.forecourtPriceGBP ? { amountGBP: Number(stockData.forecourtPriceGBP) } : undefined,
         priceIndicatorRating: (stockData.advertsData as any)?.retailAdverts?.priceIndicatorRating,
+        
+        // MOT and DVLA data from DVLA table (authoritative source by registration)
+        motStatus: dvlaData.motStatus || stockData.motStatus, // Prefer DVLA table data
+        motExpiryDate: dvlaData.motExpiryDate || stockData.motExpiryDate, // Prefer DVLA table data
+        taxStatus: dvlaData.taxStatus, // From DVLA table
+        taxDueDate: dvlaData.taxDueDate, // From DVLA table
+        dvlaLastChecked: dvlaData.dvlaLastChecked || stockData.dvlaLastChecked, // Prefer DVLA table data
         
         // Extended data objects
         advertiser: stockData.advertiserData,
@@ -911,20 +945,34 @@ export class StockCacheService {
       const totalPages = Math.ceil(totalResults / pageSize);
       const offset = (page - 1) * pageSize;
       
-      // Get paginated results
-      console.log('📄 Fetching paginated results:', { page, pageSize, offset, totalPages });
+      // Get paginated results with DVLA data JOIN
+      console.log('📄 Fetching paginated results with DVLA data:', { page, pageSize, offset, totalPages });
       const results = await db
-        .select()
+        .select({
+          // All stock cache fields
+          stockCacheData: stockCache,
+          // DVLA fields (from authoritative source)
+          dvlaMotStatus: dvlaVehicleData.motStatus,
+          dvlaMotExpiryDate: dvlaVehicleData.motExpiryDate,
+          dvlaTaxStatus: dvlaVehicleData.taxStatus,
+          dvlaTaxDueDate: dvlaVehicleData.taxDueDate,
+          dvlaLastChecked: dvlaVehicleData.dvlaLastChecked,
+        })
         .from(stockCache)
+        .leftJoin(
+          dvlaVehicleData,
+          eq(stockCache.registration, dvlaVehicleData.registrationNumber)
+        )
         .where(and(...conditions))
         .orderBy(orderByClause)
         .limit(pageSize)
         .offset(offset);
       
-      console.log('✅ Retrieved', results.length, 'records from cache');
+      console.log('✅ Retrieved', results.length, 'records from cache with DVLA data');
       
       // Transform to expected format (frontend expects most data in vehicle object)
-      const transformedResults = results.map(cached => {
+      const transformedResults = results.map(result => {
+        const cached = result.stockCacheData;
         // Merge cached top-level fields with the stored vehicle data to ensure frontend compatibility
         const vehicleData = cached.vehicleData || {};
         
@@ -945,10 +993,12 @@ export class StockCacheService {
             fuelType: cached.fuelType || (vehicleData as any).fuelType,
             bodyType: cached.bodyType || (vehicleData as any).bodyType,
             ownershipCondition: cached.ownershipCondition || (vehicleData as any).ownershipCondition,
-            // MOT and DVLA data in vehicle object too
-            motStatus: cached.motStatus,
-            motExpiryDate: cached.motExpiryDate,
-            dvlaLastChecked: cached.dvlaLastChecked,
+            // MOT and DVLA data from DVLA table (authoritative source by registration)
+            motStatus: result.dvlaMotStatus || cached.motStatus, // Prefer DVLA table data
+            motExpiryDate: result.dvlaMotExpiryDate || cached.motExpiryDate, // Prefer DVLA table data
+            taxStatus: result.dvlaTaxStatus, // From DVLA table
+            taxDueDate: result.dvlaTaxDueDate, // From DVLA table
+            dvlaLastChecked: result.dvlaLastChecked || cached.dvlaLastChecked, // Prefer DVLA table data
           },
           
           // Top-level fields that frontend expects
@@ -984,10 +1034,12 @@ export class StockCacheService {
           forecourtPrice: cached.forecourtPriceGBP ? { amountGBP: Number(cached.forecourtPriceGBP) } : undefined,
           priceIndicatorRating: (cached.advertsData as any)?.retailAdverts?.priceIndicatorRating,
           
-          // MOT and DVLA data
-          motStatus: cached.motStatus,
-          motExpiryDate: cached.motExpiryDate,
-          dvlaLastChecked: cached.dvlaLastChecked,
+          // MOT and DVLA data from DVLA table (authoritative source by registration)
+          motStatus: result.dvlaMotStatus || cached.motStatus, // Prefer DVLA table data
+          motExpiryDate: result.dvlaMotExpiryDate || cached.motExpiryDate, // Prefer DVLA table data
+          taxStatus: result.dvlaTaxStatus, // From DVLA table
+          taxDueDate: result.dvlaTaxDueDate, // From DVLA table
+          dvlaLastChecked: result.dvlaLastChecked || cached.dvlaLastChecked, // Prefer DVLA table data
           
           // Extended data objects
           advertiser: cached.advertiserData,
@@ -1002,7 +1054,7 @@ export class StockCacheService {
         };
       });
       
-      const lastRefresh = results.length > 0 ? results[0].lastFetchedFromAutoTrader : null;
+      const lastRefresh = results.length > 0 ? results[0].stockCacheData.lastFetchedFromAutoTrader : null;
       
       return {
         results: transformedResults,
