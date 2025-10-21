@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2 } from "lucide-react";
+import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -17,33 +17,34 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
   const [inventoryDetails, setInventoryDetails] = useState<any>(null);
   const [fundSources, setFundSources] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const { isDarkMode } = useTheme();
 
   const loadInventoryDetailsData = async () => {
-      if (!stockData?.metadata?.stockId) return;
+    if (!stockData?.metadata?.stockId) return;
 
-      try {
-        const response = await fetch(`/api/stock-actions/inventory-details?stockId=${stockData.metadata.stockId}`);
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            const data = result.data;
-            setInventoryDetails({
-              stockReference: data.stockReference || stockData?.metadata?.stockId || '',
-              registration: data.registration || stockData?.vehicle?.registration || '',
-              dateOfPurchase: data.dateOfPurchase ? new Date(data.dateOfPurchase).toISOString().split('T')[0] : '',
-              costOfPurchase: data.costOfPurchase || '',
-              purchaseFrom: data.purchaseFrom || '',
-              fundingAmount: data.fundingAmount || '',
-              fundingSourceId: data.fundingSourceId || '',
-              businessAmount: data.businessAmount || ''
-            });
-          }
+    try {
+      const response = await fetch(`/api/stock-actions/inventory-details?stockId=${stockData.metadata.stockId}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          setInventoryDetails({
+            stockReference: data.stockReference || stockData?.metadata?.stockId || '',
+            registration: data.registration || stockData?.vehicle?.registration || '',
+            dateOfPurchase: data.dateOfPurchase ? new Date(data.dateOfPurchase).toISOString().split('T')[0] : '',
+            costOfPurchase: data.costOfPurchase || '',
+            purchaseFrom: data.purchaseFrom || '',
+            fundingAmount: data.fundingAmount || '',
+            fundingSourceId: data.fundingSourceId || '',
+            businessAmount: data.businessAmount || ''
+          });
         }
-      } catch (error) {
-        console.error('Error loading inventory details data:', error);
       }
-    };
+    } catch (error) {
+      console.error('Error loading inventory details data:', error);
+    }
+  };
 
   useEffect(() => {
     const loadFundSources = async () => {
@@ -239,8 +240,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {keyHighlights.map((highlight: any, index: number) => (
                   <div key={index} className={`flex items-start p-3 rounded-lg border transition-colors ${isDarkMode
-                      ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                     }`}>
                     <div className="flex-shrink-0 w-3 h-3 bg-green-500 rounded-full mt-1 mr-3"></div>
                     <div className="flex-1 min-w-0">
@@ -331,15 +332,14 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 Purchase Information
               </h3>
               <div className="flex space-x-2">
-                {inventoryDetails && (
+                {inventoryDetails ? (
                   <>
                     <button
                       onClick={() => setEditDialogOpen(true)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        isDarkMode 
-                          ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400' 
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode
+                          ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
                           : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
-                      }`}
+                        }`}
                       title="Edit Purchase Info"
                     >
                       <Edit3 className="h-4 w-4" />
@@ -351,7 +351,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                             const response = await fetch(`/api/stock-actions/inventory-details/${inventoryDetails.id}`, {
                               method: 'DELETE',
                             });
-                            
+
                             if (response.ok) {
                               const result = await response.json();
                               if (result.success) {
@@ -364,16 +364,26 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                           }
                         }
                       }}
-                      className={`p-2 rounded-lg transition-colors ${
-                        isDarkMode 
-                          ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' 
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode
+                          ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
                           : 'bg-red-50 hover:bg-red-100 text-red-600'
-                      }`}
+                        }`}
                       title="Delete Purchase Info"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </>
+                ) : (
+                  <button
+                    onClick={() => setAddDialogOpen(true)}
+                    className={`p-2 rounded-lg transition-colors ${isDarkMode
+                        ? 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                        : 'bg-green-50 hover:bg-green-100 text-green-600'
+                      }`}
+                    title="Add Purchase Info"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 )}
               </div>
             </div>
@@ -381,60 +391,53 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
             {inventoryDetails ? (
               <div className="grid grid-cols-2 gap-3">
                 {/* Purchase Date */}
-                <div className={`p-3 rounded-lg ${
-                  isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
-                } text-center`}>
+                <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  } text-center`}>
                   <div className="flex items-center justify-center mb-1">
                     <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
-                  <div className={`text-xs uppercase tracking-wide font-medium ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  } mb-1`}>
+                  <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    } mb-1`}>
                     PURCHASE DATE
                   </div>
-                  <div className={`text-sm font-semibold ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {inventoryDetails.dateOfPurchase 
+                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                    {inventoryDetails.dateOfPurchase
                       ? new Date(inventoryDetails.dateOfPurchase).toLocaleDateString('en-GB', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric'
-                        })
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })
                       : 'Not set'
                     }
                   </div>
                 </div>
 
                 {/* Purchase Cost */}
-                <div className={`p-3 rounded-lg ${
-                  isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
-                } text-center`}>
+                <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  } text-center`}>
                   <div className="flex items-center justify-center mb-1">
                     <PoundSterling className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
-                  <div className={`text-xs uppercase tracking-wide font-medium ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  } mb-1`}>
+                  <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    } mb-1`}>
                     PURCHASE COST
                   </div>
-                  <div className={`text-sm font-semibold ${
-                    isDarkMode ? 'text-green-400' : 'text-green-600'
-                  }`}>
-                    £{inventoryDetails.costOfPurchase 
+                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'
+                    }`}>
+                    £{inventoryDetails.costOfPurchase
                       ? parseFloat(inventoryDetails.costOfPurchase).toLocaleString('en-GB', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
                       : '0.00'
                     }
                   </div>
                 </div>
               </div>
             ) : (
-              <div className={`text-center py-6 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
+              <div className={`text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
                 <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No purchase information available</p>
                 <p className="text-xs mt-1">Add purchase details to track vehicle costs</p>
@@ -571,27 +574,23 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
       {/* Edit Dialog */}
       {editDialogOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${
-            isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-emerald-50/95 via-teal-50/90 to-cyan-50/95 border border-teal-200/50'
-          } shadow-2xl backdrop-blur-sm`}>
+          <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-emerald-50/95 via-teal-50/90 to-cyan-50/95 border border-teal-200/50'
+            } shadow-2xl backdrop-blur-sm`}>
             {/* Dialog Header */}
-            <div className={`flex items-center justify-between p-6 border-b ${
-              isDarkMode ? 'border-slate-700/50' : 'border-teal-200/50'
-            }`}>
-              <h2 className={`text-xl font-semibold ${
-                isDarkMode ? 'text-white' : 'text-slate-800'
+            <div className={`flex items-center justify-between p-6 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-teal-200/50'
               }`}>
+              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'
+                }`}>
                 Edit Purchase Info
               </h2>
               <button
                 onClick={() => {
                   setEditDialogOpen(false);
                 }}
-                className={`p-2 rounded-lg transition-colors ${
-                  isDarkMode 
-                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white' 
+                className={`p-2 rounded-lg transition-colors ${isDarkMode
+                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
                     : 'hover:bg-teal-100/50 text-slate-500 hover:text-slate-700'
-                }`}
+                  }`}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -607,6 +606,48 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 onSuccess={() => {
                   setEditDialogOpen(false);
                   loadInventoryDetailsData(); // Refresh the data
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Dialog */}
+      {addDialogOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-green-50/95 via-emerald-50/90 to-teal-50/95 border border-green-200/50'
+            } shadow-2xl backdrop-blur-sm`}>
+            {/* Dialog Header */}
+            <div className={`flex items-center justify-between p-6 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-green-200/50'
+              }`}>
+              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'
+                }`}>
+                Add Purchase Information - {stockData.registration}
+              </h2>
+              <button
+                onClick={() => {
+                  setAddDialogOpen(false);
+                }}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode
+                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                    : 'hover:bg-green-100/50 text-slate-500 hover:text-slate-700'
+                  }`}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Dialog Content */}
+            <div className="p-0">
+              <EditInventoryForm
+                stockData={{
+                  metadata: { stockId: stockData.metadata.stockId },
+                  vehicle: { registration: stockData.metadata.registration }
+                }}
+                onSuccess={() => {
+                  setAddDialogOpen(false);
+                  loadInventoryDetailsData();
                 }}
               />
             </div>
