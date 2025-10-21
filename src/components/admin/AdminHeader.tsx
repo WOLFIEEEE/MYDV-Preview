@@ -9,7 +9,8 @@ import {
   Sun,
   Activity,
   Settings,
-  LayoutDashboard
+  LayoutDashboard,
+  FileDown
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useRouter } from "next/navigation";
@@ -94,6 +95,19 @@ export default function AdminHeader({ onRefresh, refreshing }: AdminHeaderProps)
               
               {/* Notifications */}
               <AdminNotificationBell />
+              
+              {/* Export Data */}
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-200"
+              >
+                <Link href="/admin/export-data">
+                  <FileDown className="w-4 h-4" />
+                  <span className="sr-only">Export Data</span>
+                </Link>
+              </Button>
               
               {/* Settings */}
               <Button
