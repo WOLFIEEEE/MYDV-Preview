@@ -1931,7 +1931,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          {formatCurrency(invoiceData.addons.finance.addon1?.cost || 0)}
                        </Text>
                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: '#d32f2f' }]}>
+                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
                          {invoiceData.addons.finance.addon1?.discount && invoiceData.addons.finance.addon1.discount > 0
                            ? formatCurrency(invoiceData.addons.finance.addon1.discount)
                            : (invoiceData.addons.finance.addon1?.cost && invoiceData.addons.finance.addon1?.postDiscountCost && 
@@ -1969,7 +1969,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          {formatCurrency(invoiceData.addons.finance.addon2?.cost || 0)}
                        </Text>
                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: '#d32f2f' }]}>
+                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
                          {invoiceData.addons.finance.addon2?.discount && invoiceData.addons.finance.addon2.discount > 0
                            ? formatCurrency(invoiceData.addons.finance.addon2.discount)
                            : (invoiceData.addons.finance.addon2?.cost && invoiceData.addons.finance.addon2?.postDiscountCost && 
@@ -2018,7 +2018,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          {formatCurrency(addon.cost || 0)}
                        </Text>
                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: '#d32f2f' }]}>
+                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
                          {addon.discount && addon.discount > 0
                            ? formatCurrency(addon.discount)
                            : (addon.cost && addon.postDiscountCost && addon.cost > addon.postDiscountCost)
