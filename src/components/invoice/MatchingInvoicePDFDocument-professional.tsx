@@ -64,7 +64,7 @@ const GLOBAL_FORMAT_CONFIG = {
 
   // Spacing Configuration
   spacing: {
-    page: 10,              // Page padding (reduced from 15)
+    page: 20,              // Page padding (reduced from 15)
     sectionGap: 6,         // Gap between major sections (reduced from 10)
     itemGap: 4,            // Gap between items within sections (reduced from 6)
     lineGap: 2,            // Gap between lines (reduced from 3)
@@ -358,7 +358,10 @@ const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
     backgroundColor: GLOBAL_FORMAT_CONFIG.colors.background,
-    padding: GLOBAL_FORMAT_CONFIG.spacing.page,
+    paddingTop: GLOBAL_FORMAT_CONFIG.spacing.page,
+    paddingLeft: GLOBAL_FORMAT_CONFIG.spacing.page / 2,
+    paddingRight: GLOBAL_FORMAT_CONFIG.spacing.page,
+    paddingBottom: GLOBAL_FORMAT_CONFIG.spacing.page,
     fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal,
     fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family,
     lineHeight: GLOBAL_FORMAT_CONFIG.layout.lineHeight.normal,
@@ -860,6 +863,15 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
   // Get background image source
   const backgroundImageSrc = getBackgroundImageSrc(undefined, invoiceData.companyInfo.logo);
+
+    const renderCustomerName = (customer: any) => {
+      let name = ''
+      if (customer?.title) name += customer.title + ' ';
+      if (customer?.firstName) name += customer.firstName + ' ';
+      if (customer?.middleName) name += customer.middleName + ' ';
+      if (customer?.lastName) name += customer.lastName + ' ';
+      return name.trim() + (name.trim() ? ' - ' : '');
+    }
   
   // Create page wrapper component with background
   const PageWithBackground = ({ children, style }: { children: React.ReactNode; style?: any }) => {
@@ -2710,7 +2722,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             {/* Customer name */}
             <View style={{ marginBottom: 15 }}>
               <Text style={[styles.checklistItem, { textAlign: 'left', fontWeight: 'semibold', fontSize: 10, marginBottom: 8 }]}>
-                {invoiceData.customer?.title || ''} {invoiceData.customer?.firstName || ''} {invoiceData.customer?.middleName ? invoiceData.customer.middleName + ' ' : ''}{invoiceData.customer?.lastName || ''} - <Text style={{ fontWeight: 'semibold', fontSize: 10 }}>{invoiceData.vehicle?.make || ''} {invoiceData.vehicle?.model || ''}</Text> - <Text style={{ fontWeight: 'semibold', fontSize: 10 }}>{invoiceData.vehicle?.registration || ''}</Text>
+                {renderCustomerName(invoiceData.customer)}
+                <Text style={{ fontWeight: 'semibold', fontSize: 10 }}>{invoiceData.vehicle?.make || ''} {invoiceData.vehicle?.model || ''}</Text> - <Text style={{ fontWeight: 'semibold', fontSize: 10 }}>{invoiceData.vehicle?.registration || ''}</Text>
               </Text>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <Text style={[styles.checklistItem, { textAlign: 'left', fontSize: 10, marginBottom: 0 }]}>
@@ -2747,22 +2760,22 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     <View style={{ alignItems: 'center' }}>
                       <Image
                         src={invoiceData.signature.customerSignature}
-                        style={{ width: 150, height: 60, marginBottom: 8 }}
+                        style={{ width: 150, height: 60, marginBottom: 6 }}
                       />
-                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 12, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
                         Customer Signature
                       </Text>
-                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ marginTop: 32, fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
                   ) : (
                     <View style={{ alignItems: 'center' }}>
-                      <View style={{ width: 150, height: 1, backgroundColor: '#000000', marginBottom: 8 }} />
-                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
-                        Customer Signature
+                      {/* <View style={{ marginTop: 20, width: 150, height: 1, backgroundColor: '#000000', marginBottom: 8 }} /> */}
+                      <Text style={{ marginTop: 25, fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                        Customer Signature: ___________________
                       </Text>
-                      <Text style={{ fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ marginTop: 36, fontSize: 10, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
@@ -2986,20 +2999,20 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                         src={invoiceData.signature.customerSignature}
                         style={{ width: 150, height: 60, marginBottom: 8 }}
                       />
-                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 12, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
                         Customer Signature
                       </Text>
-                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ marginTop: 32, fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
                   ) : (
                     <View style={{ alignItems: 'center' }}>
-                      <View style={{ width: 150, height: 1, backgroundColor: '#000000', marginBottom: 8 }} />
-                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 4 }}>
-                        Customer Signature
+                      {/* <View style={{ width: 150, height: 1, backgroundColor: '#000000', marginBottom: 8 }} /> */}
+                      <Text style={{ marginTop: 25, fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                        Customer Signature: ___________________
                       </Text>
-                      <Text style={{ fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                      <Text style={{ marginTop: 36, fontSize: 8, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                         Date: {invoiceData.signature?.dateOfSignature || '___________'}
                       </Text>
                     </View>
