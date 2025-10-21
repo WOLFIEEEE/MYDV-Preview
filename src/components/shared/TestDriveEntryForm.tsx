@@ -21,10 +21,12 @@ import {
   Mail,
   CreditCard,
   Search,
-  X
+  X,
+  Eye
 } from "lucide-react";
 import IDUploadComponent from "@/components/shared/IDUploadComponent";
 import AddressFormSection from "@/components/shared/AddressFormSection";
+import InlineDocumentPreview from "@/components/shared/InlineDocumentPreview";
 
 interface TestDriveData {
   // Vehicle Information
@@ -684,6 +686,46 @@ export default function TestDriveEntryForm({ onSuccess, editTestDrive, isEditMod
             </h3>
             
             <div className="space-y-4 sm:space-y-6">
+              {/* Always Show Preview for Edit Mode */}
+              {isEditMode && formData.drivingLicenseFileUrl && (
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-blue-900/20 border-blue-800/50' 
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        isDarkMode ? 'bg-blue-900/30' : 'bg-blue-100'
+                      }`}>
+                        <FileText className={`w-5 h-5 ${
+                          isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                        }`} />
+                      </div>
+                      <div>
+                        <h4 className={`font-medium ${
+                          isDarkMode ? 'text-blue-300' : 'text-blue-800'
+                        }`}>
+                          Current Driving License
+                        </h4>
+                        <p className={`text-sm ${
+                          isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                        }`}>
+                          Preview the uploaded file directly in the form
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Always Expanded Inline Preview Container */}
+                  <InlineDocumentPreview
+                    fileUrl={formData.drivingLicenseFileUrl}
+                    fileName="Current Driving License"
+                    height="500px"
+                  />
+                </div>
+              )}
+              
               <IDUploadComponent
                 onFileSelect={(file: File | null) => handleInputChange('drivingLicenseFile', file)}
                 onFileUpload={(fileUrl: string | null) => handleInputChange('drivingLicenseFileUrl', fileUrl)}

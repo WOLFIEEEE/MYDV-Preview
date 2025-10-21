@@ -15,6 +15,7 @@ import {
   CreditCard,
   Shield
 } from "lucide-react";
+import FileViewer from './FileViewer';
 
 interface IDUploadComponentProps {
   onFileSelect: (file: File | null) => void;
@@ -40,6 +41,9 @@ export default function IDUploadComponent({
   const [uploadError, setUploadError] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(existingFileUrl || null);
+  const [fileViewerOpen, setFileViewerOpen] = useState(false);
+  const [currentFileUrl, setCurrentFileUrl] = useState<string>('');
+  const [currentFileName, setCurrentFileName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update uploadedFileUrl when existingFileUrl prop changes
@@ -180,6 +184,13 @@ export default function IDUploadComponent({
     return <FileText className="w-5 h-5" />;
   };
 
+  // Handle opening file viewer
+  const handleViewFile = (fileUrl: string, fileName?: string) => {
+    setCurrentFileUrl(fileUrl);
+    setCurrentFileName(fileName || 'Driving License');
+    setFileViewerOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       {/* Upload Area */}
@@ -232,23 +243,19 @@ export default function IDUploadComponent({
                   Click to replace or drag a new file
                 </p>
                 {uploadedFileUrl && !selectedFile && (
-                  <div className="flex justify-center space-x-2 mt-3">
-                    <a
-                      href={uploadedFileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        isDarkMode 
-                          ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 hover:text-blue-300'
-                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-800'
-                      }`}
-                    >
-                      <Eye className="w-3 h-3" />
-                      View Current File
-                    </a>
-                    <a
-                      href={uploadedFileUrl}
-                      download
+                  <div className="flex justify-center mt-3">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const link = document.createElement('a');
+                        link.href = uploadedFileUrl;
+                        link.download = 'driving-license';
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
                       className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                         isDarkMode 
                           ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-200'
@@ -257,7 +264,7 @@ export default function IDUploadComponent({
                     >
                       <Download className="w-3 h-3" />
                       Download
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>
@@ -282,23 +289,19 @@ export default function IDUploadComponent({
                 }`}>
                   Click to replace or drag a new file
                 </p>
-                <div className="flex justify-center space-x-2 mt-3">
-                  <a
-                    href={existingFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      isDarkMode 
-                        ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 hover:text-blue-300'
-                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-800'
-                    }`}
-                  >
-                    <Eye className="w-3 h-3" />
-                    View
-                  </a>
-                  <a
-                    href={existingFileUrl}
-                    download
+                <div className="flex justify-center mt-3">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const link = document.createElement('a');
+                      link.href = existingFileUrl;
+                      link.download = 'driving-license';
+                      link.style.display = 'none';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                       isDarkMode 
                         ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-200'
@@ -307,7 +310,7 @@ export default function IDUploadComponent({
                   >
                     <Download className="w-3 h-3" />
                     Download
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -469,6 +472,14 @@ export default function IDUploadComponent({
           </div>
         </div>
       </div>
+
+      {/* File Viewer */}
+      <FileViewer
+        fileUrl={currentFileUrl}
+        fileName={currentFileName}
+        isOpen={fileViewerOpen}
+        onClose={() => setFileViewerOpen(false)}
+      />
     </div>
   );
 }
