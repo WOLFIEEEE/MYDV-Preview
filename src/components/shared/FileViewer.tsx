@@ -38,7 +38,7 @@ export default function FileViewer({ fileUrl, fileName, isOpen, onClose }: FileV
     const link = document.createElement('a');
     link.href = fileUrl;
     link.download = fileName || 'driving-license';
-    link.target = '_blank';
+    link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -81,7 +81,7 @@ export default function FileViewer({ fileUrl, fileName, isOpen, onClose }: FileV
               </div>
             )}
             <iframe
-              src={`${fileUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+              src={`${fileUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
               className="w-full h-full min-h-[600px] border-0 rounded-lg"
               title="PDF Viewer"
               onLoad={() => setIsLoading(false)}
