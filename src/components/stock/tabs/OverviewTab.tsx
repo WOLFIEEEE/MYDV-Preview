@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2, Plus, ClipboardCheck } from "lucide-react";
+import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2, Plus, ClipboardCheck, Calculator, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { useUser } from "@clerk/nextjs";
 import { createOrGetDealer } from "@/lib/database";
 import AddChecklistForm from "./actions/AddChecklistForm";
 import ProgressiveLoader from "@/components/shared/ProgressiveLoader";
+import AddCostsForm from "./actions/AddCostsForm";
 
 interface OverviewTabProps {
   stockData: any;
@@ -21,23 +22,14 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
   const [dealerId, setDealerId] = useState<string>('');
   const [inventoryDetails, setInventoryDetails] = useState<any>(null);
   const [checklistData, setChecklistData] = useState<any>(null);
-  console.log("🚀 ~ OverviewTab ~ checklistData:", checklistData)
+  const [fixedCostsData, setFixedCostsData] = useState<any>(null);
 
   const [addPurchaseInfoDialogOpen, setAddPurchaseInfoDialogOpen] = useState(false);
   const [editPurchaseInfoDialogOpen, setEditPurchaseInfoDialogOpen] = useState(false);
   const [addCompletionDialogOpen, setAddCompletionDialogOpen] = useState(false);
   const [editCompletionDialogOpen, setEditCompletionDialogOpen] = useState(false);
-
-  // Custom questions state
-  const [customQuestions, setCustomQuestions] = useState<Array<{
-    id: string;
-    question: string;
-    type: 'text' | 'dropdown' | 'yes_no';
-    options?: string[];
-    required: boolean;
-  }>>([]);
-  const [customQuestionsEnabled, setCustomQuestionsEnabled] = useState(true);
-  const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
+  const [addCostDialogOpen, setAddCostDialogOpen] = useState(false);
+  const [editCostDialogOpen, setEditCostDialogOpen] = useState(false);
 
   const { isDarkMode } = useTheme();
   const { user } = useUser();
@@ -110,20 +102,6 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
             wheelLockingNut: result.data.wheelLockingNut || "",
             cambeltChainConfirmation: result.data.cambeltChainConfirmation || ""
           });
-
-          // Load custom answers from metadata
-          if (result.data.metadata?.customAnswers) {
-            setCustomAnswers(result.data.metadata.customAnswers);
-          }
-        }
-      }
-
-      const questionsResponse = await fetch(`/api/custom-checklist-questions?dealerId=${dealerId}`);
-      if (questionsResponse.ok) {
-        const questionsResult = await questionsResponse.json();
-        if (questionsResult.success && questionsResult.data) {
-          setCustomQuestions(questionsResult.data.questions || []);
-          setCustomQuestionsEnabled(questionsResult.data.customQuestionsEnabled !== false); // Default to true
         }
       }
     } catch (error) {
@@ -131,8 +109,37 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     }
   };
 
+  const loadVehicleCostsData = async () => {
+      if (!stockData?.metadata?.stockId) return;
+      
+      try {
+        const response = await fetch(`/api/stock-actions/vehicle-costs?stockId=${stockData.metadata.stockId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            const data = result.data;
+            
+            // Load fixed costs
+            setFixedCostsData({
+              id: data.id,
+              transportIn: data.transportIn || '',
+              transportOut: data.transportOut || '',
+              mot: data.mot || '',
+              grandTotal: data.grandTotal || '0',
+              exVatCostsTotal: data.exVatCostsTotal || '0',
+              incVatCostsTotal: data.incVatCostsTotal || '0',
+              fixedCostsTotal: data.fixedCostsTotal || '0'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading vehicle costs data:', error);
+      }
+    };
+
   useEffect(() => {
     loadInventoryDetailsData();
+    loadVehicleCostsData();
   }, [stockData?.metadata?.stockId]);
   useEffect(() => {
     loadChecklistData()
@@ -554,7 +561,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold flex items-center">
                 <ClipboardCheck className="h-5 w-5 mr-2 text-orange-600 dark:text-orange-400" />
-                Completion
+                Vehicle Checklist
               </h3>
               <div className="flex space-x-2">
                 {checklistData ? (
@@ -636,6 +643,148 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Vehicle Costs */}
+          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold flex items-center">
+                <Calculator className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+                Vehicle Costs
+              </h3>
+              <div className="flex space-x-2">
+                {fixedCostsData ? (
+                  <>
+                    <button
+                      onClick={() => setEditCostDialogOpen(true)}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode
+                          ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
+                          : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+                        }`}
+                      title="Edit Costs"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('Are you sure you want to delete this costs data?')) {
+                          try {
+                            const response = await fetch(`/api/stock-actions/vehicle-costs/${fixedCostsData.id}`, {
+                              method: 'DELETE',
+                            });
+                            
+                            if (response.ok) {
+                              const result = await response.json();
+                              if (result.success) {
+                                setFixedCostsData(null);
+                                // You might want to show a success toast here
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Error deleting costs data:', error);
+                          }
+                        }
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode
+                          ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
+                          : 'bg-red-50 hover:bg-red-100 text-red-600'
+                        }`}
+                      title="Delete Costs"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setAddCostDialogOpen(true)}
+                    className={`p-2 rounded-lg transition-colors ${isDarkMode
+                        ? 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                        : 'bg-green-50 hover:bg-green-100 text-green-600'
+                      }`}
+                    title="Add Costs"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {fixedCostsData ? (
+              <div className="grid grid-cols-3 gap-3">
+                {/* Total Costs */}
+                <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  } text-center`}>
+                  <div className="flex items-center justify-center mb-1">
+                    <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    } mb-1`}>
+                    TOTAL COSTS
+                  </div>
+                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'
+                    }`}>
+                    £{fixedCostsData.grandTotal
+                      ? parseFloat(fixedCostsData.grandTotal).toLocaleString('en-GB', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                      : '0.00'
+                    }
+                  </div>
+                </div>
+
+                {/* Ex VAT Total */}
+                <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  } text-center`}>
+                  <div className="flex items-center justify-center mb-1">
+                    <PoundSterling className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    } mb-1`}>
+                    EX VAT TOTAL
+                  </div>
+                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'
+                    }`}>
+                    £{fixedCostsData.exVatCostsTotal
+                      ? parseFloat(fixedCostsData.exVatCostsTotal).toLocaleString('en-GB', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                      : '0.00'
+                    }
+                  </div>
+                </div>
+
+                {/* Inc VAT Total */}
+                <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+                  } text-center`}>
+                  <div className="flex items-center justify-center mb-1">
+                    <PoundSterling className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                  </div>
+                  <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    } mb-1`}>
+                    INC VAT TOTAL
+                  </div>
+                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
+                    }`}>
+                    £{fixedCostsData.incVatCostsTotal
+                      ? parseFloat(fixedCostsData.incVatCostsTotal).toLocaleString('en-GB', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                      : '0.00'
+                    }
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className={`text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                <Calculator className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No costs information available</p>
+                <p className="text-xs mt-1">Add costs details to track vehicle expenses</p>
+              </div>
+            )}
           </div>
 
           {/* Complete Specifications */}
@@ -794,7 +943,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               <EditInventoryForm
                 stockData={{
                   metadata: { stockId: stockData.metadata.stockId },
-                  vehicle: { registration: stockData.metadata.registration }
+                  vehicle: { registration: stockData.registration }
                 }}
                 onSuccess={() => {
                   setEditPurchaseInfoDialogOpen(false);
@@ -836,7 +985,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               <EditInventoryForm
                 stockData={{
                   metadata: { stockId: stockData.metadata.stockId },
-                  vehicle: { registration: stockData.metadata.registration }
+                  vehicle: { registration: stockData.registration }
                 }}
                 onSuccess={() => {
                   setAddPurchaseInfoDialogOpen(false);
@@ -858,7 +1007,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               }`}>
               <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'
                 }`}>
-                Edit Checklist - {stockData.metadata.registration}
+                Edit Checklist - {stockData.registration}
               </h2>
               <button
                 onClick={() => {
@@ -878,7 +1027,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               <AddChecklistForm
                 stockData={{
                   metadata: { stockId: stockData.metadata.stockId },
-                  vehicle: { registration: stockData.metadata.registration }
+                  vehicle: { registration: stockData.registration }
                 }}
                 onSuccess={() => {
                   setEditCompletionDialogOpen(false);
@@ -900,7 +1049,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               }`}>
               <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'
                 }`}>
-                Add Checklist - {stockData.metadata.registration}
+                Add Checklist - {stockData.registration}
               </h2>
               <button
                 onClick={() => {
@@ -920,7 +1069,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               <AddChecklistForm
                 stockData={{
                   metadata: { stockId: stockData.metadata.stockId },
-                  vehicle: { registration: stockData.metadata.registration }
+                  vehicle: { registration: stockData.registration }
                 }}
                 onSuccess={() => {
                   setAddCompletionDialogOpen(false);
@@ -931,6 +1080,98 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
           </div>
         </div>
       )}
+
+      {/* Edit Cost Dialog */}
+            {editCostDialogOpen && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${
+                  isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-violet-50/95 via-blue-50/90 to-cyan-50/95 border border-blue-200/50'
+                } shadow-2xl backdrop-blur-sm`}>
+                  {/* Dialog Header */}
+                  <div className={`flex items-center justify-between p-6 border-b ${
+                    isDarkMode ? 'border-slate-700/50' : 'border-blue-200/50'
+                  }`}>
+                    <h2 className={`text-xl font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-slate-800'
+                    }`}>
+                      Edit Costs - {stockData.registration}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setEditCostDialogOpen(false);
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isDarkMode 
+                          ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white' 
+                          : 'hover:bg-blue-100/50 text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+      
+                  {/* Dialog Content */}
+                  <div className="p-0">
+                    <AddCostsForm
+                      stockData={{
+                        metadata: { stockId: stockData.metadata.stockId },
+                        vehicle: { registration: stockData.registration }
+                      }}
+                      onSuccess={() => {
+                        setEditCostDialogOpen(false);
+                        loadVehicleCostsData();
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+      
+            {/* Add Cost Dialog */}
+            {addCostDialogOpen && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${
+                  isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-green-50/95 via-emerald-50/90 to-teal-50/95 border border-green-200/50'
+                } shadow-2xl backdrop-blur-sm`}>
+                  {/* Dialog Header */}
+                  <div className={`flex items-center justify-between p-6 border-b ${
+                    isDarkMode ? 'border-slate-700/50' : 'border-green-200/50'
+                  }`}>
+                    <h2 className={`text-xl font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-slate-800'
+                    }`}>
+                      Add Costs - {stockData.registration}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setAddCostDialogOpen(false);
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isDarkMode 
+                          ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white' 
+                          : 'hover:bg-green-100/50 text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+      
+                  {/* Dialog Content */}
+                  <div className="p-0">
+                    <AddCostsForm
+                      stockData={{
+                        metadata: { stockId: stockData.metadata.stockId },
+                        vehicle: { registration: stockData.registration }
+                      }}
+                      onSuccess={() => {
+                        setAddCostDialogOpen(false);
+                        loadVehicleCostsData();
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
     </div>
   );
 }
