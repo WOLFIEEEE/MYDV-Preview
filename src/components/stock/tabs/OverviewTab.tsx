@@ -289,7 +289,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     return `Q${quarter} ${year}`;
   };
 
-  const openInvoice = (e) => {
+  const openInvoice = () => {
     // Create temporary storage for the invoice ID
     const tempId = `invoice_${recentInvoice.id}_${Date.now()}`;
     sessionStorage.setItem(tempId, recentInvoice.id);
