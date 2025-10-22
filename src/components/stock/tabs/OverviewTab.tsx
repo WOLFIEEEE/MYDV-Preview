@@ -1,11 +1,15 @@
 "use client";
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2, Plus } from "lucide-react";
+import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2, Plus, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import EditInventoryForm from "./actions/EditInventoryForm";
+import { useUser } from "@clerk/nextjs";
+import { createOrGetDealer } from "@/lib/database";
+import AddChecklistForm from "./actions/AddChecklistForm";
+import ProgressiveLoader from "@/components/shared/ProgressiveLoader";
 
 interface OverviewTabProps {
   stockData: any;
@@ -14,11 +18,52 @@ interface OverviewTabProps {
 }
 
 export default function OverviewTab({ stockData, stockId, onOpenDocuments }: OverviewTabProps) {
+  const [dealerId, setDealerId] = useState<string>('');
   const [inventoryDetails, setInventoryDetails] = useState<any>(null);
-  const [fundSources, setFundSources] = useState<any[]>([]);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [checklistData, setChecklistData] = useState<any>(null);
+  console.log("🚀 ~ OverviewTab ~ checklistData:", checklistData)
+
+  const [addPurchaseInfoDialogOpen, setAddPurchaseInfoDialogOpen] = useState(false);
+  const [editPurchaseInfoDialogOpen, setEditPurchaseInfoDialogOpen] = useState(false);
+  const [addCompletionDialogOpen, setAddCompletionDialogOpen] = useState(false);
+  const [editCompletionDialogOpen, setEditCompletionDialogOpen] = useState(false);
+
+  // Custom questions state
+  const [customQuestions, setCustomQuestions] = useState<Array<{
+    id: string;
+    question: string;
+    type: 'text' | 'dropdown' | 'yes_no';
+    options?: string[];
+    required: boolean;
+  }>>([]);
+  const [customQuestionsEnabled, setCustomQuestionsEnabled] = useState(true);
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
+
   const { isDarkMode } = useTheme();
+  const { user } = useUser();
+
+  // Get dealer ID on component mount
+  useEffect(() => {
+    const getDealerId = async () => {
+      if (!user?.id) return;
+
+      try {
+        const userName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.emailAddresses[0]?.emailAddress || 'Unknown User';
+        const userEmail = user.emailAddresses[0]?.emailAddress || '';
+        const dealer = await createOrGetDealer(user.id, userName, userEmail);
+        setDealerId(dealer.id);
+        console.log('✅ Dealer ID set for checklist form:', dealer.id);
+      } catch (error) {
+        console.error('❌ Error getting dealer ID:', error);
+        // Fallback to hardcoded ID
+        setDealerId(''); // Will be handled by API authentication
+      }
+    };
+
+    if (user?.id) {
+      getDealerId();
+    }
+  }, [user?.id]);
 
   const loadInventoryDetailsData = async () => {
     if (!stockData?.metadata?.stockId) return;
@@ -46,24 +91,52 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     }
   };
 
-  useEffect(() => {
-    const loadFundSources = async () => {
-      try {
-        const response = await fetch('/api/fund-sources');
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            setFundSources(result.data.filter((source: any) => source.status === 'active'));
+  const loadChecklistData = async () => {
+    if (!stockData?.metadata?.stockId || !dealerId) return;
+
+    try {
+      // Load existing checklist data
+      console.log('🔍 Loading checklist data for dealer:', dealerId);
+      const checklistResponse = await fetch(`/api/stock-actions/vehicle-checklist?stockId=${stockData.metadata.stockId}&dealerId=${dealerId}`);
+      if (checklistResponse.ok) {
+        const result = await checklistResponse.json();
+        if (result.success && result.data) {
+          setChecklistData({
+            id: result.data.id,
+            registration: stockData?.vehicle?.registration || '',
+            userManual: result.data.userManual || "",
+            numberOfKeys: result.data.numberOfKeys || "",
+            serviceBook: result.data.serviceBook || "",
+            wheelLockingNut: result.data.wheelLockingNut || "",
+            cambeltChainConfirmation: result.data.cambeltChainConfirmation || ""
+          });
+
+          // Load custom answers from metadata
+          if (result.data.metadata?.customAnswers) {
+            setCustomAnswers(result.data.metadata.customAnswers);
           }
         }
-      } catch (error) {
-        console.error('Error loading fund sources:', error);
       }
-    };
 
+      const questionsResponse = await fetch(`/api/custom-checklist-questions?dealerId=${dealerId}`);
+      if (questionsResponse.ok) {
+        const questionsResult = await questionsResponse.json();
+        if (questionsResult.success && questionsResult.data) {
+          setCustomQuestions(questionsResult.data.questions || []);
+          setCustomQuestionsEnabled(questionsResult.data.customQuestionsEnabled !== false); // Default to true
+        }
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
+
+  useEffect(() => {
     loadInventoryDetailsData();
-    loadFundSources();
   }, [stockData?.metadata?.stockId]);
+  useEffect(() => {
+    loadChecklistData()
+  }, [stockData?.metadata?.stockId, dealerId]);
 
   const vehicle = stockData.vehicle || {};
   const media = stockData.media || {};
@@ -146,6 +219,37 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white';
     }
   };
+
+  // Completion helper functions
+  const getCompletionColor = (percentage: number) => {
+    if (percentage >= 80) return 'text-green-500';
+    if (percentage >= 50) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
+  const getCompletionBgColor = (percentage: number) => {
+    if (percentage >= 80) return 'bg-green-500';
+    if (percentage >= 50) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  // Calculate completion percentage based on checklist data
+  const calculateCompletionPercentage = () => {
+    if (!checklistData) return 0;
+    
+    const fields = [
+      checklistData.userManual,
+      checklistData.numberOfKeys,
+      checklistData.serviceBook,
+      checklistData.wheelLockingNut,
+      checklistData.cambeltChainConfirmation
+    ];
+    
+    const filledFields = fields.filter(field => field && field.trim() !== '').length;
+    return Math.round((filledFields / fields.length) * 100);
+  };
+
+  const completionPercentage = calculateCompletionPercentage();
 
   const vehicleTitle = `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'Vehicle';
 
@@ -335,10 +439,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 {inventoryDetails ? (
                   <>
                     <button
-                      onClick={() => setEditDialogOpen(true)}
+                      onClick={() => setEditPurchaseInfoDialogOpen(true)}
                       className={`p-2 rounded-lg transition-colors ${isDarkMode
-                          ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
-                          : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+                        ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
+                        : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
                         }`}
                       title="Edit Purchase Info"
                     >
@@ -365,8 +469,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                         }
                       }}
                       className={`p-2 rounded-lg transition-colors ${isDarkMode
-                          ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
-                          : 'bg-red-50 hover:bg-red-100 text-red-600'
+                        ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
+                        : 'bg-red-50 hover:bg-red-100 text-red-600'
                         }`}
                       title="Delete Purchase Info"
                     >
@@ -375,10 +479,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   </>
                 ) : (
                   <button
-                    onClick={() => setAddDialogOpen(true)}
+                    onClick={() => setAddPurchaseInfoDialogOpen(true)}
                     className={`p-2 rounded-lg transition-colors ${isDarkMode
-                        ? 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
-                        : 'bg-green-50 hover:bg-green-100 text-green-600'
+                      ? 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                      : 'bg-green-50 hover:bg-green-100 text-green-600'
                       }`}
                     title="Add Purchase Info"
                   >
@@ -443,6 +547,95 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 <p className="text-xs mt-1">Add purchase details to track vehicle costs</p>
               </div>
             )}
+          </div>
+
+          {/* Completion Status */}
+          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold flex items-center">
+                <ClipboardCheck className="h-5 w-5 mr-2 text-orange-600 dark:text-orange-400" />
+                Completion
+              </h3>
+              <div className="flex space-x-2">
+                {checklistData ? (
+                  <>
+                    <button
+                      onClick={() => setEditCompletionDialogOpen(true)}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode
+                          ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
+                          : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
+                        }`}
+                      title="Edit Completion"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('Are you sure you want to delete this completion data?')) {
+                          try {
+                            const response = await fetch(`/api/stock-actions/vehicle-checklist/${checklistData.id}`, {
+                              method: 'DELETE',
+                            });
+                            
+                            if (response.ok) {
+                              const result = await response.json();
+                              if (result.success) {
+                                setChecklistData(null);
+                                // You might want to show a success toast here
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Error deleting completion data:', error);
+                          }
+                        }
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${isDarkMode
+                          ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400'
+                          : 'bg-red-50 hover:bg-red-100 text-red-600'
+                        }`}
+                      title="Delete Completion"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setAddCompletionDialogOpen(true)}
+                    className={`p-2 rounded-lg transition-colors ${isDarkMode
+                        ? 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                        : 'bg-green-50 hover:bg-green-100 text-green-600'
+                      }`}
+                    title="Add Completion"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Progress
+                </span>
+                <span className={`text-lg font-bold ${getCompletionColor(completionPercentage)}`}>
+                  {completionPercentage}%
+                </span>
+              </div>
+              
+              <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3`}>
+                <div
+                  className={`h-3 rounded-full transition-all duration-300 ${getCompletionBgColor(completionPercentage)}`}
+                  style={{ width: `${completionPercentage}%` }}
+                ></div>
+              </div>
+
+              {!checklistData && (
+                <div className={`text-center py-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className="text-xs">No completion data available</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Complete Specifications */}
@@ -571,8 +764,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
         </div>
       </div>
 
-      {/* Edit Dialog */}
-      {editDialogOpen && (
+      {/* Edit Purchase Dialog */}
+      {editPurchaseInfoDialogOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-emerald-50/95 via-teal-50/90 to-cyan-50/95 border border-teal-200/50'
             } shadow-2xl backdrop-blur-sm`}>
@@ -585,11 +778,11 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               </h2>
               <button
                 onClick={() => {
-                  setEditDialogOpen(false);
+                  setEditPurchaseInfoDialogOpen(false);
                 }}
                 className={`p-2 rounded-lg transition-colors ${isDarkMode
-                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
-                    : 'hover:bg-teal-100/50 text-slate-500 hover:text-slate-700'
+                  ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                  : 'hover:bg-teal-100/50 text-slate-500 hover:text-slate-700'
                   }`}
               >
                 <X className="h-5 w-5" />
@@ -604,7 +797,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   vehicle: { registration: stockData.metadata.registration }
                 }}
                 onSuccess={() => {
-                  setEditDialogOpen(false);
+                  setEditPurchaseInfoDialogOpen(false);
                   loadInventoryDetailsData(); // Refresh the data
                 }}
               />
@@ -613,8 +806,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
         </div>
       )}
 
-      {/* Add Dialog */}
-      {addDialogOpen && (
+      {/* Add Purchase Dialog */}
+      {addPurchaseInfoDialogOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-green-50/95 via-emerald-50/90 to-teal-50/95 border border-green-200/50'
             } shadow-2xl backdrop-blur-sm`}>
@@ -627,11 +820,11 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               </h2>
               <button
                 onClick={() => {
-                  setAddDialogOpen(false);
+                  setAddPurchaseInfoDialogOpen(false);
                 }}
                 className={`p-2 rounded-lg transition-colors ${isDarkMode
-                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
-                    : 'hover:bg-green-100/50 text-slate-500 hover:text-slate-700'
+                  ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                  : 'hover:bg-green-100/50 text-slate-500 hover:text-slate-700'
                   }`}
               >
                 <X className="h-5 w-5" />
@@ -646,8 +839,92 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   vehicle: { registration: stockData.metadata.registration }
                 }}
                 onSuccess={() => {
-                  setAddDialogOpen(false);
+                  setAddPurchaseInfoDialogOpen(false);
                   loadInventoryDetailsData();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Completion Dialog */}
+      {editCompletionDialogOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-rose-50/95 via-pink-50/90 to-purple-50/95 border border-pink-200/50'
+            } shadow-2xl backdrop-blur-sm`}>
+            {/* Dialog Header */}
+            <div className={`flex items-center justify-between p-6 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-pink-200/50'
+              }`}>
+              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'
+                }`}>
+                Edit Checklist - {stockData.metadata.registration}
+              </h2>
+              <button
+                onClick={() => {
+                  setEditCompletionDialogOpen(false);
+                }}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode
+                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                    : 'hover:bg-pink-100/50 text-slate-500 hover:text-slate-700'
+                  }`}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Dialog Content */}
+            <div className="p-0">
+              <AddChecklistForm
+                stockData={{
+                  metadata: { stockId: stockData.metadata.stockId },
+                  vehicle: { registration: stockData.metadata.registration }
+                }}
+                onSuccess={() => {
+                  setEditCompletionDialogOpen(false);
+                  loadChecklistData();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Dialog */}
+      {addCompletionDialogOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl ${isDarkMode ? 'bg-slate-900/95 border border-slate-700/50' : 'bg-gradient-to-br from-green-50/95 via-emerald-50/90 to-teal-50/95 border border-green-200/50'
+            } shadow-2xl backdrop-blur-sm`}>
+            {/* Dialog Header */}
+            <div className={`flex items-center justify-between p-6 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-green-200/50'
+              }`}>
+              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'
+                }`}>
+                Add Checklist - {stockData.metadata.registration}
+              </h2>
+              <button
+                onClick={() => {
+                  setAddCompletionDialogOpen(false);
+                }}
+                className={`p-2 rounded-lg transition-colors ${isDarkMode
+                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                    : 'hover:bg-green-100/50 text-slate-500 hover:text-slate-700'
+                  }`}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Dialog Content */}
+            <div className="p-0">
+              <AddChecklistForm
+                stockData={{
+                  metadata: { stockId: stockData.metadata.stockId },
+                  vehicle: { registration: stockData.metadata.registration }
+                }}
+                onSuccess={() => {
+                  setAddCompletionDialogOpen(false);
+                  loadChecklistData();
                 }}
               />
             </div>
