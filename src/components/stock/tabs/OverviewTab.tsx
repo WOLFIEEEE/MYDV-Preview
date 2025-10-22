@@ -513,7 +513,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
         <div className="space-y-6">
 
           {/* Price Analysis */}
-          <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+          <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
             <h3 className="text-lg font-semibold mb-4 flex items-center">
               <PoundSterling className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" />
               Price Analysis
@@ -573,7 +573,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
           </div>
 
           {/* Purchase Information */}
-          <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+          <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold flex items-center">
                 <Calendar className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
@@ -694,7 +694,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
           </div>
 
           {/* Completion Status */}
-          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold flex items-center">
                 <ClipboardCheck className="h-5 w-5 mr-2 text-orange-600 dark:text-orange-400" />
@@ -783,7 +783,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
           </div>
 
           {/* Vehicle Costs */}
-          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold flex items-center">
                 <Calculator className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
@@ -925,7 +925,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
           </div>
 
           {/* Sales Data */}
-          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold flex items-center">
                 <Handshake className="h-5 w-5 mr-2 text-purple-600 dark:text-purple-400" />
@@ -1025,7 +1025,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                     }`}>
                     {`${salesData.firstName} ${salesData.lastName}`}
                   </div>
-                  <div className={`text-xs break-all text-ellipsis overflow-hidden ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  <div className={`text-xs break-all line-clamp-1 text-ellipsis overflow-hidden ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                     }`}>
                     {salesData.emailAddress || 'N/A'}
                   </div>
@@ -1043,7 +1043,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   </div>
                   {recentInvoice ? (
                     <>
-                      <div className={`text-sm font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                      <div className={`text-sm font-medium line-clamp-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'
                         }`}>
                         {recentInvoice.invoiceNumber}
                       </div>
