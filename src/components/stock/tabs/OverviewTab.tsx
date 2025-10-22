@@ -510,26 +510,26 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
         </div>
 
         {/* Right Container - Detailed Information */}
-        <div className="space-y-6">
+        <div className="space-y-3">
 
           {/* Price Analysis */}
-          <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <PoundSterling className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" />
+          <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
+            <h3 className="text-sm font-semibold mb-2 flex items-center">
+              <PoundSterling className="h-4 w-4 mr-1 text-green-600 dark:text-green-400" />
               Price Analysis
             </h3>
             {currentPrice && (
-              <div className="mb-4">
-                <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
+              <div className="mb-2">
+                <div className="text-xl font-bold text-green-600 dark:text-green-400 mb-1">
                   {formatPrice(currentPrice)}
                 </div>
-                <div className={`inline-flex items-center px-3 py-1 rounded-md text-sm ${getPriceIndicatorColor(priceIndicatorRating)}`}>
-                  <PoundSterling className="h-4 w-4 mr-1" />
+                <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs ${getPriceIndicatorColor(priceIndicatorRating)}`}>
+                  <PoundSterling className="h-3 w-3 mr-0.5" />
                   {priceIndicatorRating === 'NOANALYSIS' ? 'Not Analysed' : priceIndicatorRating}
                 </div>
               </div>
             )}
-            <div className="space-y-2 text-sm">
+            <div className="space-y-1 text-xs">
               <div className="flex justify-between">
                 <span className="text-gray-500">Last Updated</span>
                 <span className="font-medium">
@@ -560,12 +560,12 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
 
             {/* Add Documents Button */}
             {onOpenDocuments && (
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <Button
                   onClick={onOpenDocuments}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2"
                 >
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Upload className="h-3 w-3 mr-1" />
                   Add Documents
                 </Button>
               </div>
@@ -573,10 +573,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
           </div>
 
           {/* Purchase Information */}
-          <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+          <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold flex items-center">
+                <Calendar className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
                 Purchase Information
               </h3>
               <div className="flex space-x-2">
@@ -645,10 +645,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                     <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    } mb-1`}>
+                    } mb-0.5`}>
                     PURCHASE DATE
                   </div>
-                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'
+                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>
                     {inventoryDetails.dateOfPurchase
                       ? new Date(inventoryDetails.dateOfPurchase).toLocaleDateString('en-GB', {
@@ -668,10 +668,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                     <PoundSterling className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    } mb-1`}>
+                    } mb-0.5`}>
                     PURCHASE COST
                   </div>
-                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'
+                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'
                     }`}>
                     £{inventoryDetails.costOfPurchase
                       ? parseFloat(inventoryDetails.costOfPurchase).toLocaleString('en-GB', {
@@ -684,20 +684,20 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 </div>
               </div>
             ) : (
-              <div className={`text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              <div className={`text-center py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No purchase information available</p>
-                <p className="text-xs mt-1">Add purchase details to track vehicle costs</p>
+                <Calendar className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">No purchase information available</p>
+                <p className="text-xs mt-0.5">Add purchase details to track vehicle costs</p>
               </div>
             )}
           </div>
 
           {/* Completion Status */}
-          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold flex items-center">
-                <ClipboardCheck className="h-5 w-5 mr-2 text-orange-600 dark:text-orange-400" />
+          <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold flex items-center">
+                <ClipboardCheck className="h-4 w-4 mr-1 text-orange-600 dark:text-orange-400" />
                 Vehicle Checklist
               </h3>
               <div className="flex space-x-2">
@@ -757,25 +757,25 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <span className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Progress
                 </span>
-                <span className={`text-lg font-bold ${getCompletionColor(completionPercentage)}`}>
+                <span className={`text-sm font-bold ${getCompletionColor(completionPercentage)}`}>
                   {completionPercentage}%
                 </span>
               </div>
 
-              <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3`}>
+              <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2`}>
                 <div
-                  className={`h-3 rounded-full transition-all duration-300 ${getCompletionBgColor(completionPercentage)}`}
+                  className={`h-2 rounded-full transition-all duration-300 ${getCompletionBgColor(completionPercentage)}`}
                   style={{ width: `${completionPercentage}%` }}
                 ></div>
               </div>
 
               {!checklistData && (
-                <div className={`text-center py-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div className={`text-center py-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   <p className="text-xs">No completion data available</p>
                 </div>
               )}
@@ -783,10 +783,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
           </div>
 
           {/* Vehicle Costs */}
-          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold flex items-center">
-                <Calculator className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+          <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold flex items-center">
+                <Calculator className="h-4 w-4 mr-1 text-blue-600 dark:text-blue-400" />
                 Vehicle Costs
               </h3>
               <div className="flex space-x-2">
@@ -855,10 +855,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                     <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    } mb-1`}>
+                    } mb-0.5`}>
                     TOTAL COSTS
                   </div>
-                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'
+                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-orange-400' : 'text-orange-600'
                     }`}>
                     £{fixedCostsData.grandTotal
                       ? parseFloat(fixedCostsData.grandTotal).toLocaleString('en-GB', {
@@ -877,10 +877,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                     <PoundSterling className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    } mb-1`}>
+                    } mb-0.5`}>
                     EX VAT TOTAL
                   </div>
-                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'
+                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'
                     }`}>
                     £{fixedCostsData.exVatCostsTotal
                       ? parseFloat(fixedCostsData.exVatCostsTotal).toLocaleString('en-GB', {
@@ -899,10 +899,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                     <PoundSterling className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                   </div>
                   <div className={`text-xs uppercase tracking-wide font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    } mb-1`}>
+                    } mb-0.5`}>
                     INC VAT TOTAL
                   </div>
-                  <div className={`text-sm font-semibold ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
+                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
                     }`}>
                     £{fixedCostsData.incVatCostsTotal
                       ? parseFloat(fixedCostsData.incVatCostsTotal).toLocaleString('en-GB', {
@@ -915,20 +915,20 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 </div>
               </div>
             ) : (
-              <div className={`text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              <div className={`text-center py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                <Calculator className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No costs information available</p>
-                <p className="text-xs mt-1">Add costs details to track vehicle expenses</p>
+                <Calculator className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">No costs information available</p>
+                <p className="text-xs mt-0.5">Add costs details to track vehicle expenses</p>
               </div>
             )}
           </div>
 
           {/* Sales Data */}
-          <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold flex items-center">
-                <Handshake className="h-5 w-5 mr-2 text-purple-600 dark:text-purple-400" />
+          <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold flex items-center">
+                <Handshake className="h-4 w-4 mr-1 text-purple-600 dark:text-purple-400" />
                 Sales Data
               </h3>
               <div className="flex space-x-2">
@@ -1001,7 +1001,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                       SALE PRICE
                     </div>
                   </div>
-                  <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'
+                  <div className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'
                     }`}>
                     {formatCurrency(salesData.salePrice)}
                   </div>
@@ -1021,7 +1021,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                       CUSTOMER
                     </div>
                   </div>
-                  <div className={`text-sm font-medium break-words ${isDarkMode ? 'text-white' : 'text-slate-900'
+                  <div className={`text-xs font-medium break-words ${isDarkMode ? 'text-white' : 'text-slate-900'
                     }`}>
                     {`${salesData.firstName} ${salesData.lastName}`}
                   </div>
@@ -1043,7 +1043,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   </div>
                   {recentInvoice ? (
                     <>
-                      <div className={`text-sm font-medium line-clamp-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                      <div className={`text-xs font-medium line-clamp-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'
                         }`}>
                         {recentInvoice.invoiceNumber}
                       </div>
@@ -1054,7 +1054,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                       </div>
                     </>
                   ) : (
-                    <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                       }`}>
                       No invoice
                     </div>
@@ -1062,11 +1062,11 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 </div>
               </div>
             ) : (
-              <div className={`text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              <div className={`text-center py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                <Handshake className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No sales information available</p>
-                <p className="text-xs mt-1">Add sales details to track vehicle sales</p>
+                <Handshake className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">No sales information available</p>
+                <p className="text-xs mt-0.5">Add sales details to track vehicle sales</p>
               </div>
             )}
           </div>
