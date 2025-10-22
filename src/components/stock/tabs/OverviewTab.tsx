@@ -12,7 +12,19 @@ import AddChecklistForm from "./actions/AddChecklistForm";
 import ProgressiveLoader from "@/components/shared/ProgressiveLoader";
 import AddCostsForm from "./actions/AddCostsForm";
 import SaleDetailsForm from "./actions/SaleDetailsForm";
+import { useRouter } from "next/navigation";
 
+
+interface RecentInvoice {
+  id: string;
+  invoiceNumber: string;
+  vehicleRegistration: string;
+  customerName: string;
+  totalAmount: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+}
 interface OverviewTabProps {
   stockData: any;
   stockId?: string;
@@ -38,6 +50,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
 
   const { isDarkMode } = useTheme();
   const { user } = useUser();
+  const router = useRouter()
 
   // Get dealer ID on component mount
   useEffect(() => {
@@ -274,6 +287,15 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     const quarter = Math.ceil(month / 3);
     const year = date.getFullYear();
     return `Q${quarter} ${year}`;
+  };
+
+  const openInvoice = (e) => {
+    // Create temporary storage for the invoice ID
+    const tempId = `invoice_${recentInvoice.id}_${Date.now()}`;
+    sessionStorage.setItem(tempId, recentInvoice.id);
+    
+    // Navigate to dynamic editor with the temp ID
+    router.push(`/dynamic-invoice-editor?tempId=${tempId}&invoiceId=${recentInvoice.id}`);
   };
 
   const formatCurrency = (amount: string) => {
@@ -1043,10 +1065,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   </div>
                   {recentInvoice ? (
                     <>
-                      <div className={`text-xs font-medium line-clamp-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                      <button onClick={openInvoice} className={`cursor-pointer hover:underline text-xs font-medium line-clamp-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'
                         }`}>
                         {recentInvoice.invoiceNumber}
-                      </div>
+                      </button>
                       <div className={`text-xs flex items-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                         }`}>
                         <ExternalLink className="h-3 w-3 mr-1" />
