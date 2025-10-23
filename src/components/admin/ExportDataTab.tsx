@@ -30,7 +30,7 @@ interface ExportDataTabProps {
 interface ExportOptions {
   includeDealers: boolean;
   includeVehicles: boolean;
-  format: 'cf247' | 'custom';
+  format: 'cf247' | 'aacars' | 'custom';
 }
 
 export default function ExportDataTab({ dealers = [], refreshing = false, onRefresh = () => {} }: ExportDataTabProps) {
@@ -85,8 +85,9 @@ export default function ExportDataTab({ dealers = [], refreshing = false, onRefr
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      const filename = exportOptions.format === 'aacars' ? 'aacars-export' : 'cf247-export';
       a.href = url;
-      a.download = `cf247-export-${new Date().toISOString().split('T')[0]}.zip`;
+      a.download = `${filename}-${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -130,10 +131,10 @@ export default function ExportDataTab({ dealers = [], refreshing = false, onRefr
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              CF247 Data Export Center
+              Data Export Center
             </h2>
             <p className="text-sm text-slate-600 dark:text-white">
-              Generate Car Finance 247 compliant data exports for dealer integration (FORECOURT vehicles only)
+              Generate compliant data exports for dealer integration (FORECOURT vehicles only)
             </p>
           </div>
           
@@ -315,7 +316,7 @@ export default function ExportDataTab({ dealers = [], refreshing = false, onRefr
                     name="format"
                     value="cf247"
                     checked={exportOptions.format === 'cf247'}
-                    onChange={(e) => setExportOptions(prev => ({ ...prev, format: e.target.value as 'cf247' | 'custom' }))}
+                    onChange={(e) => setExportOptions(prev => ({ ...prev, format: e.target.value as 'cf247' | 'aacars' | 'custom' }))}
                     className="w-4 h-4 text-indigo-600"
                   />
                   <div className="flex-1">
@@ -323,6 +324,22 @@ export default function ExportDataTab({ dealers = [], refreshing = false, onRefr
                     <div className="text-sm text-slate-500 dark:text-white">Car Finance 247 compliant format</div>
                   </div>
                   <CheckCircle className="w-5 h-5 text-green-500" />
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                  <input
+                    type="radio"
+                    name="format"
+                    value="aacars"
+                    checked={exportOptions.format === 'aacars'}
+                    onChange={(e) => setExportOptions(prev => ({ ...prev, format: e.target.value as 'cf247' | 'aacars' | 'custom' }))}
+                    className="w-4 h-4 text-indigo-600"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">AA Cars Feed</div>
+                    <div className="text-sm text-slate-500 dark:text-white">AA Cars specification compliant format</div>
+                  </div>
+                  <CheckCircle className="w-5 h-5 text-blue-500" />
                 </label>
               </div>
             </div>
@@ -340,7 +357,7 @@ export default function ExportDataTab({ dealers = [], refreshing = false, onRefr
                 Ready to Export
               </h3>
               <p className="text-sm text-slate-600 dark:text-white">
-                Generate CF247 compliant data files for {selectedDealer === 'all' ? 'all dealers' : 'selected dealer'} (FORECOURT vehicles only)
+                Generate {exportOptions.format === 'aacars' ? 'AA Cars' : 'CF247'} compliant data files for {selectedDealer === 'all' ? 'all dealers' : 'selected dealer'} (FORECOURT vehicles only)
               </p>
             </div>
             
@@ -366,35 +383,70 @@ export default function ExportDataTab({ dealers = [], refreshing = false, onRefr
         </CardContent>
       </Card>
 
-      {/* CF247 Format Information */}
-      <Card className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-              <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                CF247 Export Format
-              </h4>
-              <div className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
-                <p>
-                  This export generates Car Finance 247 compliant CSV files with the following structure:
-                </p>
-                <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li><strong>Dealers.csv:</strong> Dealer information including contact details and location</li>
-                  <li><strong>Vehicles.csv:</strong> FORECOURT vehicles only with pricing, specifications, and images</li>
-                  <li><strong>Images:</strong> Provided as URL format, delimiter-separated within fields</li>
-                  <li><strong>VAT Fields:</strong> Includes VAT qualifying and price inclusion flags</li>
-                </ul>
-                <p className="mt-2">
-                  Only vehicles with FORECOURT status are exported. Files are packaged in a ZIP archive for easy distribution to Car Finance 247.
-                </p>
+      {/* Format Information */}
+      {exportOptions.format === 'cf247' ? (
+        <Card className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                  CF247 Export Format
+                </h4>
+                <div className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                  <p>
+                    This export generates Car Finance 247 compliant CSV files with the following structure:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    <li><strong>Dealers.csv:</strong> Dealer information including contact details and location</li>
+                    <li><strong>Vehicles.csv:</strong> FORECOURT vehicles only with pricing, specifications, and images</li>
+                    <li><strong>Images:</strong> Provided as URL format, delimiter-separated within fields</li>
+                    <li><strong>VAT Fields:</strong> Includes VAT qualifying and price inclusion flags</li>
+                  </ul>
+                  <p className="mt-2">
+                    Only vehicles with FORECOURT status are exported. Files are packaged in a ZIP archive for easy distribution to Car Finance 247.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                <Info className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-orange-900 dark:text-orange-100 mb-2">
+                  AA Cars Feed Specification
+                </h4>
+                <div className="text-sm text-orange-800 dark:text-orange-200 space-y-2">
+                  <p>
+                    This export generates AA Cars compliant CSV files with the following structure:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    <li><strong>dealers.csv:</strong> Dealer information with feed_id, name, address, postcode, phone, and email</li>
+                    <li><strong>aacars.csv:</strong> Vehicle data with all mandatory fields including registration, colour, fuel type, year, mileage, etc.</li>
+                    <li><strong>Images:</strong> Comma-separated URLs (preferred size: 1280x960)</li>
+                    <li><strong>Feed ID:</strong> Generated as companyname_dealerid format</li>
+                    <li><strong>VAT Status:</strong> Y/N format for plusvat field</li>
+                  </ul>
+                  <p className="mt-2">
+                    Only vehicles with FORECOURT status are exported. Files are packaged in a ZIP archive for FTP upload to AA Cars.
+                  </p>
+                  <p className="mt-2 text-xs bg-orange-100 dark:bg-orange-900/30 p-2 rounded">
+                    <strong>Note:</strong> Contact feedsupport@theaacars.com to set up your FTP account for daily uploads.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

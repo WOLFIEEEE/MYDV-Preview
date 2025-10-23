@@ -285,6 +285,182 @@ function generateVehiclesCsv(vehiclesData: VehicleData[]): string {
   return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
 }
 
+// Generate AA Cars dealers.csv content
+function generateAACarsDealersCsv(vehiclesData: VehicleData[], selectedDealerInfo: DealerInfo | null = null, userCompanyInfo: UserCompanyInfo = {}): string {
+  const headers = [
+    'feed_id',
+    'dealername',
+    'address',
+    'postcode',
+    'phone_number',
+    'email'
+  ];
+
+  // Get advertiserData from first vehicle (primary source)
+  const firstVehicle = vehiclesData[0];
+  const advertiserData = firstVehicle?.advertiserData || {};
+  const location = advertiserData.location || {};
+  
+  // Parse addressLineOne to extract building name/number and street
+  const addressLineOne = location.addressLineOne || '';
+  const dealerMetadata = selectedDealerInfo?.metadata || {};
+  const dealerAddress = dealerMetadata.address || {};
+  
+  // Build full address
+  const addressParts = [];
+  if (dealerAddress.buildingName) addressParts.push(dealerAddress.buildingName);
+  if (dealerAddress.buildingNumber) addressParts.push(dealerAddress.buildingNumber);
+  if (dealerAddress.streetName) addressParts.push(dealerAddress.streetName);
+  if (dealerAddress.locality) addressParts.push(dealerAddress.locality);
+  if (location.town || dealerAddress.town) addressParts.push(location.town || dealerAddress.town);
+  
+  const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : addressLineOne;
+  
+  // Generate feed_id as companyname_dealerid format
+  const companyName = advertiserData.name || selectedDealerInfo?.name || 'Unknown';
+  const dealerId = advertiserData.advertiserId || selectedDealerInfo?.id || 'unknown';
+  const feedId = `${companyName.replace(/\s+/g, '_')}_${dealerId}`;
+  
+  const dealerRow = [
+    feedId,
+    advertiserData.name || selectedDealerInfo?.name || '',
+    fullAddress,
+    location.postCode || dealerAddress.postcode || '',
+    advertiserData.phone || dealerMetadata.phone || '',
+    selectedDealerInfo?.email || userCompanyInfo.email || ''
+  ].map(escapeCsvValue);
+
+  return [headers.join(','), dealerRow.join(',')].join('\n');
+}
+
+// Generate AA Cars aacars.csv content
+function generateAACarsStockCsv(vehiclesData: VehicleData[]): string {
+  const headers = [
+    'feedid',
+    'vehicleid',
+    'registration',
+    'colour',
+    'fueltype',
+    'year',
+    'mileage',
+    'bodytype',
+    'doors',
+    'make',
+    'model',
+    'variant',
+    'enginesize',
+    'price',
+    'transmission',
+    'description',
+    'options',
+    'picturerefs',
+    'servicehistory',
+    'previousowners',
+    'plusvat',
+    'deeplink',
+    'youtuberef'
+  ];
+
+  const rows = vehiclesData.map(vehicle => {
+    // Extract data from JSONB fields
+    const vehicleData = vehicle.vehicleData || {};
+    const advertsData = vehicle.advertsData || {};
+    const mediaData = vehicle.mediaData || {};
+    const featuresData = vehicle.featuresData || [];
+    
+    // Process images - AA Cars format requires comma-separated URLs with no spaces
+    let pictureRefs = '';
+    if (mediaData.images && Array.isArray(mediaData.images)) {
+      pictureRefs = mediaData.images
+        .filter((img: { href?: string }) => img && img.href)
+        .map((img: { href: string }) => {
+          // Replace {resize} placeholder with AA Cars preferred size (1280x960)
+          return img.href.replace('{resize}', 'w1280h960');
+        })
+        .join(',');
+    }
+    
+    // Process options/features - AA Cars format uses comma-separated options
+    let options = '';
+    if (featuresData && Array.isArray(featuresData)) {
+      const featureNames = featuresData.map((f: { name: string }) => f.name).filter(Boolean);
+      options = featureNames.join(',');
+    }
+    
+    // Generate feed_id as companyname_dealerid format
+    const advertiserData = vehicle.advertiserData || {};
+    const companyName = advertiserData.name || 'Unknown';
+    const dealerId = advertiserData.advertiserId || vehicle.dealerId;
+    const feedId = `${companyName.replace(/\s+/g, '_')}_${dealerId}`;
+    
+    // Extract price and VAT information
+    const extractPrice = (priceObj: number | { amountGBP?: number } | null | undefined): number | null => {
+      if (typeof priceObj === 'number') return priceObj;
+      if (priceObj && typeof priceObj === 'object' && priceObj.amountGBP) {
+        return priceObj.amountGBP;
+      }
+      return null;
+    };
+    
+    const currentPrice = extractPrice(vehicle.forecourtPriceGBP) || 
+                       extractPrice(vehicle.totalPriceGBP) ||
+                       extractPrice((advertsData as { forecourtPrice?: unknown }).forecourtPrice as number | { amountGBP?: number } | null | undefined) || 
+                       0;
+    
+    // VAT status - AA Cars uses Y/N format
+    const retailAdverts = (advertsData as { retailAdverts?: { vatStatus?: string; vatable?: string } }).retailAdverts || {};
+    const plusVat = retailAdverts.vatStatus === 'vat_qualifying' ? 'Y' : 'N';
+    
+    // Extract vehicle URL for deeplink
+    const vehicleUrl = (advertsData as { vehicleUrl?: string }).vehicleUrl || '';
+    
+    // Extract engine size in CC format
+    const engineSize = (vehicleData as { engineSize?: string }).engineSize || '';
+    const engineSizeCC = engineSize.replace(/[^\d]/g, '') + 'cc';
+    
+    // Extract doors as single integer
+    const doors = (vehicleData as { doors?: string; numberOfDoors?: string }).doors || 
+                  (vehicleData as { doors?: string; numberOfDoors?: string }).numberOfDoors || '';
+    const doorsInt = doors.replace(/[^\d]/g, '') || '';
+    
+    // Service history - convert to boolean format (0/1)
+    const serviceHistory = (vehicleData as { serviceHistory?: string }).serviceHistory || 'No Record';
+    const serviceHistoryBool = serviceHistory === 'No Record' ? '0' : '1';
+    
+    // Previous owners
+    const previousOwners = (vehicleData as { previousOwners?: number; owners?: number }).previousOwners || 
+                          (vehicleData as { previousOwners?: number; owners?: number }).owners || 0;
+    
+    return [
+      feedId,
+      vehicle.stockId.slice(-6), // vehicleid: Last 6 digits of stockId
+      (vehicle.registration || '').toUpperCase().replace(/\s/g, ''), // registration: uppercase, no spaces
+      (vehicleData as { colour?: string }).colour || '',
+      vehicle.fuelType || '',
+      vehicle.yearOfManufacture || '',
+      vehicle.odometerReadingMiles || 0,
+      vehicle.bodyType || '',
+      doorsInt,
+      vehicle.make,
+      vehicle.model,
+      vehicle.derivative || '',
+      engineSizeCC,
+      currentPrice,
+      (vehicleData as { transmissionType?: string }).transmissionType || '',
+      '', // description: empty for now
+      options,
+      pictureRefs,
+      serviceHistoryBool,
+      previousOwners.toString(),
+      plusVat,
+      vehicleUrl,
+      '' // youtuberef: empty for now
+    ].map(escapeCsvValue);
+  });
+
+  return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+}
+
 // GET - Fetch export statistics
 export async function GET(request: NextRequest) {
   try {
@@ -359,7 +535,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { includeDealers, includeVehicles } = options;
+    const { includeDealers, includeVehicles, format } = options;
 
     if (!includeDealers && !includeVehicles) {
       return NextResponse.json(
@@ -409,24 +585,35 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      const dealersCsv = generateDealersCsv(vehiclesData as unknown as VehicleData[], selectedDealerInfo as unknown as DealerInfo, userCompanyInfo);
-      zip.file('Dealers.csv', dealersCsv);
+      if (format === 'aacars') {
+        const dealersCsv = generateAACarsDealersCsv(vehiclesData as unknown as VehicleData[], selectedDealerInfo as unknown as DealerInfo, userCompanyInfo);
+        zip.file('dealers.csv', dealersCsv);
+      } else {
+        const dealersCsv = generateDealersCsv(vehiclesData as unknown as VehicleData[], selectedDealerInfo as unknown as DealerInfo, userCompanyInfo);
+        zip.file('Dealers.csv', dealersCsv);
+      }
     }
 
     // Generate vehicles CSV if requested
     if (includeVehicles && vehiclesData.length > 0) {
-      const vehiclesCsv = generateVehiclesCsv(vehiclesData as unknown as VehicleData[]);
-      zip.file('Vehicles.csv', vehiclesCsv);
+      if (format === 'aacars') {
+        const vehiclesCsv = generateAACarsStockCsv(vehiclesData as unknown as VehicleData[]);
+        zip.file('aacars.csv', vehiclesCsv);
+      } else {
+        const vehiclesCsv = generateVehiclesCsv(vehiclesData as unknown as VehicleData[]);
+        zip.file('Vehicles.csv', vehiclesCsv);
+      }
     }
 
     // Generate ZIP file
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
 
     // Return ZIP file
+    const filename = format === 'aacars' ? 'aacars-export' : 'cf247-export';
     return new NextResponse(zipBuffer as BodyInit, {
       headers: {
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="cf247-export-${new Date().toISOString().split('T')[0]}.zip"`
+        'Content-Disposition': `attachment; filename="${filename}-${new Date().toISOString().split('T')[0]}.zip"`
       }
     });
 
