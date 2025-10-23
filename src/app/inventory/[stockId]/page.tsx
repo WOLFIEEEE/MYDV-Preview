@@ -535,46 +535,24 @@ export default function InventoryVehicleDetails() {
           return false;
         }
         
-        // Check for different possible field names
-        const customerName = saleData.customerName || saleData.customer_name || saleData.buyer || saleData.purchaser;
+        // Check for required fields - simplified logic: only sale date and sale price required
         const salePrice = saleData.salePrice || saleData.sale_price || saleData.price || saleData.amount;
         const saleDate = saleData.saleDate || saleData.sale_date || saleData.date || saleData.soldDate;
         
-        const hasCustomerName = customerName && customerName.toString().trim() !== '';
         const hasValidPrice = salePrice && !isNaN(parseFloat(salePrice)) && parseFloat(salePrice) > 0;
         const hasSaleDate = saleDate && saleDate.toString().trim() !== '';
         
-        // Check for meaningful customer information
-        const firstName = saleData.firstName || saleData.first_name;
-        const lastName = saleData.lastName || saleData.last_name;
-        const email = saleData.emailAddress || saleData.email;
-        const phone = saleData.contactNumber || saleData.phone;
-        
-        const hasCustomerInfo = !!(
-          (firstName && firstName.toString().trim() !== '') ||
-          (lastName && lastName.toString().trim() !== '') ||
-          (email && email.toString().trim() !== '') ||
-          (phone && phone.toString().trim() !== '')
-        );
-        
         console.log(`🔍 ${actionId} validation:`, {
-          hasCustomerName,
           hasValidPrice,
           hasSaleDate,
-          hasCustomerInfo,
-          customerName,
           salePrice,
           saleDate,
-          firstName,
-          lastName,
-          email,
-          phone,
           allKeys: Object.keys(saleData),
           rawData: saleData
         });
         
-        // Require either complete sale info (customer name + price + date) OR meaningful customer info + price
-        return (hasCustomerName && hasValidPrice && hasSaleDate) || (hasCustomerInfo && hasValidPrice);
+        // Simplified completion: only sale date and sale price required
+        return hasValidPrice && hasSaleDate;
       
       case 'detailed-margins':
         // Check if Detailed Margins form has been filled with calculations

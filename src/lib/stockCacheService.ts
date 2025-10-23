@@ -1577,6 +1577,8 @@ export class StockCacheService {
       stockParams.append('includeFeatures', 'true');
       stockParams.append('includeHighlights', 'true');
       stockParams.append('includeMedia', 'true');
+      stockParams.append('responseMetrics', 'true');
+      stockParams.append('valuations', 'true');
       
       const stockUrl = `${baseUrl}/stock?${stockParams.toString()}`;
       console.log(`📡 Fetching page ${currentPage}: ${stockUrl}`);
@@ -1767,6 +1769,8 @@ export class StockCacheService {
     stockParams.append('includeFeatures', 'true');
     stockParams.append('includeHighlights', 'true');
     stockParams.append('includeMedia', 'true');
+    stockParams.append('responseMetrics', 'true');
+    stockParams.append('valuations', 'true');
     
     const stockUrl = `${baseUrl}/stock?${stockParams.toString()}`;
     
