@@ -385,28 +385,17 @@ export default function TopActionNavigation({
         const saleData = result.data;
         console.log('📋 [TopActionNavigation] Sale details data:', saleData);
         
-        // Check for required fields based on actual database schema and form data
-        const customerName = saleData.customerName;
-        const firstName = saleData.firstName;
-        const lastName = saleData.lastName;
+        // Check for required fields - simplified logic: only sale date and sale price required
         const salePrice = saleData.salePrice || saleData.price || saleData.amount;
         const saleDate = saleData.saleDate || saleData.date;
         
-        // Customer name validation - check customerName OR firstName OR lastName
-        const hasCustomerName = (customerName && customerName.toString().trim() !== '') || 
-                               (firstName && firstName.toString().trim() !== '') || 
-                               (lastName && lastName.toString().trim() !== '');
         const hasValidPrice = salePrice && parseFloat(salePrice) > 0;
         const hasSaleDate = saleDate && saleDate.toString().trim() !== '';
         
-        const status = hasCustomerName && hasValidPrice && hasSaleDate ? 'completed' : 'pending';
+        const status = hasValidPrice && hasSaleDate ? 'completed' : 'pending';
         console.log('✅ [TopActionNavigation] Sale details status:', status, { 
-          customerName,
-          firstName, 
-          lastName, 
           salePrice, 
           saleDate, 
-          hasCustomerName, 
           hasValidPrice, 
           hasSaleDate 
         });
