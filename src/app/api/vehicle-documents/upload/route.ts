@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { uploadFileToStorage, generateStorageFileName, VEHICLE_DOCUMENTS_BUCKET } from '@/lib/storage';
 import { createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 import { db } from '@/lib/db';
 import { vehicleDocuments, documentAccessLog, stockCache, dealers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -74,17 +75,43 @@ export async function POST(request: NextRequest) {
       dealer = dealerResult.dealer;
     } else {
       // Regular authenticated upload
-      const authResult = await auth();
-      userId = authResult.userId;
-      if (!userId) {
+      const user = await currentUser();
+      if (!user) {
         return NextResponse.json({ 
           success: false, 
           message: 'Unauthorized' 
         }, { status: 401 });
       }
       
-      // Get or create dealer record
-      dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+      userId = user.id;
+      
+      // Get or create dealer record using enhanced resolution (supports team member delegation)
+      const dealerResult = await getDealerIdForUser(user);
+      
+      if (dealerResult.success && dealerResult.dealerId) {
+        console.log(`✅ Enhanced dealer resolution for document upload: ${dealerResult.dealerId}`);
+        
+        // Get the full dealer record
+        const fullDealerResult = await db
+          .select()
+          .from(dealers)
+          .where(eq(dealers.id, dealerResult.dealerId))
+          .limit(1);
+        
+        if (fullDealerResult.length > 0) {
+          dealer = fullDealerResult[0];
+        } else {
+          return NextResponse.json({ 
+            success: false, 
+            message: 'Dealer record not found' 
+          }, { status: 400 });
+        }
+      } else {
+        console.log(`⚠️ Enhanced dealer resolution failed, falling back to createOrGetDealer`);
+        // Fallback to traditional dealer resolution
+        dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+        console.log(`🏢 Fallback dealer resolution for document upload: ${dealer.id}`);
+      }
     }
 
     // Validation - for QR uploads, try to get registration from stock data if not provided

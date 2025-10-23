@@ -1,22 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 import { db } from '@/lib/db';
-import { vehicleDocuments, documentCategories, documentAccessLog } from '@/db/schema';
+import { vehicleDocuments, documentCategories, documentAccessLog, dealers } from '@/db/schema';
 import { eq, and, desc, ilike, or, count } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized' 
       }, { status: 401 });
     }
 
-    // Get dealer record
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    const userId = user.id;
+
+    // Get dealer record using enhanced resolution (supports team member delegation)
+    const dealerResult = await getDealerIdForUser(user);
+    let dealer;
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      const fullDealerResult = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerResult.dealerId))
+        .limit(1);
+      
+      if (fullDealerResult.length > 0) {
+        dealer = fullDealerResult[0];
+      } else {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Dealer record not found' 
+        }, { status: 400 });
+      }
+    } else {
+      dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+    }
     
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -116,16 +139,38 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized' 
       }, { status: 401 });
     }
 
-    // Get dealer record
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    const userId = user.id;
+
+    // Get dealer record using enhanced resolution (supports team member delegation)
+    const dealerResult = await getDealerIdForUser(user);
+    let dealer;
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      const fullDealerResult = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerResult.dealerId))
+        .limit(1);
+      
+      if (fullDealerResult.length > 0) {
+        dealer = fullDealerResult[0];
+      } else {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Dealer record not found' 
+        }, { status: 400 });
+      }
+    } else {
+      dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+    }
     
     // Parse request body
     const { documentIds } = await request.json();

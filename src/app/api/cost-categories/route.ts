@@ -1,20 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { costCategories } from '@/db/schema';
+import { costCategories, dealers } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 import { initializeDefaultCategories } from '@/lib/costCategories';
 
 // GET - Fetch all cost categories for a dealer
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Get dealer using enhanced resolution (supports team member delegation)
+    const dealerResult = await getDealerIdForUser(user);
+    let dealer;
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      const fullDealerResult = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerResult.dealerId))
+        .limit(1);
+      
+      if (fullDealerResult.length > 0) {
+        dealer = fullDealerResult[0];
+      } else {
+        return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
+      }
+    } else {
+      dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+    }
+    
     if (!dealer) {
       return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
     }
@@ -54,8 +74,8 @@ export async function GET(request: NextRequest) {
 // POST - Create new cost category
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -69,7 +89,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Get dealer using enhanced resolution (supports team member delegation)
+    const dealerResult = await getDealerIdForUser(user);
+    let dealer;
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      const fullDealerResult = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerResult.dealerId))
+        .limit(1);
+      
+      if (fullDealerResult.length > 0) {
+        dealer = fullDealerResult[0];
+      } else {
+        return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
+      }
+    } else {
+      dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+    }
+    
     if (!dealer) {
       return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
     }

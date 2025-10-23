@@ -124,14 +124,13 @@ export default function DealerLogosTab({ dealers, refreshing, onRefresh }: Deale
         setUploadFile(null);
         setUploadNotes("");
         setSelectedDealer(null);
-        loadDealerLogos();
         
-        // Invalidate logo cache for all users since admin can assign logos to any dealer
-        // Use setTimeout to ensure UI updates complete before cache invalidation
-        setTimeout(() => {
-          invalidateLogoCache();
-          console.log('✅ Logo cache invalidated after admin assignment');
-        }, 500);
+        // Invalidate logo cache IMMEDIATELY for instant updates
+        invalidateLogoCache();
+        console.log('✅ Logo cache invalidated after admin assignment');
+        
+        // Reload dealer logos list after cache invalidation
+        loadDealerLogos();
       } else {
         const errorData = await assignResponse.json();
         alert(`Assignment failed: ${errorData.error}`);
@@ -157,14 +156,13 @@ export default function DealerLogosTab({ dealers, refreshing, onRefresh }: Deale
       if (response.ok) {
         const result = await response.json();
         alert(result.message);
-        loadDealerLogos();
         
-        // Invalidate logo cache when logo is removed
-        // Use setTimeout to ensure UI updates complete before cache invalidation
-        setTimeout(() => {
-          invalidateLogoCache();
-          console.log('✅ Logo cache invalidated after logo removal');
-        }, 500);
+        // Invalidate logo cache IMMEDIATELY when logo is removed
+        invalidateLogoCache();
+        console.log('✅ Logo cache invalidated after logo removal');
+        
+        // Reload dealer logos list after cache invalidation
+        loadDealerLogos();
       } else {
         const errorData = await response.json();
         alert(`Failed to remove logo: ${errorData.error}`);

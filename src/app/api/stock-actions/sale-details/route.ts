@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
-import { db } from '@/lib/db'
-import { dealers, teamMembers } from '@/db/schema'
-import { eq } from 'drizzle-orm'
 import { 
   createSaleDetails, 
   getSaleDetailsByStockId, 
@@ -36,30 +33,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Stock ID is required' }, { status: 400 })
     }
 
+    // Helper function to safely parse numeric values - defaults to 0 for calculations
+    const parseNumericField = (value: unknown): number => {
+      if (value === null || value === undefined || value === '') {
+        return 0;
+      }
+      const parsed = parseFloat(String(value));
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    // Helper function to safely parse integer values - defaults to 0 for calculations
+    const parseIntegerField = (value: unknown): number => {
+      if (value === null || value === undefined || value === '') {
+        return 0;
+      }
+      const parsed = parseInt(String(value));
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
     // Process the data to ensure proper types
     const processedData = {
       ...formData,
-      // Convert date strings to Date objects for database (only if they exist)
-      ...(formData.saleDate && { saleDate: new Date(formData.saleDate) }),
+      // Convert date strings to Date objects for database (only if they exist and are not empty)
+      ...(formData.saleDate && formData.saleDate !== '' && { saleDate: new Date(formData.saleDate) }),
       ...(formData.deliveryDate && formData.deliveryDate !== '' && { deliveryDate: new Date(formData.deliveryDate) }),
       ...(formData.depositDate && formData.depositDate !== '' && { depositDate: new Date(formData.depositDate) }),
       ...(formData.completionDate && formData.completionDate !== '' && { completionDate: new Date(formData.completionDate) }),
-      // Ensure numeric fields are properly typed (only if they exist)
-      ...(formData.warrantyMonths && { warrantyMonths: parseInt(formData.warrantyMonths) }),
-      ...(formData.salePrice && { salePrice: parseFloat(formData.salePrice) }),
-      ...(formData.deliveryPrice && { deliveryPrice: parseFloat(formData.deliveryPrice) }),
-      ...(formData.cashAmount && { cashAmount: parseFloat(formData.cashAmount) }),
-      ...(formData.bacsAmount && { bacsAmount: parseFloat(formData.bacsAmount) }),
-      ...(formData.financeAmount && { financeAmount: parseFloat(formData.financeAmount) }),
-      ...(formData.depositAmount && { depositAmount: parseFloat(formData.depositAmount) }),
-      ...(formData.requiredAmount && { requiredAmount: parseFloat(formData.requiredAmount) }),
-      ...(formData.partExAmount && { partExAmount: parseFloat(formData.partExAmount) }),
-      ...(formData.cardAmount && { cardAmount: parseFloat(formData.cardAmount) })
+      // Ensure numeric fields are properly typed - convert empty strings to null
+      warrantyMonths: parseIntegerField(formData.warrantyMonths),
+      salePrice: parseNumericField(formData.salePrice),
+      deliveryPrice: parseNumericField(formData.deliveryPrice),
+      cashAmount: parseNumericField(formData.cashAmount),
+      bacsAmount: parseNumericField(formData.bacsAmount),
+      financeAmount: parseNumericField(formData.financeAmount),
+      depositAmount: parseNumericField(formData.depositAmount),
+      requiredAmount: parseNumericField(formData.requiredAmount),
+      partExAmount: parseNumericField(formData.partExAmount),
+      cardAmount: parseNumericField(formData.cardAmount)
     }
 
     // Remove undefined values to prevent overwriting existing data with undefined
     const cleanedProcessedData = Object.fromEntries(
-      Object.entries(processedData).filter(([_, value]) => value !== undefined)
+      Object.entries(processedData).filter(([, value]) => value !== undefined)
     )
 
     // Auto-create customer from sales details if customer data is provided
@@ -96,9 +111,27 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data: result }, { status: 200 })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error saving sale details:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    
+    // Provide more detailed error message for debugging
+    let errorMessage = 'Internal server error';
+    const errorObj = error as Error;
+    if (errorObj?.message) {
+      errorMessage = errorObj.message;
+      
+      // Check for specific database errors
+      if (errorObj.message.includes('invalid input syntax for type numeric')) {
+        errorMessage = 'Invalid numeric value provided. Please check all price and amount fields.';
+      } else if (errorObj.message.includes('invalid input syntax for type timestamp')) {
+        errorMessage = 'Invalid date format provided. Please check all date fields.';
+      }
+    }
+    
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorObj?.message : undefined 
+    }, { status: 500 })
   }
 }
 

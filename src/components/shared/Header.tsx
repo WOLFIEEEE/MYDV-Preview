@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { UserButton, useAuth, useUser } from '@clerk/nextjs';
-import { Menu, X, Sun, Moon, ChevronDown, Search, Package, BarChart3, Shield, BookOpen, Phone, HelpCircle, Settings, Kanban, ClipboardCheck, PoundSterling, Undo, Handshake, FileText, Users, Car, Banknote, PiggyBank, Receipt } from "lucide-react";
+import { Menu, X, Sun, Moon, ChevronDown, Search, Package, BarChart3, Shield, BookOpen, Phone, HelpCircle, Settings, Kanban, ClipboardCheck, PoundSterling, Undo, Handshake, FileText, Users, Car, Banknote, PiggyBank, Receipt, FileImage } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import NotificationBell from "@/components/shared/NotificationBell";
 import { hasSettingsAccess, fetchUserRoleInfo, type UserRoleInfo } from "@/lib/userRoleUtils.client";
@@ -237,42 +237,40 @@ export default function Header() {
           {/* Enhanced Logo with User Branding */}
           <Link href="/" className="flex items-center group mr-4">
             <div className="transition-all duration-300 group-hover:scale-105">
-              {logoLoading && !userLogoData ? (
-                // Loading placeholder - only show when initially loading
+              {logoLoading ? (
+                // Loading placeholder - show while loading
                 <div className="relative">
-                  <div className="h-12 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="h-10 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                   <div className="absolute -bottom-0.5 -right-0.5 h-3 w-12 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
                 </div>
               ) : userLogoData?.logo && !logoError ? (
                 // User's logo with "Powered by MYDV" positioned at bottom right
                 <div className="relative">
-                  <div className="overflow-hidden rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
+                  <div className="overflow-hidden rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 p-2">
                     <Image 
                       src={userLogoData.logo} 
                       alt={userLogoData.storeName ? `${userLogoData.storeName} Logo` : "Company Logo"} 
                       width={160}
                       height={48}
-                      className="h-12 w-auto object-cover object-center max-w-[160px] min-w-[120px]"
+                      className="h-10 w-auto object-contain max-w-[160px]"
                       style={{
-                        objectPosition: 'center',
-                        clipPath: 'inset(15% 0 15% 0)' // Crop 15% from top and bottom for landscape effect
+                        objectPosition: 'center'
                       }}
-                      onError={(e) => {
-                        console.warn('User logo failed to load, setting error state');
+                      onError={() => {
+                        console.warn('User logo failed to load:', userLogoData.logo);
                         setLogoError(true);
                       }}
                       onLoad={() => {
-                        // Clear error state when logo loads successfully
+                        console.log('User logo loaded successfully:', userLogoData.logo);
                         setLogoError(false);
                       }}
                       priority={true}
-                      quality={90}
-                      placeholder="blur"
-                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R+Rq5OoqKdPk1P/2Q=="
+                      quality={95}
+                      unoptimized={true}
                     />
                   </div>
                   {/* Powered by MYDV - positioned lower to avoid overlap */}
-                  <div className="absolute -bottom-2 -right-1 bg-slate-800/80 text-white text-[8px] font-normal px-1.5 py-0.5 rounded shadow-sm">
+                  <div className="absolute -bottom-2 -right-1 bg-slate-800/90 text-white text-[8px] font-normal px-1.5 py-0.5 rounded shadow-sm">
                     Powered by MYDV
                   </div>
                 </div>
@@ -507,6 +505,15 @@ export default function Header() {
                         <div className={`text-xs ${headerStyle.textSecondary}`}>Manage vehicle documents</div>
                       </div>
                     </Link>
+                    {/* <Link href="/vrn-images" className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      headerStyle.textSecondary
+                    } ${headerStyle.hover}`}>
+                      <FileImage className="h-4 w-4" />
+                      <div>
+                        <div className={headerStyle.text}>VRN Image Archive</div>
+                        <div className={`text-xs ${headerStyle.textSecondary}`}>Browse submitted VRN images</div>
+                      </div>
+                    </Link> */}
                     <Link href="/store-owner/settings?tab=cost-tracking" className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                       headerStyle.textSecondary
                     } ${headerStyle.hover}`}>

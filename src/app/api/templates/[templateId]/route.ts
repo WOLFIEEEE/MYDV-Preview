@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { deleteFileFromStorage } from '@/lib/storage';
 import { deleteTemplate, getTemplateById, createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
+import { db } from '@/lib/db';
+import { dealers } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ templateId: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ 
         success: false, 
         message: 'Unauthorized' 
@@ -25,8 +29,28 @@ export async function DELETE(
       }, { status: 400 });
     }
 
-    // Get dealer information
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Get dealer information using enhanced resolution (supports team member delegation)
+    const dealerResult = await getDealerIdForUser(user);
+    let dealer;
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      const fullDealerResult = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerResult.dealerId))
+        .limit(1);
+      
+      if (fullDealerResult.length > 0) {
+        dealer = fullDealerResult[0];
+      } else {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Dealer record not found' 
+        }, { status: 400 });
+      }
+    } else {
+      dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+    }
     
     // Get template details first
     const template = await getTemplateById(templateId, dealer.id);

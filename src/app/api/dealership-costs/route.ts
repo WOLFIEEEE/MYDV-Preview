@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { dealershipCosts, costCategories } from '@/db/schema';
+import { dealershipCosts, costCategories, dealers } from '@/db/schema';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 
 // GET - Fetch all dealership costs for a dealer
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -19,8 +20,26 @@ export async function GET(request: NextRequest) {
     const costType = searchParams.get('costType');
     const frequency = searchParams.get('frequency');
 
-    // Get dealer info
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Get dealer info using enhanced resolution (supports team member delegation)
+    const dealerResult = await getDealerIdForUser(user);
+    let dealer;
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      const fullDealerResult = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerResult.dealerId))
+        .limit(1);
+      
+      if (fullDealerResult.length > 0) {
+        dealer = fullDealerResult[0];
+      } else {
+        return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
+      }
+    } else {
+      dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+    }
+
     if (!dealer) {
       return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
     }
@@ -78,8 +97,8 @@ export async function GET(request: NextRequest) {
 // POST - Create new dealership cost
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -106,8 +125,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get dealer info
-    const dealer = await createOrGetDealer(userId, 'Unknown', 'unknown@email.com');
+    // Get dealer info using enhanced resolution (supports team member delegation)
+    const dealerResult = await getDealerIdForUser(user);
+    let dealer;
+    
+    if (dealerResult.success && dealerResult.dealerId) {
+      const fullDealerResult = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerResult.dealerId))
+        .limit(1);
+      
+      if (fullDealerResult.length > 0) {
+        dealer = fullDealerResult[0];
+      } else {
+        return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
+      }
+    } else {
+      dealer = await createOrGetDealer(user.id, user.fullName || 'Unknown', user.emailAddresses[0]?.emailAddress || 'unknown@email.com');
+    }
+
     if (!dealer) {
       return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
     }
@@ -140,7 +177,7 @@ export async function POST(request: NextRequest) {
         dueDate: dueDate || null,
         notes: notes || null,
         paymentMethod: paymentMethod || null,
-        createdBy: userId,
+        createdBy: user.id,
         status: 'active'
       })
       .returning();
