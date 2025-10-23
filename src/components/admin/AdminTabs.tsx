@@ -31,12 +31,14 @@ import {
   Trash2,
   Plus,
   AlertCircle,
-  Image
+  Image,
+  FileDown
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import JoinRequestsTab from "./JoinRequestsTab";
 import ClientOnboardingModal from "./ClientOnboardingModal";
 import DealerLogosTab from "./DealerLogosTab";
+import ExportDataTab from "./ExportDataTab";
 import { 
   getContactSubmissions, 
   getJoinSubmissions, 
@@ -94,6 +96,13 @@ export default function AdminTabs({ dealers, loading }: AdminTabsProps) {
       icon: Image,
       description: "Manage dealer branding & logos",
       color: "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400"
+    },
+    { 
+      id: "export", 
+      label: "Export Data", 
+      icon: FileDown,
+      description: "CF247 format data exports for dealers",
+      color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400"
     },
     { 
       id: "contacts", 
@@ -1039,6 +1048,15 @@ export default function AdminTabs({ dealers, loading }: AdminTabsProps) {
         {/* Logos Tab - Dealer Logo Management */}
         {activeTab === "logos" && (
           <DealerLogosTab 
+            dealers={dealers}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+          />
+        )}
+
+        {/* Export Data Tab - CF247 Format Data Exports */}
+        {activeTab === "export" && (
+          <ExportDataTab 
             dealers={dealers}
             refreshing={refreshing}
             onRefresh={handleRefresh}
