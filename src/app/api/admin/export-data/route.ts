@@ -46,6 +46,7 @@ interface DealerInfo {
   name: string;
   email: string;
   companyName?: string; // From userAssignments or companySettings
+  websiteUrl?: string; // Company website URL
   metadata?: {
     address?: {
       buildingName?: string;
@@ -80,6 +81,28 @@ async function checkAdminAuth() {
   }
 
   return { success: true, user };
+}
+
+// Helper function to generate deep link URL
+function generateDeepLinkUrl(vehicle: VehicleData, selectedDealerInfo: DealerInfo | null = null): string {
+  if (!selectedDealerInfo?.websiteUrl) {
+    return '';
+  }
+  
+  const make = vehicle.make || '';
+  const model = vehicle.model || '';
+  const year = vehicle.yearOfManufacture || '';
+  
+  // Clean and format the URL components
+  const cleanMake = make.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const cleanModel = model.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const cleanYear = year.toString();
+  
+  // Generate URL like: https://mwaautosltd.co.uk/used-cars/toyota-corolla-2005-{stockId}
+  const baseUrl = selectedDealerInfo.websiteUrl.replace(/\/$/, ''); // Remove trailing slash
+  const stockId = vehicle.stockId; // Full stock ID
+  
+  return `${baseUrl}/used-cars/${cleanMake}-${cleanModel}-${cleanYear}-${stockId}`;
 }
 
 // Helper function to escape CSV values
@@ -420,8 +443,8 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[], selectedDealerInfo:
     const retailAdverts = (advertsData as { retailAdverts?: { vatStatus?: string; vatable?: string } }).retailAdverts || {};
     const plusVat = retailAdverts.vatStatus === 'vat_qualifying' ? 'Y' : 'N';
     
-    // Extract vehicle URL for deeplink
-    const vehicleUrl = (advertsData as { vehicleUrl?: string }).vehicleUrl || '';
+    // Extract vehicle URL for deeplink - generate proper deep link
+    const vehicleUrl = generateDeepLinkUrl(vehicle, selectedDealerInfo);
     
     // Extract engine size in CC format from vehicleData
     const engineCapacityCC = (vehicleData as { engineCapacityCC?: number }).engineCapacityCC;
@@ -584,16 +607,17 @@ export async function POST(request: NextRequest) {
       const dealerData = await db.select().from(dealers).where(eq(dealers.id, dealerId));
       const dealer = dealerData[0];
       
-      if (dealer) {
-        // Try to get company name from userAssignments first, then companySettings
-        const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, dealerId)).limit(1);
-        const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, dealerId)).limit(1);
-        
-        selectedDealerInfo = {
-          ...dealer,
-          companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || null
-        };
-      }
+        if (dealer) {
+          // Try to get company name from userAssignments first, then companySettings
+          const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, dealerId)).limit(1);
+          const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, dealerId)).limit(1);
+          
+          selectedDealerInfo = {
+            ...dealer,
+            companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || null,
+            websiteUrl: companySetting[0]?.contactWebsite || null
+          };
+        }
     } else {
       // All dealers selected - get company info from first dealer that has vehicles
       const firstVehicleDealerId = vehiclesData[0]?.dealerId;
@@ -601,16 +625,17 @@ export async function POST(request: NextRequest) {
         const dealerData = await db.select().from(dealers).where(eq(dealers.id, firstVehicleDealerId));
         const dealer = dealerData[0];
         
-        if (dealer) {
-          // Try to get company name from userAssignments first, then companySettings
-          const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, firstVehicleDealerId)).limit(1);
-          const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, firstVehicleDealerId)).limit(1);
-          
-          selectedDealerInfo = {
-            ...dealer,
-            companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || null
-          };
-        }
+          if (dealer) {
+            // Try to get company name from userAssignments first, then companySettings
+            const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, firstVehicleDealerId)).limit(1);
+            const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, firstVehicleDealerId)).limit(1);
+            
+            selectedDealerInfo = {
+              ...dealer,
+              companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || null,
+              websiteUrl: companySetting[0]?.contactWebsite || null
+            };
+          }
       }
     }
 
