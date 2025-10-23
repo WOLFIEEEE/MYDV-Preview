@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { dealers, stockCache } from '@/db/schema';
+import { dealers, stockCache, userAssignments, companySettings } from '@/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 import JSZip from 'jszip';
 
@@ -45,6 +45,7 @@ interface DealerInfo {
   id: string;
   name: string;
   email: string;
+  companyName?: string; // From userAssignments or companySettings
   metadata?: {
     address?: {
       buildingName?: string;
@@ -317,13 +318,17 @@ function generateAACarsDealersCsv(vehiclesData: VehicleData[], selectedDealerInf
   const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : addressLineOne;
   
   // Generate feed_id as companyname_dealerid format
-  const companyName = advertiserData.name || selectedDealerInfo?.name || 'Unknown';
+  // Priority: selectedDealerInfo.companyName > advertiserData.name > selectedDealerInfo.name
+  const companyName = selectedDealerInfo?.companyName || advertiserData.name || selectedDealerInfo?.name || 'Unknown';
   const dealerId = advertiserData.advertiserId || selectedDealerInfo?.id || 'unknown';
-  const feedId = `${companyName.replace(/\s+/g, '_')}_${dealerId}`;
+  
+  // Extract first word of company name
+  const firstWord = companyName.split(' ')[0].toLowerCase();
+  const feedId = `${firstWord}_${dealerId}`;
   
   const dealerRow = [
     feedId,
-    advertiserData.name || selectedDealerInfo?.name || '',
+    selectedDealerInfo?.companyName || advertiserData.name || selectedDealerInfo?.name || '',
     fullAddress,
     location.postCode || dealerAddress.postcode || '',
     advertiserData.phone || dealerMetadata.phone || '',
@@ -334,7 +339,7 @@ function generateAACarsDealersCsv(vehiclesData: VehicleData[], selectedDealerInf
 }
 
 // Generate AA Cars aacars.csv content
-function generateAACarsStockCsv(vehiclesData: VehicleData[]): string {
+function generateAACarsStockCsv(vehiclesData: VehicleData[], selectedDealerInfo: DealerInfo | null = null): string {
   const headers = [
     'feedid',
     'vehicleid',
@@ -361,7 +366,7 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[]): string {
     'youtuberef'
   ];
 
-  const rows = vehiclesData.map(vehicle => {
+  const rows = vehiclesData.map((vehicle, index) => {
     // Extract data from JSONB fields
     const vehicleData = vehicle.vehicleData || {};
     const advertsData = vehicle.advertsData || {};
@@ -387,11 +392,15 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[]): string {
       options = featureNames.join(',');
     }
     
-    // Generate feed_id as companyname_dealerid format
-    const advertiserData = vehicle.advertiserData || {};
-    const companyName = advertiserData.name || 'Unknown';
-    const dealerId = advertiserData.advertiserId || vehicle.dealerId;
-    const feedId = `${companyName.replace(/\s+/g, '_')}_${dealerId}`;
+  // Generate feed_id as companyname_dealerid format
+  const advertiserData = vehicle.advertiserData || {};
+  // Priority: selectedDealerInfo.companyName > advertiserData.name > 'Unknown'
+  const companyName = selectedDealerInfo?.companyName || advertiserData.name || 'Unknown';
+  const dealerId = advertiserData.advertiserId || vehicle.dealerId;
+  
+  // Extract first word of company name
+  const firstWord = companyName.split(' ')[0].toLowerCase();
+  const feedId = `${firstWord}_${dealerId}`;
     
     // Extract price and VAT information
     const extractPrice = (priceObj: number | { amountGBP?: number } | null | undefined): number | null => {
@@ -414,14 +423,14 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[]): string {
     // Extract vehicle URL for deeplink
     const vehicleUrl = (advertsData as { vehicleUrl?: string }).vehicleUrl || '';
     
-    // Extract engine size in CC format
-    const engineSize = (vehicleData as { engineSize?: string }).engineSize || '';
-    const engineSizeCC = engineSize.replace(/[^\d]/g, '') + 'cc';
+    // Extract engine size in CC format from vehicleData
+    const engineCapacityCC = (vehicleData as { engineCapacityCC?: number }).engineCapacityCC;
+    const engineSizeCC = engineCapacityCC ? `${engineCapacityCC}cc` : '';
     
     // Extract doors as single integer
-    const doors = (vehicleData as { doors?: string; numberOfDoors?: string }).doors || 
-                  (vehicleData as { doors?: string; numberOfDoors?: string }).numberOfDoors || '';
-    const doorsInt = doors.replace(/[^\d]/g, '') || '';
+    const doors = (vehicleData as { doors?: string | number; numberOfDoors?: string | number }).doors || 
+                  (vehicleData as { doors?: string | number; numberOfDoors?: string | number }).numberOfDoors || '';
+    const doorsInt = String(doors).replace(/[^\d]/g, '') || '';
     
     // Service history - convert to boolean format (0/1)
     const serviceHistory = (vehicleData as { serviceHistory?: string }).serviceHistory || 'No Record';
@@ -433,7 +442,7 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[]): string {
     
     return [
       feedId,
-      vehicle.stockId.slice(-6), // vehicleid: Last 6 digits of stockId
+      (index + 1).toString(), // vehicleid: Sequential number starting from 1
       (vehicle.registration || '').toUpperCase().replace(/\s/g, ''), // registration: uppercase, no spaces
       (vehicleData as { colour?: string }).colour || '',
       vehicle.fuelType || '',
@@ -563,28 +572,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate dealers CSV from advertiserData if requested
-    if (includeDealers && vehiclesData.length > 0) {
-      // Get user company information for email
-      const userCompanyInfo = {
-        email: adminCheck.user?.emailAddresses?.[0]?.emailAddress || ''
-      };
+    // Get user company information for email
+    const userCompanyInfo = {
+      email: adminCheck.user?.emailAddresses?.[0]?.emailAddress || ''
+    };
+    
+    // Always fetch dealer company information for fallback data
+    let selectedDealerInfo = null;
+    if (dealerId) {
+      // Specific dealer selected - fetch their company info
+      const dealerData = await db.select().from(dealers).where(eq(dealers.id, dealerId));
+      const dealer = dealerData[0];
       
-      // Always fetch dealer company information for fallback data
-      let selectedDealerInfo = null;
-      if (dealerId) {
-        // Specific dealer selected - fetch their company info
-        const dealerData = await db.select().from(dealers).where(eq(dealers.id, dealerId));
-        selectedDealerInfo = dealerData[0] || null;
-      } else {
-        // All dealers selected - get company info from first dealer that has vehicles
-        const firstVehicleDealerId = vehiclesData[0]?.dealerId;
-        if (firstVehicleDealerId) {
-          const dealerData = await db.select().from(dealers).where(eq(dealers.id, firstVehicleDealerId));
-          selectedDealerInfo = dealerData[0] || null;
+      if (dealer) {
+        // Try to get company name from userAssignments first, then companySettings
+        const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, dealerId)).limit(1);
+        const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, dealerId)).limit(1);
+        
+        selectedDealerInfo = {
+          ...dealer,
+          companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || null
+        };
+      }
+    } else {
+      // All dealers selected - get company info from first dealer that has vehicles
+      const firstVehicleDealerId = vehiclesData[0]?.dealerId;
+      if (firstVehicleDealerId) {
+        const dealerData = await db.select().from(dealers).where(eq(dealers.id, firstVehicleDealerId));
+        const dealer = dealerData[0];
+        
+        if (dealer) {
+          // Try to get company name from userAssignments first, then companySettings
+          const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, firstVehicleDealerId)).limit(1);
+          const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, firstVehicleDealerId)).limit(1);
+          
+          selectedDealerInfo = {
+            ...dealer,
+            companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || null
+          };
         }
       }
-      
+    }
+
+    // Generate dealers CSV from advertiserData if requested
+    if (includeDealers && vehiclesData.length > 0) {
       if (format === 'aacars') {
         const dealersCsv = generateAACarsDealersCsv(vehiclesData as unknown as VehicleData[], selectedDealerInfo as unknown as DealerInfo, userCompanyInfo);
         zip.file('dealers.csv', dealersCsv);
@@ -597,7 +628,7 @@ export async function POST(request: NextRequest) {
     // Generate vehicles CSV if requested
     if (includeVehicles && vehiclesData.length > 0) {
       if (format === 'aacars') {
-        const vehiclesCsv = generateAACarsStockCsv(vehiclesData as unknown as VehicleData[]);
+        const vehiclesCsv = generateAACarsStockCsv(vehiclesData as unknown as VehicleData[], selectedDealerInfo as unknown as DealerInfo);
         zip.file('aacars.csv', vehiclesCsv);
       } else {
         const vehiclesCsv = generateVehiclesCsv(vehiclesData as unknown as VehicleData[]);
