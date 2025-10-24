@@ -1,4 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
+// Using native img tags instead of Next.js Image component for better external URL handling
+// This is intentional to avoid issues with Supabase and other external image URLs that may not be properly configured
 
 import { useEffect, useState, useCallback } from "react";
 import { useAuth, useUser } from '@clerk/nextjs';
@@ -41,7 +44,7 @@ import TestDriveEntryForm from "@/components/shared/TestDriveEntryForm";
 import EnhancedCostTracking from "@/components/settings/EnhancedCostTracking";
 import CustomTermsAndConditions from "@/components/settings/CustomTermsAndConditions";
 import InvoiceGenerator from "@/components/settings/InvoiceGenerator";
-import Image from "next/image";
+// Removed Next.js Image - using native img tags for better external URL handling
 import { createOrGetDealer, getTeamMembers, type TeamMember } from "@/lib/database";
 import { hasSettingsAccess, fetchUserRoleInfo } from "@/lib/userRoleUtils.client";
 import { invalidateLogoCache } from "@/lib/logoCache";
@@ -175,7 +178,7 @@ export default function StoreOwnerSettings() {
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
-  const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
+  // const [qrCodeFile, setQrCodeFile] = useState<File | null>(null); // Not currently used - QR code handled via base64 preview
   const [qrCodePreview, setQrCodePreview] = useState<string>('');
   const [isSavingCompanySettings, setIsSavingCompanySettings] = useState(false);
   // Templates state
@@ -1006,7 +1009,7 @@ export default function StoreOwnerSettings() {
         return;
       }
 
-      setQrCodeFile(file);
+      // setQrCodeFile(file); // Not currently used - QR code handled via base64 preview
       const reader = new FileReader();
       reader.onload = (e) => {
         const base64String = e.target?.result as string;
@@ -1021,7 +1024,7 @@ export default function StoreOwnerSettings() {
   };
 
   const handleQrCodeRemove = () => {
-    setQrCodeFile(null);
+    // setQrCodeFile(null); // Not currently used - QR code handled via base64 preview
     setQrCodePreview('');
     setCompanySettings(prev => ({
       ...prev,
@@ -1656,12 +1659,21 @@ export default function StoreOwnerSettings() {
                               <div key={template.id} className="group relative bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden hover:shadow-lg transition-all duration-300">
                                 {/* Overlay Preview */}
                                 <div className="aspect-square bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
-                                  <Image
+                                  <img
                                     src={template.url}
                                     alt={template.name || 'Overlay image'}
-                                    width={200}
-                                    height={200}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.onerror = null; // Prevent infinite loop
+                                      // Try to display a placeholder or show error state
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = '<div class="flex flex-col items-center justify-center h-full"><svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><span class="text-xs text-slate-500 mt-2">Failed to load</span></div>';
+                                      }
+                                    }}
                                   />
                                 </div>
 
@@ -1830,12 +1842,21 @@ export default function StoreOwnerSettings() {
                                 className="group relative bg-white dark:bg-slate-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-slate-200 dark:border-slate-600 hover:scale-105"
                               >
                                 <div className="aspect-square overflow-hidden relative">
-                                  <Image
+                                  <img
                                     src={stockImage.url}
                                     alt={stockImage.name || 'Stock image'}
-                                    width={200}
-                                    height={200}
                                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.onerror = null; // Prevent infinite loop
+                                      // Try to display a placeholder or show error state
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = '<div class="flex flex-col items-center justify-center h-full bg-slate-100 dark:bg-slate-700"><svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><span class="text-xs text-slate-500 mt-2">Failed to load</span></div>';
+                                      }
+                                    }}
                                   />
                                   {/* Image Type Badge */}
                                   <div className="absolute top-2 right-2">
@@ -2106,12 +2127,18 @@ export default function StoreOwnerSettings() {
                           <div className="flex items-center gap-6">
                             <div className="w-24 h-24 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-700">
                               {logoPreview || companySettings.companyLogo ? (
-                                <Image
+                                <img
                                   src={logoPreview || companySettings.companyLogo}
                                   alt="Company Logo"
-                                  width={96}
-                                  height={96}
                                   className="w-full h-full object-contain rounded-xl"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = '<svg class="w-8 h-8 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" /></svg>';
+                                    }
+                                  }}
                                 />
                               ) : (
                                 <ImageIcon className="w-8 h-8 text-slate-400" />
@@ -2147,12 +2174,18 @@ export default function StoreOwnerSettings() {
                           <div className="flex items-center gap-6">
                             <div className="w-24 h-24 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-700">
                               {qrCodePreview || companySettings.qrCode ? (
-                                <Image
+                                <img
                                   src={qrCodePreview || companySettings.qrCode}
                                   alt="QR Code"
-                                  width={96}
-                                  height={96}
                                   className="w-full h-full object-contain rounded-xl"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = '<svg class="w-8 h-8 text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M3 3h6v6H3V3zm12 0h6v6h-6V3zM3 15h6v6H3v-6zm12 0h6v6h-6v-6zm-3-3h3v3h-3v-3zm0-6h3v3h-3V6z"/></svg>';
+                                    }
+                                  }}
                                 />
                               ) : (
                                 <QrCode className="w-8 h-8 text-slate-400" />
@@ -2501,12 +2534,19 @@ export default function StoreOwnerSettings() {
             {/* Image Display */}
             <div className="flex-1 p-6 flex items-center justify-center bg-slate-50 dark:bg-slate-700/50">
               <div className="max-w-full max-h-[60vh] flex items-center justify-center">
-                <Image
+                <img
                   src={selectedImageForView.url}
                   alt={selectedImageForView.name || 'Template image'}
-                  width={800}
-                  height={600}
                   className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = '<div class="text-center"><svg class="w-16 h-16 text-slate-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><p class="text-slate-600 dark:text-white">Failed to load image</p></div>';
+                    }
+                  }}
                 />
                 <div className="hidden text-center">
                   <ImageIcon className="w-16 h-16 text-slate-400 mx-auto mb-4" />
@@ -3300,12 +3340,19 @@ export default function StoreOwnerSettings() {
 
             {/* Image Display */}
             <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-900">
-              <Image
+              <img
                 src={selectedStockImageForView.url}
                 alt={selectedStockImageForView.name || 'Stock image'}
-                width={800}
-                height={600}
                 className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-lg"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="text-center"><svg class="w-16 h-16 text-slate-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><p class="text-slate-600 dark:text-white">Failed to load image</p></div>';
+                  }
+                }}
               />
             </div>
 
