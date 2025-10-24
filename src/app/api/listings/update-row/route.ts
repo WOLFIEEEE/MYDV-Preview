@@ -27,6 +27,9 @@ interface AutoTraderUpdatePayload {
       locatorAdvert?: {
         status: 'PUBLISHED' | 'NOT_PUBLISHED';
       };
+      exportAdvert?: {
+        status: 'PUBLISHED' | 'NOT_PUBLISHED';
+      };
       profileAdvert?: {
         status: 'PUBLISHED' | 'NOT_PUBLISHED';
       };
@@ -172,6 +175,7 @@ export async function POST(request: NextRequest) {
         'autotrader': 'autotraderAdvert',
         'advertiser': 'advertiserAdvert', 
         'locator': 'locatorAdvert',
+        'export': 'exportAdvert',
         'profile': 'profileAdvert'
       };
 
@@ -195,7 +199,17 @@ export async function POST(request: NextRequest) {
       console.log('📡 Sending update to AutoTrader:', {
         stockId,
         advertiserId,
-        payload: autotraderPayload
+        payload: JSON.stringify(autotraderPayload, null, 2)
+      });
+      
+      // Also log the structured payload for better debugging
+      console.log('📋 AutoTrader Payload Details:', {
+        hasPrice: !!autotraderPayload.adverts.forecourtPrice,
+        priceAmount: autotraderPayload.adverts.forecourtPrice?.amountGBP,
+        hasRetailAdverts: !!autotraderPayload.adverts.retailAdverts,
+        retailAdverts: autotraderPayload.adverts.retailAdverts ? Object.keys(autotraderPayload.adverts.retailAdverts) : [],
+        advertStatuses: autotraderPayload.adverts.retailAdverts ? 
+          Object.entries(autotraderPayload.adverts.retailAdverts).map(([key, value]) => ({ [key]: value.status })) : []
       });
 
       // Use browser-aware fetch with enhanced error handling
@@ -266,7 +280,10 @@ export async function POST(request: NextRequest) {
       }
 
       const autotraderResponse = await updateResponse.json();
-      console.log('✅ AutoTrader update successful:', autotraderResponse);
+      console.log('✅ AutoTrader update successful:', {
+        status: updateResponse.status,
+        response: JSON.stringify(autotraderResponse, null, 2)
+      });
 
     } catch (error) {
       console.error('❌ AutoTrader API error:', error);
@@ -293,6 +310,17 @@ export async function POST(request: NextRequest) {
       message: 'Listing successfully updated on AutoTrader',
       updatedAt: new Date().toISOString()
     };
+
+    console.log('📤 Final response data:', {
+      stockId,
+      price: price || null,
+      channels: channels || null,
+      payloadSummary: {
+        hasPrice: !!autotraderPayload.adverts.forecourtPrice,
+        priceAmount: autotraderPayload.adverts.forecourtPrice?.amountGBP,
+        advertChannels: autotraderPayload.adverts.retailAdverts ? Object.keys(autotraderPayload.adverts.retailAdverts) : []
+      }
+    });
 
     return NextResponse.json(
       createSuccessResponse(responseData, 'listings/update-row')
