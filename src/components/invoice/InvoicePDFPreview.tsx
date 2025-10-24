@@ -716,13 +716,14 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
               invoiceData.invoiceTo === 'Finance Company' 
                 ? (invoiceData.pricing?.totalFinanceDepositPaid || (invoiceData.pricing?.dealerDepositPaidCustomer || 0) + (invoiceData.pricing?.amountPaidDepositFinance || 0))
                 : (invoiceData.pricing?.amountPaidDepositCustomer || 0)
-            )} , REMAINING DEPOSIT: {formatCurrency(
+            )} , REMAINING DEPOSIT: {formatCurrency((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+            {/* )} , REMAINING DEPOSIT: {formatCurrency(
               Math.max(0, 
                 invoiceData.invoiceTo === 'Finance Company' 
                   ? ((invoiceData.pricing?.compulsorySaleDepositFinance || 0) - (invoiceData.pricing?.totalFinanceDepositPaid || (invoiceData.pricing?.dealerDepositPaidCustomer || 0) + (invoiceData.pricing?.amountPaidDepositFinance || 0)))
                   : ((invoiceData.pricing?.compulsorySaleDepositCustomer || 0) - (invoiceData.pricing?.amountPaidDepositCustomer || 0))
               )
-            )}
+            )} */}
           </div>
 
           {/* Part Exchange Section */}
