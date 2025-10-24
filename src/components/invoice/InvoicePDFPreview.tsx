@@ -15,6 +15,8 @@ interface InvoicePDFPreviewProps {
 }
 
 export default function InvoicePDFPreview({ invoiceData, className = '' }: InvoicePDFPreviewProps) {
+  const dynamicAddonsCost = Object.keys(invoiceData?.addons?.finance?.dynamicAddons || {}).length > 0 ? Object.keys(invoiceData?.addons?.finance?.dynamicAddons || {}).reduce((sum, key: any) => sum + (invoiceData?.addons?.finance?.dynamicAddons?.[key]?.postDiscountCost || 0), 0) : 0;
+
   const [currentPage, setCurrentPage] = useState(1);
 
   // Local calculation functions to match PDF
@@ -72,7 +74,10 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   const calculateRemainingBalance = (invoiceData: ComprehensiveInvoiceData): number => {
     if (invoiceData.invoiceTo === 'Finance Company') {
-      return invoiceData.payment.balanceToFinance ?? 0;
+      // return invoiceData.payment.balanceToFinance ?? 0;
+      // return (invoiceData.payment.balanceToFinance ?? 0) - ((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0));
+      return ((invoiceData.payment?.balanceToFinance || 0) - (invoiceData.pricing?.voluntaryContribution || 0) + (invoiceData?.addons?.finance.addon1?.postDiscountCost || 0) + (invoiceData?.addons?.finance.addon2?.postDiscountCost || 0) + dynamicAddonsCost - (invoiceData.payment.partExchange?.amountPaid || 0));
+      // return (invoiceData.payment.balanceToFinance ?? 0) - ((invoiceData.pricing?.voluntaryContribution || 0));
     }
     
     // For trade sales, calculate: Subtotal (including delivery) - All Payments
@@ -387,7 +392,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         </div>
         
         {/* Warranty Row - Only show for non-trade sales */}
-        {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level !== 'None Selected' && (
+        {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level !== 'None Selected' && invoiceData.warranty.level?.trim() !== '' && (
           <div style={{ 
             display: 'flex', 
             paddingTop: '2px',
@@ -699,9 +704,10 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ fontSize: '7px', lineHeight: '1.6', marginBottom: '8px' }}>
             <span style={{ fontWeight: 'bold' }}>AMOUNTS DUE:</span> DEPOSIT: {formatCurrency(
               invoiceData.invoiceTo === 'Finance Company' 
-                ? (invoiceData.pricing?.compulsorySaleDepositFinance || 0)
+                ? ((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0)
+                // ? (invoiceData.pricing?.compulsorySaleDepositFinance || 0)
                 : (invoiceData.pricing?.compulsorySaleDepositCustomer || 0)
-            )}, DELIVERY: {formatCurrency(invoiceData?.delivery?.postDiscountCost || invoiceData?.delivery?.cost || 0)}, DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
+            )}, (INC) DELIVERY: {formatCurrency(invoiceData?.delivery?.postDiscountCost || invoiceData?.delivery?.cost || 0)}, DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
           </div>
           
           {/* Deposit Paid */}
@@ -736,7 +742,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
           {/* Balance to Finance */}
           <div style={{ fontSize: '7px', lineHeight: '1.6', marginBottom: '0' }}>
-            BALANCE TO FINANCE: {formatCurrency(invoiceData.payment.balanceToFinance || 0)} ,   DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
+            BALANCE TO FINANCE: {formatCurrency((invoiceData.payment?.balanceToFinance || 0) - (invoiceData.pricing?.voluntaryContribution || 0) + (invoiceData?.addons?.finance.addon1?.postDiscountCost || 0) + (invoiceData?.addons?.finance.addon2?.postDiscountCost || 0) + dynamicAddonsCost - (invoiceData.payment.partExchange?.amountPaid || 0))},   DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
+            {/* BALANCE TO FINANCE: {formatCurrency(invoiceData.payment.balanceToFinance || 0)} ,   DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)} */}
           </div>
         </div>
       )}
