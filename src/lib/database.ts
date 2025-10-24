@@ -2819,9 +2819,9 @@ export async function createStockImage(stockImageData: NewStockImage): Promise<{
 }
 
 // Get all stock images for a dealer
-export async function getStockImagesByDealer(dealerId: string): Promise<StockImage[]> {
+export async function getStockImagesByDealer(dealerId: string, includeQRUploads: boolean = false): Promise<StockImage[]> {
   try {
-    console.log('📋 Getting stock images for dealer:', dealerId);
+    console.log('📋 Getting stock images for dealer:', dealerId, includeQRUploads ? '(including QR uploads)' : '(excluding QR uploads)');
     
     const dealerStockImages = await db
       .select()
@@ -2829,8 +2829,18 @@ export async function getStockImagesByDealer(dealerId: string): Promise<StockIma
       .where(eq(stockImages.dealerId, dealerId))
       .orderBy(desc(stockImages.createdAt));
     
-    console.log('✅ Found stock images:', dealerStockImages.length);
-    return dealerStockImages;
+    // Filter out QR uploaded images unless explicitly requested
+    // QR uploaded images should only appear with their specific stock items, not in the general library
+    let filteredImages = dealerStockImages;
+    if (!includeQRUploads) {
+      filteredImages = dealerStockImages.filter(img => {
+        const tags = Array.isArray(img.tags) ? img.tags : [];
+        return !tags.includes('qr_upload');
+      });
+    }
+    
+    console.log('✅ Found stock images:', filteredImages.length, `(${dealerStockImages.length} total before filtering)`);
+    return filteredImages;
   } catch (error) {
     console.error('❌ Error getting stock images:', error);
     return [];
@@ -2838,9 +2848,9 @@ export async function getStockImagesByDealer(dealerId: string): Promise<StockIma
 }
 
 // Get stock images by vehicle type for a dealer
-export async function getStockImagesByVehicleType(dealerId: string, vehicleType: string): Promise<StockImage[]> {
+export async function getStockImagesByVehicleType(dealerId: string, vehicleType: string, includeQRUploads: boolean = false): Promise<StockImage[]> {
   try {
-    console.log('🚗 Getting stock images for dealer:', dealerId, 'vehicle type:', vehicleType);
+    console.log('🚗 Getting stock images for dealer:', dealerId, 'vehicle type:', vehicleType, includeQRUploads ? '(including QR uploads)' : '(excluding QR uploads)');
     
     const vehicleStockImages = await db
       .select()
@@ -2853,8 +2863,17 @@ export async function getStockImagesByVehicleType(dealerId: string, vehicleType:
       )
       .orderBy(stockImages.sortOrder, desc(stockImages.createdAt));
     
-    console.log('✅ Found stock images for vehicle type:', vehicleStockImages.length);
-    return vehicleStockImages;
+    // Filter out QR uploaded images unless explicitly requested
+    let filteredImages = vehicleStockImages;
+    if (!includeQRUploads) {
+      filteredImages = vehicleStockImages.filter(img => {
+        const tags = Array.isArray(img.tags) ? img.tags : [];
+        return !tags.includes('qr_upload');
+      });
+    }
+    
+    console.log('✅ Found stock images for vehicle type:', filteredImages.length, `(${vehicleStockImages.length} total before filtering)`);
+    return filteredImages;
   } catch (error) {
     console.error('❌ Error getting stock images by vehicle type:', error);
     return [];
@@ -2862,9 +2881,9 @@ export async function getStockImagesByVehicleType(dealerId: string, vehicleType:
 }
 
 // Get default stock images for a dealer
-export async function getDefaultStockImages(dealerId: string): Promise<StockImage[]> {
+export async function getDefaultStockImages(dealerId: string, includeQRUploads: boolean = false): Promise<StockImage[]> {
   try {
-    console.log('⭐ Getting default stock images for dealer:', dealerId);
+    console.log('⭐ Getting default stock images for dealer:', dealerId, includeQRUploads ? '(including QR uploads)' : '(excluding QR uploads)');
     
     const defaultStockImages = await db
       .select()
@@ -2877,8 +2896,17 @@ export async function getDefaultStockImages(dealerId: string): Promise<StockImag
       )
       .orderBy(stockImages.sortOrder, desc(stockImages.createdAt));
     
-    console.log('✅ Found default stock images:', defaultStockImages.length);
-    return defaultStockImages;
+    // Filter out QR uploaded images unless explicitly requested
+    let filteredImages = defaultStockImages;
+    if (!includeQRUploads) {
+      filteredImages = defaultStockImages.filter(img => {
+        const tags = Array.isArray(img.tags) ? img.tags : [];
+        return !tags.includes('qr_upload');
+      });
+    }
+    
+    console.log('✅ Found default stock images:', filteredImages.length, `(${defaultStockImages.length} total before filtering)`);
+    return filteredImages;
   } catch (error) {
     console.error('❌ Error getting default stock images:', error);
     return [];
