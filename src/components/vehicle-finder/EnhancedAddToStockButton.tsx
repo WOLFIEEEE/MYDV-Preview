@@ -85,6 +85,7 @@ interface ChannelStatus {
   advertiserAdvert: boolean;
   locatorAdvert: boolean;
   profileAdvert: boolean;
+  exportAdvert: boolean;
 }
 
 interface ProgressStep {
@@ -114,7 +115,8 @@ export default function EnhancedAddToStockButton({
     autotraderAdvert: false,
     advertiserAdvert: false,
     locatorAdvert: false,
-    profileAdvert: false
+    profileAdvert: false,
+    exportAdvert: false
   });
   
   // Progress tracking
@@ -284,9 +286,17 @@ export default function EnhancedAddToStockButton({
     const isVehicleFinderFlow = !!vehicleData.registration;
     const isTaxonomyFlow = !vehicleData.registration && !!vehicleData.derivativeId;
     
+    // Base payload with channel status
+    const basePayload = {
+      channelStatus: channelStatus,
+      imageIds: imageIds,
+      selectedFeatures: selectedFeatures
+    };
+    
     if (isVehicleFinderFlow) {
       // Vehicle Finder Flow
-    return {
+      return {
+        ...basePayload,
         flow: 'vehicle-finder',
         registration: vehicleData.registration,
         mileage: parseInt(vehicleData.mileage.replace(/[^0-9]/g, '') || '0'),
@@ -294,13 +304,12 @@ export default function EnhancedAddToStockButton({
         attentionGrabber: advertData?.attentionGrabber || "Available Now",
         description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle with full service history.`,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
-        stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}${vehicleData.registration?.replace(/[^A-Z0-9]/g, '').substring(-3)}`,
-        imageIds: imageIds,
-        selectedFeatures: selectedFeatures
+        stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}${vehicleData.registration?.replace(/[^A-Z0-9]/g, '').substring(-3)}`
       };
     } else if (isTaxonomyFlow) {
       // Taxonomy Flow
       return {
+        ...basePayload,
         flow: 'taxonomy',
         derivativeId: vehicleData.derivativeId,
         mileage: parseInt(vehicleData.mileage.replace(/[^0-9]/g, '') || '0'),
@@ -311,13 +320,12 @@ export default function EnhancedAddToStockButton({
         attentionGrabber: advertData?.attentionGrabber || "Available Now",
         description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle with full service history.`,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
-        stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}${vehicleData.registration?.replace(/[^A-Z0-9]/g, '').substring(-3) || 'NEW'}`,
-        imageIds: imageIds,
-        selectedFeatures: selectedFeatures
+        stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}${vehicleData.registration?.replace(/[^A-Z0-9]/g, '').substring(-3) || 'NEW'}`
       };
     } else {
       // Fallback to vehicle finder flow
       return {
+        ...basePayload,
         flow: 'vehicle-finder',
         registration: vehicleData.registration || 'UNKNOWN',
         mileage: parseInt(vehicleData.mileage.replace(/[^0-9]/g, '') || '0'),
@@ -325,9 +333,7 @@ export default function EnhancedAddToStockButton({
         attentionGrabber: advertData?.attentionGrabber || "Available Now",
         description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle.`,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
-        stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}NEW`,
-        imageIds: imageIds,
-        selectedFeatures: selectedFeatures
+        stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}NEW`
       };
     }
   };
@@ -444,7 +450,8 @@ export default function EnhancedAddToStockButton({
       autotraderAdvert: false,
       advertiserAdvert: false,
       locatorAdvert: false,
-      profileAdvert: false
+      profileAdvert: false,
+      exportAdvert: false
     });
     setProgressSteps(prev => prev.map(step => ({ ...step, status: 'pending', message: undefined })));
     setError(null);
@@ -553,10 +560,11 @@ export default function EnhancedAddToStockButton({
         <div className="space-y-4">
           <div className="grid gap-3">
           {Object.entries({
-            autotraderAdvert: 'AutoTrader',
-            advertiserAdvert: 'Advertiser Portal',
-            locatorAdvert: 'Locator Service',
-            profileAdvert: 'Profile Listings'
+            autotraderAdvert: 'AT Search & Find',
+            advertiserAdvert: 'Dealer Website',
+            locatorAdvert: 'Manufacturer Website / Used Vehicle Locators',
+            profileAdvert: 'AT Dealer Page',
+            exportAdvert: 'AT Linked Advertisers'
           }).map(([key, label]) => (
             <div
               key={key}

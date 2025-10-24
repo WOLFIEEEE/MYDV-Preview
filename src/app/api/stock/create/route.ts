@@ -35,6 +35,13 @@ interface VehicleFinderFlow {
     rarityRating?: number | null;
     valueRating?: number | null;
   }>;
+  channelStatus?: {
+    autotraderAdvert: boolean;
+    advertiserAdvert: boolean;
+    locatorAdvert: boolean;
+    profileAdvert: boolean;
+    exportAdvert: boolean;
+  };
 }
 
 interface TaxonomyFlow {
@@ -59,6 +66,13 @@ interface TaxonomyFlow {
     rarityRating?: number | null;
     valueRating?: number | null;
   }>;
+  channelStatus?: {
+    autotraderAdvert: boolean;
+    advertiserAdvert: boolean;
+    locatorAdvert: boolean;
+    profileAdvert: boolean;
+    exportAdvert: boolean;
+  };
   // Taxonomy specific fields
   year?: number;
   plate?: string;
@@ -320,6 +334,9 @@ interface AutoTraderStockPayload {
         status: string;
       };
       profileAdvert?: {
+        status: string;
+      };
+      exportAdvert?: {
         status: string;
       };
     };
@@ -777,16 +794,19 @@ export async function POST(request: NextRequest) {
           attentionGrabber: requestData.attentionGrabber || 'Available Now',
           description: requestData.description || `${vehicleData.make} ${vehicleData.model} - Excellent condition`,
           autotraderAdvert: {
-            status: 'PUBLISHED'
+            status: requestData.channelStatus?.autotraderAdvert ? 'PUBLISHED' : 'NOT_PUBLISHED'
           },
           advertiserAdvert: {
-            status: 'PUBLISHED'
+            status: requestData.channelStatus?.advertiserAdvert ? 'PUBLISHED' : 'NOT_PUBLISHED'
           },
           locatorAdvert: {
-            status: 'NOT_PUBLISHED'
+            status: requestData.channelStatus?.locatorAdvert ? 'PUBLISHED' : 'NOT_PUBLISHED'
           },
           profileAdvert: {
-            status: 'NOT_PUBLISHED'
+            status: requestData.channelStatus?.profileAdvert ? 'PUBLISHED' : 'NOT_PUBLISHED'
+          },
+          exportAdvert: {
+            status: requestData.channelStatus?.exportAdvert ? 'PUBLISHED' : 'NOT_PUBLISHED'
           }
         }
       } : undefined
