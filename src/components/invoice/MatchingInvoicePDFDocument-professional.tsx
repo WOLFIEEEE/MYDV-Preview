@@ -1771,7 +1771,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             </View>
             
             {/* Warranty Row - Only show for non-trade sales */}
-            {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level !== 'None Selected' && (
+            {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected' && (
                <View style={{ 
                  flexDirection: 'row', 
                  paddingVertical: 2,
