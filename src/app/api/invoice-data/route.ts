@@ -693,7 +693,7 @@ export async function GET(request: NextRequest) {
       
       // Warranty Information - Enhanced mapping
       warranty: {
-        level: existingInvoice?.warrantyLevel || '',
+        level: existingInvoice?.warrantyLevel || 'None Selected',
         inHouse: (saleDetailsData?.warrantyType === 'in_house') || false,
         details: existingInvoice?.warrantyDetails || '',
         type: (saleDetailsData?.warrantyType as 'none' | 'in_house' | 'third_party') || 'none',

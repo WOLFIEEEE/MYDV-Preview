@@ -163,7 +163,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         id: 6, 
         title: 'External Warranty', 
         description: `External warranty information (${invoiceData.warranty.name || ''})`,
-        visible: !invoiceData.warranty.inHouse && invoiceData.warranty.level !== 'None Selected'
+        visible: !invoiceData.warranty.inHouse && invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected'
       }
     ];
 
@@ -387,7 +387,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         </div>
         
         {/* Warranty Row - Only show for non-trade sales */}
-        {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level !== 'None Selected' && (
+        {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected' && (
           <div style={{ 
             display: 'flex', 
             paddingTop: '2px',
