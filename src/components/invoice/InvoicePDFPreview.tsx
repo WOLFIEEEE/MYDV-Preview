@@ -699,7 +699,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ fontSize: '7px', lineHeight: '1.6', marginBottom: '8px' }}>
             <span style={{ fontWeight: 'bold' }}>AMOUNTS DUE:</span> DEPOSIT: {formatCurrency(
               invoiceData.invoiceTo === 'Finance Company' 
-                ? (invoiceData.pricing?.compulsorySaleDepositFinance || 0)
+                ? (invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)
                 : (invoiceData.pricing?.compulsorySaleDepositCustomer || 0)
             )}, DELIVERY: {formatCurrency(invoiceData?.delivery?.postDiscountCost || invoiceData?.delivery?.cost || 0)}, DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
           </div>
