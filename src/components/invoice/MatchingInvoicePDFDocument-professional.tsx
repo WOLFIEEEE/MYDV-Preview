@@ -216,14 +216,9 @@ const GLOBAL_CALCULATION_CONFIG = {
           : 0;
       })();
 
-      // Settlement amount - only for finance company invoices with part exchange
-      const settlementAmount = invoiceData.invoiceTo === 'Finance Company' && invoiceData.payment?.partExchange?.included 
-        ? (invoiceData.payment?.partExchange?.settlementAmount ?? 0) 
-        : 0;
-
       return vehiclePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice + 
              customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost +
-             financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost + settlementAmount;
+             financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost;
     },
 
     // Calculate remaining balance
@@ -2110,7 +2105,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
                   {/* Amounts Due Header */}
                   <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
-                    <Text style={{ fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>AMOUNTS DUE:</Text> DEPOSIT: {formatCurrency(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0)}, DELIVERY: {formatCurrency(invoiceData?.delivery?.cost || 0)}, DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
+                    <Text style={{ fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>AMOUNTS DUE:</Text> DEPOSIT: {formatCurrency(((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0))}, DELIVERY: {formatCurrency(invoiceData?.delivery?.cost || 0)}, DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
                   </Text>
                   
                   {/* Deposit */}
@@ -2135,7 +2130,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     )} , REMAINING DEPOSIT: {formatCurrency(
                       Math.max(0, 
                         invoiceData.invoiceTo === 'Finance Company' 
-                          ? ((invoiceData.pricing?.compulsorySaleDepositFinance || 0) - (invoiceData.pricing?.totalFinanceDepositPaid || (invoiceData.pricing?.dealerDepositPaidCustomer || 0) + (invoiceData.pricing?.amountPaidDepositFinance || 0)))
+                        ? ((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.totalFinanceDepositPaid || (invoiceData.pricing?.dealerDepositPaidCustomer || 0) + (invoiceData.pricing?.amountPaidDepositFinance || 0)))
                           : ((invoiceData.pricing?.compulsorySaleDepositCustomer || 0) - (invoiceData.pricing?.amountPaidDepositCustomer || 0))
                       )
                     )}
@@ -2292,7 +2287,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     DEPOSIT DUE:
                   </Text>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
-                    {formatCurrency(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0)}
+                  {formatCurrency(((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0))}
                   </Text>
                 </View>
                 
@@ -2309,6 +2304,17 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     })()}
                   </Text>
                 </View>
+
+                {((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0)) > 0 && (
+                  <View style={{ flexDirection: 'row', marginBottom: 2 }}>
+                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                          REMAINING DEPOSIT AMOUNT:
+                        </Text>
+                        <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                          {formatCurrency((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
+                        </Text>
+                      </View>
+                  )}
                 
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                   <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>

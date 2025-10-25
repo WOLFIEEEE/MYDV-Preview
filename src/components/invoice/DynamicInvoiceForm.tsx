@@ -344,8 +344,6 @@ export default function DynamicInvoiceForm({
 }: DynamicInvoiceFormProps) {
   const [availableForFinalSignature, setAvailableForFinalSignature] = useState('No');
   const { isDarkMode } = useTheme();
-  const dynamicAddonsCost = Object.keys(invoiceData?.addons?.finance?.dynamicAddons || {}).length > 0 ? Object.keys(invoiceData?.addons?.finance?.dynamicAddons || {}).reduce((sum, key: any) => sum + (invoiceData?.addons?.finance?.dynamicAddons?.[key]?.postDiscountCost || 0), 0) : 0;
-
 
   // Optimized helper function to update nested data (prevents unnecessary re-renders)
   const updateNestedData = useCallback((path: string, value: string | number | boolean | object | null) => {
@@ -817,13 +815,13 @@ export default function DynamicInvoiceForm({
       // Formula matches PaymentsAgainstBalance and BalanceSummary exactly
       const balanceToFinance = Math.max(0,
         salePricePostDiscount +
-        // (invoiceData.payment?.partExchange?.settlementAmount || 0) +
-        // financeAddon1Cost +
-        // financeAddon2Cost +
-        // financeDynamicAddonsCost
-         -
+        financeAddon1Cost +
+        financeAddon2Cost +
+        financeDynamicAddonsCost -
+        (invoiceData.pricing?.voluntaryContribution || 0) -
         (invoiceData.pricing?.overpaymentsFinance || 0) -
-        totalDirectPayments
+        
+        totalDirectPayments 
       );
 
       if (invoiceData.payment?.balanceToFinance !== balanceToFinance) {
@@ -1804,8 +1802,7 @@ export default function DynamicInvoiceForm({
                         {/* Balance to Finance - ONLY field shown for Finance Company */}
                         <FormInput
                           label="Balance to Finance"
-                          // value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
-                          value={(invoiceData.payment?.balanceToFinance || 0) - ((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0))}
+                          value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
                           onChange={() => { }}
                           type="number"
                           disabled={true}
@@ -1987,36 +1984,35 @@ export default function DynamicInvoiceForm({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormInput
                           label="Overall cost to Customer"
-                          // value={(() => {
-                          //   // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
-                          //   // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
-                          //   const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
-                          //   const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
-                          //   const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                          value={(() => {
+                            // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
+                            // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
+                            const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
+                            const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
+                            const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
 
-                          //   // Static customer add-ons (use post-discount values when available)
-                          //   const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                          //   const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                            // Static customer add-ons (use post-discount values when available)
+                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
 
-                          //   // Dynamic customer add-ons (use post-discount values when available)
-                          //   const postDynamicCustomerAddons = (() => {
-                          //     let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-                          //     if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                          //       dynamicAddons = Object.values(dynamicAddons);
-                          //     }
-                          //     return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
-                          //   })();
+                            // Dynamic customer add-ons (use post-discount values when available)
+                            const postDynamicCustomerAddons = (() => {
+                              let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
+                              if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                dynamicAddons = Object.values(dynamicAddons);
+                              }
+                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                            })();
 
-                          //   const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
-                          //     postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
+                            const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
+                              postCustomerAddon1 + postCustomerAddon2 + postDynamicCustomerAddons;
 
-                          //   // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
-                          //   const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) +
-                          //     (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
-                          //   const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
-                          //   return Math.max(0, outstandingDepositAmountFinance);
-                          // })()}
-                          value={(invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)}
+                            // CORRECTED: Use combined total finance deposit paid (dealer + finance deposits)
+                            const totalFinanceDepositPaid = (invoiceData.pricing?.dealerDepositPaidCustomer ?? 0) +
+                              (invoiceData.pricing?.amountPaidDepositFinance ?? 0);
+                            const outstandingDepositAmountFinance = totalCustomerItems - totalFinanceDepositPaid;
+                            return Math.max(0, outstandingDepositAmountFinance);
+                          })()}
                           onChange={() => { }}
                           type="number"
                           disabled={true}
@@ -2025,9 +2021,7 @@ export default function DynamicInvoiceForm({
 
                         <FormInput
                           label="Overall cost to Finance"
-                          value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.pricing?.voluntaryContribution || 0) + (invoiceData?.addons?.finance.addon1?.postDiscountCost || 0) + (invoiceData?.addons?.finance.addon2?.postDiscountCost || 0) + dynamicAddonsCost - (invoiceData.payment.partExchange?.amountPaid || 0)}
-                          // value={(invoiceData.payment?.balanceToFinance || 0) - ((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0))}
-                          // value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
+                          value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.payment?.partExchange?.amountPaid || 0)}
                           onChange={() => { }}
                           type="number"
                           disabled={true}
@@ -2230,7 +2224,7 @@ export default function DynamicInvoiceForm({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormSelect
                       label="Warranty Level"
-                      value={invoiceData.warranty.level || 'None Selected'}
+                      value={invoiceData.warranty.level}
                       onChange={(value) => updateNestedData('warranty.level', value)}
                       options={WARRANTY_LEVELS}
                       icon={Shield}
@@ -3139,8 +3133,7 @@ export default function DynamicInvoiceForm({
                   {invoiceData.invoiceTo === 'Finance Company' && (
                     <FormInput
                       label="Balance to Finance"
-                      // value={(invoiceData.payment.balanceToFinance || 0) - (invoiceData.payment.partExchange?.amountPaid || 0)}
-                      value={(invoiceData.payment?.balanceToFinance || 0) - (invoiceData.pricing?.voluntaryContribution || 0) + (invoiceData?.addons?.finance.addon1?.postDiscountCost || 0) + (invoiceData?.addons?.finance.addon2?.postDiscountCost || 0) + dynamicAddonsCost - (invoiceData.payment.partExchange?.amountPaid || 0)}
+                      value={(invoiceData.payment.balanceToFinance || 0)}
                       onChange={createChangeHandler('payment.balanceToFinance')}
                       type="number"
                       icon={PoundSterling}
