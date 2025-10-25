@@ -112,6 +112,47 @@ export const customers = pgTable('customers', {
   statusIdx: index('customers_status_idx').on(table.status),
 }))
 
+// Business management table
+export const businesses = pgTable('businesses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  dealerId: uuid('dealer_id').notNull(), // Link to dealer who owns this business
+  
+  // Business Information
+  businessName: varchar('business_name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  vatNumber: varchar('vat_number', { length: 50 }),
+  companyNumber: varchar('company_number', { length: 50 }),
+  
+  // Address Information
+  addressLine1: varchar('address_line_1', { length: 255 }),
+  addressLine2: varchar('address_line_2', { length: 255 }),
+  city: varchar('city', { length: 100 }),
+  county: varchar('county', { length: 100 }),
+  postcode: varchar('postcode', { length: 20 }),
+  country: varchar('country', { length: 100 }).default('United Kingdom'),
+  
+  // Additional Information
+  notes: text('notes'),
+  businessSource: varchar('business_source', { length: 100 }), // walk-in, referral, online, etc.
+  preferredContactMethod: varchar('preferred_contact_method', { length: 50 }).default('email'), // email, phone, sms
+  
+  // Status and Metadata
+  status: varchar('status', { length: 50 }).default('active'), // active, inactive, prospect
+  tags: jsonb('tags'), // Array of tags for categorization
+  customFields: jsonb('custom_fields'), // Additional custom data
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  dealerIdIdx: index('businesses_dealer_id_idx').on(table.dealerId),
+  emailIdx: index('businesses_email_idx').on(table.email),
+  statusIdx: index('businesses_status_idx').on(table.status),
+  businessNameIdx: index('businesses_business_name_idx').on(table.businessName),
+  companyNumberIdx: index('businesses_company_number_idx').on(table.companyNumber),
+  vatNumberIdx: index('businesses_vat_number_idx').on(table.vatNumber),
+}))
+
 // Store config table - stores information about invited store owners
 export const storeConfig = pgTable('store_config', {
   id: serial('id').primaryKey(),
@@ -241,6 +282,7 @@ export const dealersRelations = relations(dealers, ({ many }) => ({
   dealerUserAssignments: many(userAssignments, { relationName: 'dealerAssignments' }),
   assignedStoreConfigs: many(storeConfig, { relationName: 'assignedByDealer' }),
   customers: many(customers),
+  businesses: many(businesses),
   testDriveEntries: many(testDriveEntries),
 }))
 
@@ -311,6 +353,15 @@ export const testDriveEntries = pgTable('test_drive_entries', {
 export const customersRelations = relations(customers, ({ one, many }) => ({
   dealer: one(dealers, {
     fields: [customers.dealerId],
+    references: [dealers.id],
+  }),
+  saleDetails: many(saleDetails),
+}))
+
+// Business relations
+export const businessesRelations = relations(businesses, ({ one, many }) => ({
+  dealer: one(dealers, {
+    fields: [businesses.dealerId],
     references: [dealers.id],
   }),
   saleDetails: many(saleDetails),
@@ -394,6 +445,12 @@ export type NewRequest = typeof requests.$inferInsert
 
 export type StoreConfig = typeof storeConfig.$inferSelect
 export type NewStoreConfig = typeof storeConfig.$inferInsert 
+
+export type Customer = typeof customers.$inferSelect
+export type NewCustomer = typeof customers.$inferInsert
+
+export type Business = typeof businesses.$inferSelect
+export type NewBusiness = typeof businesses.$inferInsert
 
 // Team members table - stores team members invited by store owners
 export const teamMembers = pgTable('team_members', {
@@ -651,6 +708,7 @@ export const saleDetails = pgTable('sale_details', {
   stockId: varchar('stock_id', { length: 255 }).notNull(), // Reference to stock
   dealerId: uuid('dealer_id').notNull(), // Reference to dealer
   customerId: uuid('customer_id'), // Reference to customer (optional for backward compatibility)
+  businessId: uuid('business_id'), // Reference to business (optional)
   
   // Stock identification fields (added)
   registration: varchar('registration', { length: 50 }),
@@ -745,6 +803,10 @@ export const saleDetails = pgTable('sale_details', {
   customerFk: foreignKey({
     columns: [table.customerId],
     foreignColumns: [customers.id],
+  }),
+  businessFk: foreignKey({
+    columns: [table.businessId],
+    foreignColumns: [businesses.id],
   }),
   stockIdIdx: index('idx_sale_details_stock_id').on(table.stockId),
   dealerIdIdx: index('idx_sale_details_dealer_id').on(table.dealerId),
@@ -1050,6 +1112,10 @@ export const saleDetailsRelations = relations(saleDetails, ({ one }) => ({
   customer: one(customers, {
     fields: [saleDetails.customerId],
     references: [customers.id],
+  }),
+  business: one(businesses, {
+    fields: [saleDetails.businessId],
+    references: [businesses.id],
   }),
 }))
 

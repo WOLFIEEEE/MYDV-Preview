@@ -28,6 +28,7 @@ import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
 import CustomerDetailsForm from "@/components/shared/CustomerDetailsForm";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Business } from "@/db/schema";
 
 // Customer interface
 interface Customer {
@@ -58,6 +59,8 @@ export default function CustomerManagement() {
   const { isDarkMode } = useTheme();
   
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,7 +68,9 @@ export default function CustomerManagement() {
   const [sortField, setSortField] = useState<keyof Customer>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showForm, setShowForm] = useState(false);
+  const [showBusinessForm, setShowBusinessForm] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -101,6 +106,28 @@ export default function CustomerManagement() {
     }
   };
 
+  // Fetch businesses
+  const fetchBusinesses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/businesses');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch businesses');
+      }
+      
+      const data = await response.json();
+      setBusinesses(data.businesses || []);
+    } catch (err) {
+      console.error('Error fetching businesses:', err);
+      setError('Failed to load businesses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isSignedIn) {
       fetchCustomers();
@@ -117,8 +144,17 @@ export default function CustomerManagement() {
   // Handle add customer
   const handleAddCustomer = () => {
     setSelectedCustomer(null);
+    setSelectedBusiness(null);
     setIsEditing(false);
     setShowForm(true);
+  };
+
+  // Handle add business
+  const handleAddBusiness = () => {
+    setSelectedCustomer(null);
+    setSelectedBusiness(null);
+    setIsEditing(false);
+    setShowBusinessForm(true);
   };
 
   // Handle edit customer
