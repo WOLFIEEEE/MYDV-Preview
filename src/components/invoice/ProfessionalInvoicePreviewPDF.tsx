@@ -13,6 +13,45 @@ import {
   CENTURY_GOTHIC_FONT_FAMILY
 } from '@/lib/fonts';
 
+// Business interface for business recipients
+interface Business {
+  businessName: string;
+  email: string;
+  phone?: string;
+  vatNumber?: string;
+  companyNumber?: string;
+  address: {
+    firstLine: string;
+    secondLine?: string;
+    city?: string;
+    county?: string;
+    postCode: string;
+    country: string;
+  };
+}
+
+// Customer interface for individual customers
+interface Customer {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address: {
+    firstLine: string;
+    secondLine?: string;
+    city?: string;
+    county?: string;
+    postCode: string;
+    country: string;
+  };
+}
+
+// Extended interface to support different recipient types
+interface ExtendedInvoiceData extends Omit<ComprehensiveInvoiceData, 'customer'> {
+  recipientType?: 'customer' | 'business' | 'myself';
+  customer: Customer | Business;
+}
+
 // Register Century Gothic fonts
 registerCenturyGothicFonts();
 
@@ -479,7 +518,7 @@ const styles = StyleSheet.create({
 });
 
 interface ProfessionalInvoicePreviewPDFProps {
-  invoiceData: ComprehensiveInvoiceData;
+  invoiceData: ExtendedInvoiceData;
 }
 
 export default function ProfessionalInvoicePreviewPDF({ invoiceData }: ProfessionalInvoicePreviewPDFProps) {
@@ -492,6 +531,71 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-GB');
   };
+
+  // Helper function to check if customer is a business
+  const isBusiness = (customer: Customer | Business): customer is Business => {
+    return 'businessName' in customer;
+  };
+
+  // Helper function to get recipient name
+  const getRecipientName = () => {
+    if (invoiceData.recipientType === 'myself') {
+      return invoiceData.companyInfo.name;
+    } else if (invoiceData.recipientType === 'business' && isBusiness(invoiceData.customer)) {
+      return invoiceData.customer?.businessName;
+    } else {
+      const customer = invoiceData.customer as Customer;
+      return `${customer.firstName} ${customer.lastName}`;
+    }
+  };
+
+  // Helper function to get recipient address
+  const getRecipientAddress = () => {
+    if (invoiceData.recipientType === 'myself') {
+      return {
+        firstLine: invoiceData.companyInfo.address.street,
+        city: invoiceData.companyInfo.address.city,
+        postCode: invoiceData.companyInfo.address.postCode
+      };
+    } else {
+      return invoiceData.customer.address;
+    }
+  };
+
+  // Helper function to get recipient contact info
+  const getRecipientContact = () => {
+    if (invoiceData.recipientType === 'myself') {
+      return {
+        phone: invoiceData.companyInfo.contact.phone,
+        email: invoiceData.companyInfo.contact.email
+      };
+    } else {
+      return {
+        phone: invoiceData.customer.phone,
+        email: invoiceData.customer.email
+      };
+    }
+  };
+
+  // Helper function to get business-specific info
+  const getBusinessInfo = () => {
+    if (invoiceData.recipientType === 'myself') {
+      return {
+        vatNumber: invoiceData.companyInfo.vatNumber,
+        companyNumber: invoiceData.companyInfo.registrationNumber
+      };
+    } else if (invoiceData.recipientType === 'business' && isBusiness(invoiceData.customer)) {
+      return {
+        vatNumber: invoiceData.customer.vatNumber,
+        companyNumber: invoiceData.customer.companyNumber
+      };
+    }
+    return null;
+  };
+
+  const recipientAddress = getRecipientAddress();
+  const recipientContact = getRecipientContact();
+  const businessInfo = getBusinessInfo();
 
   return (
     <Document>
@@ -546,16 +650,47 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
 
               {/* Deliver To Section */}
               <View style={styles.invoiceDeliverBox}>
-                <Text style={styles.sectionTitle}>Deliver To</Text>
+                <Text style={styles.sectionTitle}>
+                  {invoiceData.recipientType === 'business' ? 'Deliver To (Business)' : 
+                   invoiceData.recipientType === 'myself' ? 'Deliver To (Company)' : 
+                   'Deliver To'}
+                </Text>
                 <Text style={styles.customerName}>
-                  {invoiceData.customer.firstName} {invoiceData.customer.lastName}
+                  {getRecipientName()}
                 </Text>
                 <View style={styles.customerAddress}>
-                  <Text>{invoiceData.customer.address.firstLine}</Text>
+                  <Text>{recipientAddress.firstLine}</Text>
                   <Text>
-                    {invoiceData.customer.address.city} {invoiceData.customer.address.postCode}
+                    {recipientAddress.city} {recipientAddress.postCode}
                   </Text>
                 </View>
+                {/* Additional business information */}
+                {invoiceData.recipientType === 'business' && businessInfo && (
+                  <View style={[styles.customerAddress, { marginTop: 4 }]}>
+                    {businessInfo.vatNumber && (
+                      <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {businessInfo.vatNumber}</Text>
+                    )}
+                    {businessInfo.companyNumber && (
+                      <Text style={{ fontSize: 7, color: '#666666' }}>Company No: {businessInfo.companyNumber}</Text>
+                    )}
+                    {recipientContact.email && (
+                      <Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>
+                    )}
+                    {recipientContact.phone && (
+                      <Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>
+                    )}
+                  </View>
+                )}
+                {invoiceData.recipientType === 'myself' && businessInfo && (
+                  <View style={[styles.customerAddress, { marginTop: 4 }]}>
+                    {businessInfo.vatNumber && (
+                      <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {businessInfo.vatNumber}</Text>
+                    )}
+                    {businessInfo.companyNumber && (
+                      <Text style={{ fontSize: 7, color: '#666666' }}>Company No: {businessInfo.companyNumber}</Text>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -588,16 +723,47 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
 
             {/* Purchase From Section */}
             <View style={styles.contactDetailsBox}>
-              <Text style={[styles.sectionTitle, { textAlign: 'right', marginBottom: 4 }]}>PURCHASE FROM</Text>
+              <Text style={[styles.sectionTitle, { textAlign: 'right', marginBottom: 4 }]}>
+                {invoiceData.recipientType === 'business' ? 'PURCHASE FROM' : 
+                 invoiceData.recipientType === 'myself' ? 'PURCHASE FROM' : 
+                 'PURCHASE FROM'}
+              </Text>
               <Text style={[styles.customerName, { textAlign: 'right' }]}>
-                {invoiceData.customer.firstName} {invoiceData.customer.lastName}
+                {getRecipientName()}
               </Text>
               <View style={[styles.customerAddress, { alignItems: 'flex-end' }]}>
-                <Text>{invoiceData.customer.address.firstLine}</Text>
+                <Text>{recipientAddress.firstLine}</Text>
                 <Text>
-                  {invoiceData.customer.address.city}, {invoiceData.customer.address.postCode}
+                  {recipientAddress.city}, {recipientAddress.postCode}
                 </Text>
               </View>
+              {/* Additional business information for business recipients */}
+              {invoiceData.recipientType === 'business' && businessInfo && (
+                <View style={[styles.customerAddress, { alignItems: 'flex-end', marginTop: 4 }]}>
+                  {recipientContact.email && (
+                    <Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>
+                  )}
+                  {recipientContact.phone && (
+                    <Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>
+                  )}
+                  {businessInfo.vatNumber && (
+                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>VAT Number: {businessInfo.vatNumber}</Text>
+                  )}
+                  {businessInfo.companyNumber && (
+                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>Company Number: {businessInfo.companyNumber}</Text>
+                  )}
+                </View>
+              )}
+              {invoiceData.recipientType === 'myself' && businessInfo && (
+                <View style={[styles.customerAddress, { alignItems: 'flex-end', marginTop: 4 }]}>
+                  {businessInfo.vatNumber && (
+                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>VAT: {businessInfo.vatNumber}</Text>
+                  )}
+                  {businessInfo.companyNumber && (
+                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>Company No: {businessInfo.companyNumber}</Text>
+                  )}
+                </View>
+              )}
             </View>
           </View>
         </View>

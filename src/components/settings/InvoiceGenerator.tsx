@@ -73,6 +73,27 @@ interface Customer {
   fullName?: string;
 }
 
+interface Business {
+  id: string;
+  businessName: string;
+  email: string;
+  phone?: string;
+  vatNumber?: string;
+  companyNumber?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  county?: string;
+  postcode?: string;
+  country?: string;
+  status?: string;
+  notes?: string;
+  businessSource?: string;
+  preferredContactMethod?: string;
+  tags?: string[];
+  customFields?: Record<string, any>;
+}
+
 interface CompanyInfo {
   companyName: string;
   companyLogo?: string;
@@ -113,6 +134,9 @@ interface InvoiceData {
   invoiceTitle?: string;
   invoiceType: 'purchase' | 'standard'; // Invoice type - purchase requires delivery address
 
+  // Recipient Information
+  recipientType: 'customer' | 'business' | 'myself';
+
   // Vehicle Information
   selectedVehicle?: Vehicle;
   customVehicle: {
@@ -138,6 +162,22 @@ interface InvoiceData {
     lastName: string;
     email: string;
     phone: string;
+    addressLine1: string;
+    addressLine2: string;
+    city: string;
+    county: string;
+    postcode: string;
+    country: string;
+  };
+
+  // Business Information
+  selectedBusiness?: Business;
+  customBusiness: {
+    businessName: string;
+    email: string;
+    phone: string;
+    vatNumber: string;
+    companyNumber: string;
     addressLine1: string;
     addressLine2: string;
     city: string;
@@ -281,18 +321,23 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
   const router = useRouter();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [useVehicleDatabase, setUseVehicleDatabase] = useState(true);
   const [useCustomerDatabase, setUseCustomerDatabase] = useState(true);
+  const [useBusinessDatabase, setUseBusinessDatabase] = useState(true);
   const [vehicleSearchQuery, setVehicleSearchQuery] = useState("");
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [businessSearchQuery, setBusinessSearchQuery] = useState("");
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [vehicleData, setVehicleData] = useState<VehicleInfo | VehicleResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isTaxonomyDialogOpen, setIsTaxonomyDialogOpen] = useState(false);
+  const [showVehicleInfo, setShowVehicleInfo] = useState(false);
 
   const { isDarkMode } = useTheme();
 
@@ -302,6 +347,9 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     invoiceTitle: 'INVOICE',
     invoiceType: 'standard',
+
+    // Recipient type
+    recipientType: 'customer',
 
     customVehicle: {
       registration: '',
@@ -324,6 +372,20 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       lastName: '',
       email: '',
       phone: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      county: '',
+      postcode: '',
+      country: 'United Kingdom'
+    },
+
+    customBusiness: {
+      businessName: '',
+      email: '',
+      phone: '',
+      vatNumber: '',
+      companyNumber: '',
       addressLine1: '',
       addressLine2: '',
       city: '',
@@ -416,6 +478,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
   useEffect(() => {
     loadVehicles();
     loadCustomers();
+    loadBusinesses();
     loadCompanyInfo();
   }, [dealerId]);
 
@@ -452,6 +515,23 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       setFilteredCustomers(filtered);
     }
   }, [customerSearchQuery, customers]);
+
+  // Filter businesses based on search query
+  useEffect(() => {
+    if (!businessSearchQuery.trim()) {
+      setFilteredBusinesses(businesses);
+    } else {
+      const query = businessSearchQuery.toLowerCase();
+      const filtered = businesses.filter(business =>
+        business.businessName.toLowerCase().includes(query) ||
+        business.email.toLowerCase().includes(query) ||
+        (business.phone && business.phone.includes(query)) ||
+        (business.vatNumber && business.vatNumber.toLowerCase().includes(query)) ||
+        (business.companyNumber && business.companyNumber.toLowerCase().includes(query))
+      );
+      setFilteredBusinesses(filtered);
+    }
+  }, [businessSearchQuery, businesses]);
 
   // Memoized calculation function to avoid unnecessary re-renders
   const calculateTotals = useCallback(() => {
@@ -545,6 +625,20 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       }
     } catch (error) {
       console.error('Error loading customers:', error);
+    }
+  };
+
+  const loadBusinesses = async () => {
+    try {
+      const response = await fetch('/api/businesses');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.businesses) {
+          setBusinesses(data.businesses || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading businesses:', error);
     }
   };
 
@@ -792,6 +886,16 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     }
   };
 
+  const handleBusinessSelect = (businessId: string) => {
+    const business = businesses.find(b => b.id === businessId);
+    if (business) {
+      setInvoiceData(prev => ({
+        ...prev,
+        selectedBusiness: business
+      }));
+    }
+  };
+
   const addInvoiceItem = () => {
     const newItem = {
       id: Date.now().toString(),
@@ -991,39 +1095,82 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     }
 
     // Vehicle validation
-    if (useVehicleDatabase) {
-      if (!invoiceData.selectedVehicle) {
-        errors.push('Please select a vehicle from your inventory');
+    if (showVehicleInfo) {
+      if (useVehicleDatabase) {
+        if (!invoiceData.selectedVehicle) {
+          errors.push('Please select a vehicle from your inventory');
+        }
+      } else {
+        if (!invoiceData.customVehicle.registration.trim()) {
+          errors.push('Vehicle registration is required');
+        }
+        if (!invoiceData.customVehicle.make.trim()) {
+          errors.push('Vehicle make is required');
+        }
+        if (!invoiceData.customVehicle.model.trim()) {
+          errors.push('Vehicle model is required');
+        }
       }
     } else {
-      if (!invoiceData.customVehicle.registration.trim()) {
-        errors.push('Vehicle registration is required');
-      }
-      if (!invoiceData.customVehicle.make.trim()) {
-        errors.push('Vehicle make is required');
-      }
-      if (!invoiceData.customVehicle.model.trim()) {
-        errors.push('Vehicle model is required');
-      }
+      invoiceData.selectedVehicle = undefined;
+      invoiceData.customVehicle = {
+        registration: '',
+        make: '',
+        model: '',
+        derivative: '',
+        year: '',
+        fuelType: '',
+        bodyType: '',
+        vin: '',
+        engineNumber: '',
+        engineCapacity: '',
+        colour: '',
+        mileage: ''
+      };
     }
 
-    // Customer validation
-    if (useCustomerDatabase) {
-      if (!invoiceData.selectedCustomer) {
-        errors.push('Please select a customer from your database');
+    console.log(invoiceData);
+
+    // Recipient validation based on type
+    if (invoiceData.recipientType === 'customer') {
+      if (useCustomerDatabase) {
+        if (!invoiceData.selectedCustomer) {
+          errors.push('Please select a customer from your database');
+        }
+      } else {
+        if (!invoiceData.customCustomer.firstName.trim()) {
+          errors.push('Customer first name is required');
+        }
+        if (!invoiceData.customCustomer.lastName.trim()) {
+          errors.push('Customer last name is required');
+        }
+        if (!invoiceData.customCustomer.email.trim()) {
+          errors.push('Customer email is required');
+        }
+        if (invoiceData.customCustomer.email && !/\S+@\S+\.\S+/.test(invoiceData.customCustomer.email)) {
+          errors.push('Please enter a valid email address');
+        }
       }
-    } else {
-      if (!invoiceData.customCustomer.firstName.trim()) {
-        errors.push('Customer first name is required');
+    } else if (invoiceData.recipientType === 'business') {
+      if (useBusinessDatabase) {
+        if (!invoiceData.selectedBusiness) {
+          errors.push('Please select a business from your database');
+        }
+      } else {
+        if (!invoiceData.customBusiness.businessName.trim()) {
+          errors.push('Business name is required');
+        }
+        if (!invoiceData.customBusiness.email.trim()) {
+          errors.push('Business email is required');
+        }
+        if (invoiceData.customBusiness.email && !/\S+@\S+\.\S+/.test(invoiceData.customBusiness.email)) {
+          errors.push('Please enter a valid email address');
+        }
       }
-      if (!invoiceData.customCustomer.lastName.trim()) {
-        errors.push('Customer last name is required');
-      }
-      if (!invoiceData.customCustomer.email.trim()) {
-        errors.push('Customer email is required');
-      }
-      if (invoiceData.customCustomer.email && !/\S+@\S+\.\S+/.test(invoiceData.customCustomer.email)) {
-        errors.push('Please enter a valid email address');
+    } else if (invoiceData.recipientType === 'myself') {
+      // For "myself" recipient type, we'll use company info as recipient
+      if (!companyInfo) {
+        errors.push('Company information is required for invoicing yourself. Please set up your company details in General Settings.');
       }
     }
 
@@ -1060,25 +1207,74 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     }
 
     try {
+      // Prepare customer data based on recipient type
+      let customerName = '';
+      let customerEmail = '';
+      let customerPhone = '';
+      let customerAddress = {};
+
+      if (invoiceData.recipientType === 'customer') {
+        if (useCustomerDatabase && invoiceData.selectedCustomer) {
+          customerName = `${invoiceData.selectedCustomer.firstName || ''} ${invoiceData.selectedCustomer.lastName || ''}`.trim();
+          customerEmail = invoiceData.selectedCustomer.email;
+          customerPhone = invoiceData.selectedCustomer.phone || '';
+          customerAddress = {
+            addressLine1: invoiceData.selectedCustomer.addressLine1,
+            addressLine2: invoiceData.selectedCustomer.addressLine2,
+            city: invoiceData.selectedCustomer.city,
+            county: invoiceData.selectedCustomer.county,
+            postcode: invoiceData.selectedCustomer.postcode,
+            country: invoiceData.selectedCustomer.country
+          };
+        } else {
+          customerName = `${invoiceData.customCustomer.firstName || ''} ${invoiceData.customCustomer.lastName || ''}`.trim();
+          customerEmail = invoiceData.customCustomer.email;
+          customerPhone = invoiceData.customCustomer.phone;
+          customerAddress = invoiceData.customCustomer;
+        }
+      } else if (invoiceData.recipientType === 'business') {
+        if (useBusinessDatabase && invoiceData.selectedBusiness) {
+          customerName = invoiceData.selectedBusiness.businessName;
+          customerEmail = invoiceData.selectedBusiness.email;
+          customerPhone = invoiceData.selectedBusiness.phone || '';
+          customerAddress = {
+            addressLine1: invoiceData.selectedBusiness.addressLine1,
+            addressLine2: invoiceData.selectedBusiness.addressLine2,
+            city: invoiceData.selectedBusiness.city,
+            county: invoiceData.selectedBusiness.county,
+            postcode: invoiceData.selectedBusiness.postcode,
+            country: invoiceData.selectedBusiness.country
+          };
+        } else {
+          customerName = invoiceData.customBusiness.businessName;
+          customerEmail = invoiceData.customBusiness.email;
+          customerPhone = invoiceData.customBusiness.phone;
+          customerAddress = invoiceData.customBusiness;
+        }
+      } else if (invoiceData.recipientType === 'myself' && companyInfo) {
+        customerName = companyInfo.companyName;
+        customerEmail = companyInfo.email || '';
+        customerPhone = companyInfo.phone || '';
+        customerAddress = {
+          addressLine1: companyInfo.addressLine1,
+          addressLine2: companyInfo.addressLine2,
+          city: companyInfo.city,
+          county: companyInfo.county,
+          postcode: companyInfo.postcode,
+          country: companyInfo.country
+        };
+      }
+
       const saveData = {
         invoiceNumber: invoiceData.invoiceNumber,
         invoiceDate: invoiceData.invoiceDate,
         dueDate: invoiceData.dueDate,
         invoiceTitle: invoiceData.invoiceTitle || 'INVOICE',
         invoiceType: invoiceData.invoiceType,
-        customerName: useCustomerDatabase
-          ? `${invoiceData.selectedCustomer?.firstName || ''} ${invoiceData.selectedCustomer?.lastName || ''}`.trim()
-          : `${invoiceData.customCustomer.firstName || ''} ${invoiceData.customCustomer.lastName || ''}`.trim(),
-        customerEmail: useCustomerDatabase ? invoiceData.selectedCustomer?.email : invoiceData.customCustomer.email,
-        customerPhone: useCustomerDatabase ? invoiceData.selectedCustomer?.phone : invoiceData.customCustomer.phone,
-        customerAddress: useCustomerDatabase ? {
-          addressLine1: invoiceData.selectedCustomer?.addressLine1,
-          addressLine2: invoiceData.selectedCustomer?.addressLine2,
-          city: invoiceData.selectedCustomer?.city,
-          county: invoiceData.selectedCustomer?.county,
-          postcode: invoiceData.selectedCustomer?.postcode,
-          country: invoiceData.selectedCustomer?.country
-        } : invoiceData.customCustomer,
+        customerName,
+        customerEmail,
+        customerPhone,
+        customerAddress,
         companyInfo,
         vehicleInfo: useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
         deliveryAddress: invoiceData.deliveryAddress,
@@ -1153,6 +1349,16 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       await saveInvoiceToDatabase();
 
       // Then generate the PDF
+      // Prepare customer data based on recipient type
+      let customerData;
+      if (invoiceData.recipientType === 'customer') {
+        customerData = useCustomerDatabase ? invoiceData.selectedCustomer : invoiceData.customCustomer;
+      } else if (invoiceData.recipientType === 'business') {
+        customerData = useBusinessDatabase ? invoiceData.selectedBusiness : invoiceData.customBusiness;
+      } else if (invoiceData.recipientType === 'myself') {
+        customerData = companyInfo;
+      }
+
       // Prepare invoice data for preview
       const invoicePreviewData = {
         invoiceNumber: invoiceData.invoiceNumber,
@@ -1160,6 +1366,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
         dueDate: invoiceData.dueDate,
         invoiceTitle: invoiceData.invoiceTitle || 'INVOICE',
         invoiceType: invoiceData.invoiceType,
+        recipientType: invoiceData.recipientType,
         items: invoiceData.items,
         subtotal: invoiceData.subtotal,
         vatRate: invoiceData.globalVatRate,
@@ -1182,7 +1389,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
         paymentInstructions: invoiceData.paymentInstructions,
         companyInfo,
         vehicle: useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
-        customer: useCustomerDatabase ? invoiceData.selectedCustomer : invoiceData.customCustomer
+        customer: customerData
       };
 
       // Store invoice data in sessionStorage for the preview page
@@ -1921,289 +2128,395 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pb-6">
-          {useVehicleDatabase ? (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="vehicleSearch">Search Vehicle from Inventory</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="vehicleSearch"
-                    placeholder="Search by registration, make, model, or derivative..."
-                    value={vehicleSearchQuery}
-                    onChange={(e) => setVehicleSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+          <div className="flex items-center space-x-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="includeVehicleInfo"
+                checked={showVehicleInfo}
+                onChange={(e) => setShowVehicleInfo(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700"
+              />
+            </div>
+            <div className="flex-1">
+              <Label htmlFor="includeVehicleInfo" className="text-sm font-medium cursor-pointer text-slate-900 dark:text-slate-100">
+                Include Vehicle Information in Invoice
+              </Label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Add vehicle details and specifications to the invoice
+              </p>
+            </div>
+          </div>
+          {showVehicleInfo && (
+            <div>
+              {useVehicleDatabase ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="vehicleSearch">Search Vehicle from Inventory</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                      <Input
+                        id="vehicleSearch"
+                        placeholder="Search by registration, make, model, or derivative..."
+                        value={vehicleSearchQuery}
+                        onChange={(e) => setVehicleSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
 
-              {vehicleSearchQuery && (
-                <div className="max-h-60 overflow-y-auto border rounded-lg">
-                  {filteredVehicles.length > 0 ? (
-                    filteredVehicles.map((vehicle) => (
-                      <div
-                        key={vehicle.stockId}
-                        onClick={() => {
-                          handleVehicleSelect(vehicle.stockId);
-                          setVehicleSearchQuery("");
-                        }}
-                        className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-sm">
-                              {vehicle.registration} - {vehicle.make} {vehicle.model}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {vehicle.year || vehicle.yearOfManufacture} • {vehicle.fuelType} • {vehicle.derivative}
+                  {vehicleSearchQuery && (
+                    <div className="max-h-60 overflow-y-auto border rounded-lg">
+                      {filteredVehicles.length > 0 ? (
+                        filteredVehicles.map((vehicle) => (
+                          <div
+                            key={vehicle.stockId}
+                            onClick={() => {
+                              handleVehicleSelect(vehicle.stockId);
+                              setVehicleSearchQuery("");
+                            }}
+                            className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium text-sm">
+                                  {vehicle.registration} - {vehicle.make} {vehicle.model}
+                                </div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                  {vehicle.year || vehicle.yearOfManufacture} • {vehicle.fuelType} • {vehicle.derivative}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold text-sm">
+                                  £{(vehicle.price || vehicle.forecourtPriceGBP || 0).toLocaleString()}
+                                </div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                  {(vehicle.mileage || vehicle.odometerReadingMiles || 0).toLocaleString()} miles
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-semibold text-sm">
-                              £{(vehicle.price || vehicle.forecourtPriceGBP || 0).toLocaleString()}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {(vehicle.mileage || vehicle.odometerReadingMiles || 0).toLocaleString()} miles
-                            </div>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-slate-500 dark:text-slate-400">
+                          No vehicles found matching &quot;{vehicleSearchQuery}&quot;
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!vehicleSearchQuery && vehicles.length > 0 && (
+                    <div className="text-sm text-slate-500 dark:text-slate-400">
+                      {vehicles.length} vehicles available. Start typing to search...
+                    </div>
+                  )}
+
+                  {invoiceData.selectedVehicle && (
+                    <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div><strong>Registration:</strong> {invoiceData.selectedVehicle.registration}</div>
+                        <div><strong>Make:</strong> {invoiceData.selectedVehicle.make}</div>
+                        <div><strong>Model:</strong> {invoiceData.selectedVehicle.model}</div>
+                        <div><strong>Year:</strong> {invoiceData.selectedVehicle.yearOfManufacture}</div>
+                        <div><strong>Fuel:</strong> {invoiceData.selectedVehicle.fuelType}</div>
+                        <div><strong>Mileage:</strong> {invoiceData.selectedVehicle.odometerReadingMiles?.toLocaleString()} miles</div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-slate-500 dark:text-slate-400">
-                      No vehicles found matching &quot;{vehicleSearchQuery}&quot;
                     </div>
                   )}
                 </div>
-              )}
-
-              {!vehicleSearchQuery && vehicles.length > 0 && (
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  {vehicles.length} vehicles available. Start typing to search...
-                </div>
-              )}
-
-              {invoiceData.selectedVehicle && (
-                <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                    <div><strong>Registration:</strong> {invoiceData.selectedVehicle.registration}</div>
-                    <div><strong>Make:</strong> {invoiceData.selectedVehicle.make}</div>
-                    <div><strong>Model:</strong> {invoiceData.selectedVehicle.model}</div>
-                    <div><strong>Year:</strong> {invoiceData.selectedVehicle.yearOfManufacture}</div>
-                    <div><strong>Fuel:</strong> {invoiceData.selectedVehicle.fuelType}</div>
-                    <div><strong>Mileage:</strong> {invoiceData.selectedVehicle.odometerReadingMiles?.toLocaleString()} miles</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="customRegistration">Registration</Label>
+                    <Input
+                      id="customRegistration"
+                      value={invoiceData.customVehicle.registration}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, registration: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customMake">Make</Label>
+                    <Input
+                      id="customMake"
+                      value={invoiceData.customVehicle.make}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, make: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customModel">Model</Label>
+                    <Input
+                      id="customModel"
+                      value={invoiceData.customVehicle.model}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, model: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customDerivative">Derivative</Label>
+                    <Input
+                      id="customDerivative"
+                      value={invoiceData.customVehicle.derivative}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, derivative: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customYear">Year</Label>
+                    <Input
+                      id="customYear"
+                      value={invoiceData.customVehicle.year}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, year: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customFuelType">Fuel Type</Label>
+                    <Input
+                      id="customFuelType"
+                      value={invoiceData.customVehicle.fuelType}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, fuelType: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customBodyType">Body Type</Label>
+                    <Input
+                      id="customBodyType"
+                      value={invoiceData.customVehicle.bodyType}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, bodyType: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customVin">VIN</Label>
+                    <Input
+                      id="customVin"
+                      value={invoiceData.customVehicle.vin}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, vin: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customMileage">Mileage</Label>
+                    <Input
+                      id="customMileage"
+                      value={invoiceData.customVehicle.mileage}
+                      onChange={(e) => setInvoiceData(prev => ({
+                        ...prev,
+                        customVehicle: { ...prev.customVehicle, mileage: e.target.value }
+                      }))}
+                    />
                   </div>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="customRegistration">Registration</Label>
-                <Input
-                  id="customRegistration"
-                  value={invoiceData.customVehicle.registration}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, registration: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customMake">Make</Label>
-                <Input
-                  id="customMake"
-                  value={invoiceData.customVehicle.make}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, make: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customModel">Model</Label>
-                <Input
-                  id="customModel"
-                  value={invoiceData.customVehicle.model}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, model: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customDerivative">Derivative</Label>
-                <Input
-                  id="customDerivative"
-                  value={invoiceData.customVehicle.derivative}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, derivative: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customYear">Year</Label>
-                <Input
-                  id="customYear"
-                  value={invoiceData.customVehicle.year}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, year: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customFuelType">Fuel Type</Label>
-                <Input
-                  id="customFuelType"
-                  value={invoiceData.customVehicle.fuelType}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, fuelType: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customBodyType">Body Type</Label>
-                <Input
-                  id="customBodyType"
-                  value={invoiceData.customVehicle.bodyType}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, bodyType: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customVin">VIN</Label>
-                <Input
-                  id="customVin"
-                  value={invoiceData.customVehicle.vin}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, vin: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customMileage">Mileage</Label>
-                <Input
-                  id="customMileage"
-                  value={invoiceData.customVehicle.mileage}
-                  onChange={(e) => setInvoiceData(prev => ({
-                    ...prev,
-                    customVehicle: { ...prev.customVehicle, mileage: e.target.value }
-                  }))}
-                />
-              </div>
-            </div>
           )}
+
         </CardContent>
       </Card>
 
-      {/* Customer Selection */}
+      {/* Recipient Type Selection */}
+      <Card className="shadow-lg border-slate-200 dark:border-slate-700">
+        <CardHeader className="pb-6 pt-6">
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Invoice Recipient
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pb-6">
+          <div>
+            <Label htmlFor="recipientType">Who is this invoice for?</Label>
+            <Select
+              value={invoiceData.recipientType}
+              onValueChange={(value: 'customer' | 'business' | 'myself') => {
+                setInvoiceData(prev => ({
+                  ...prev,
+                  recipientType: value,
+                  // Clear selected data when changing recipient type
+                  selectedCustomer: undefined,
+                  selectedBusiness: undefined
+                }));
+                // Reset search queries
+                setCustomerSearchQuery("");
+                setBusinessSearchQuery("");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select recipient type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="customer">Customer</SelectItem>
+                <SelectItem value="business">Business</SelectItem>
+                <SelectItem value="myself">Myself (Company)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Customer/Business Selection */}
       <Card className="shadow-lg border-slate-200 dark:border-slate-700">
         <CardHeader className="pb-6 pt-6">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Customer Information
+              {invoiceData.recipientType === 'customer' ? 'Customer Information' : 
+               invoiceData.recipientType === 'business' ? 'Business Information' : 
+               'Company Information'}
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant={useCustomerDatabase ? "default" : "secondary"}>
-                {useCustomerDatabase ? "Database" : "Custom"}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setUseCustomerDatabase(!useCustomerDatabase)}
-              >
-                {useCustomerDatabase ? "Use Custom" : "Use Database"}
-              </Button>
-            </div>
+            {invoiceData.recipientType !== 'myself' && (
+              <div className="flex items-center gap-2">
+                <Badge variant={
+                  invoiceData.recipientType === 'customer' 
+                    ? (useCustomerDatabase ? "default" : "secondary")
+                    : (useBusinessDatabase ? "default" : "secondary")
+                }>
+                  {invoiceData.recipientType === 'customer' 
+                    ? (useCustomerDatabase ? "Database" : "Custom")
+                    : (useBusinessDatabase ? "Database" : "Custom")
+                  }
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (invoiceData.recipientType === 'customer') {
+                      setUseCustomerDatabase(!useCustomerDatabase);
+                    } else {
+                      setUseBusinessDatabase(!useBusinessDatabase);
+                    }
+                  }}
+                >
+                  {invoiceData.recipientType === 'customer' 
+                    ? (useCustomerDatabase ? "Use Custom" : "Use Database")
+                    : (useBusinessDatabase ? "Use Custom" : "Use Database")
+                  }
+                </Button>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pb-6">
-          {useCustomerDatabase ? (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="customerSearch">Search Customer from Database</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="customerSearch"
-                    placeholder="Search by name, email, or phone..."
-                    value={customerSearchQuery}
-                    onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+          {invoiceData.recipientType === 'myself' ? (
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <div className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                Invoice will be sent to your company:
               </div>
-
-              {customerSearchQuery && (
-                <div className="max-h-60 overflow-y-auto border rounded-lg">
-                  {filteredCustomers.length > 0 ? (
-                    filteredCustomers.map((customer) => (
-                      <div
-                        key={customer.id}
-                        onClick={() => {
-                          handleCustomerSelect(customer.id);
-                          setCustomerSearchQuery("");
-                        }}
-                        className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-sm">
-                              {customer.firstName} {customer.lastName}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {customer.email}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {customer.phone || 'No phone'}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {[customer.city, customer.postcode].filter(Boolean).join(', ') || 'No address'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-slate-500 dark:text-slate-400">
-                      No customers found matching &quot;{customerSearchQuery}&quot;
-                    </div>
-                  )}
+              {companyInfo ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div><strong>Company:</strong> {companyInfo.companyName}</div>
+                  <div><strong>Email:</strong> {companyInfo.email || 'N/A'}</div>
+                  <div><strong>Phone:</strong> {companyInfo.phone || 'N/A'}</div>
+                  <div><strong>Address:</strong> {[
+                    companyInfo.addressLine1,
+                    companyInfo.city,
+                    companyInfo.postcode
+                  ].filter(Boolean).join(', ') || 'N/A'}</div>
                 </div>
-              )}
-
-              {!customerSearchQuery && customers.length > 0 && (
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  {customers.length} customers available. Start typing to search...
-                </div>
-              )}
-
-              {invoiceData.selectedCustomer && (
-                <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div><strong>Name:</strong> {invoiceData.selectedCustomer.firstName} {invoiceData.selectedCustomer.lastName}</div>
-                    <div><strong>Email:</strong> {invoiceData.selectedCustomer.email}</div>
-                    <div><strong>Phone:</strong> {invoiceData.selectedCustomer.phone || 'N/A'}</div>
-                    <div><strong>Address:</strong> {[
-                      invoiceData.selectedCustomer.addressLine1,
-                      invoiceData.selectedCustomer.city,
-                      invoiceData.selectedCustomer.postcode
-                    ].filter(Boolean).join(', ')}</div>
-                  </div>
+              ) : (
+                <div className="text-sm text-orange-600 dark:text-orange-400">
+                  No company information available. Please set up your company details in General Settings.
                 </div>
               )}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          ) : invoiceData.recipientType === 'customer' ? (
+            useCustomerDatabase ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="customerSearch">Search Customer from Database</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="customerSearch"
+                      placeholder="Search by name, email, or phone..."
+                      value={customerSearchQuery}
+                      onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                {customerSearchQuery && (
+                  <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    {filteredCustomers.length > 0 ? (
+                      filteredCustomers.map((customer) => (
+                        <div
+                          key={customer.id}
+                          onClick={() => {
+                            handleCustomerSelect(customer.id);
+                            setCustomerSearchQuery("");
+                          }}
+                          className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm">
+                                {customer.firstName} {customer.lastName}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {customer.email}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {customer.phone || 'No phone'}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {[customer.city, customer.postcode].filter(Boolean).join(', ') || 'No address'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-slate-500 dark:text-slate-400">
+                        No customers found matching &quot;{customerSearchQuery}&quot;
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!customerSearchQuery && customers.length > 0 && (
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    {customers.length} customers available. Start typing to search...
+                  </div>
+                )}
+
+                {invoiceData.selectedCustomer && (
+                  <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div><strong>Name:</strong> {invoiceData.selectedCustomer.firstName} {invoiceData.selectedCustomer.lastName}</div>
+                      <div><strong>Email:</strong> {invoiceData.selectedCustomer.email}</div>
+                      <div><strong>Phone:</strong> {invoiceData.selectedCustomer.phone || 'N/A'}</div>
+                      <div><strong>Address:</strong> {[
+                        invoiceData.selectedCustomer.addressLine1,
+                        invoiceData.selectedCustomer.city,
+                        invoiceData.selectedCustomer.postcode
+                      ].filter(Boolean).join(', ')}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="customerTitle">Title</Label>
                 <Select
@@ -2317,7 +2630,213 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                 />
               </div>
             </div>
-          )}
+            )
+          ) : invoiceData.recipientType === 'business' ? (
+            // Business forms
+            useBusinessDatabase ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="businessSearch">Search Business from Database</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="businessSearch"
+                      placeholder="Search by business name, email, or VAT number..."
+                      value={businessSearchQuery}
+                      onChange={(e) => setBusinessSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                {businessSearchQuery && (
+                  <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    {filteredBusinesses.length > 0 ? (
+                      filteredBusinesses.map((business) => (
+                        <div
+                          key={business.id}
+                          onClick={() => {
+                            handleBusinessSelect(business.id);
+                            setBusinessSearchQuery("");
+                          }}
+                          className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm">
+                                {business.businessName}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {business.email}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {business.phone || 'No phone'}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                VAT: {business.vatNumber || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-slate-500 dark:text-slate-400">
+                        No businesses found matching &quot;{businessSearchQuery}&quot;
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!businessSearchQuery && businesses.length > 0 && (
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    {businesses.length} businesses available. Start typing to search...
+                  </div>
+                )}
+
+                {invoiceData.selectedBusiness && (
+                  <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div><strong>Business:</strong> {invoiceData.selectedBusiness.businessName}</div>
+                      <div><strong>Email:</strong> {invoiceData.selectedBusiness.email}</div>
+                      <div><strong>Phone:</strong> {invoiceData.selectedBusiness.phone || 'N/A'}</div>
+                      <div><strong>VAT Number:</strong> {invoiceData.selectedBusiness.vatNumber || 'N/A'}</div>
+                      <div className="md:col-span-2"><strong>Address:</strong> {[
+                        invoiceData.selectedBusiness.addressLine1,
+                        invoiceData.selectedBusiness.city,
+                        invoiceData.selectedBusiness.postcode
+                      ].filter(Boolean).join(', ') || 'N/A'}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <Input
+                    id="businessName"
+                    value={invoiceData.customBusiness.businessName}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, businessName: e.target.value }
+                    }))}
+                    placeholder="Enter business name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessEmail">Email</Label>
+                  <Input
+                    id="businessEmail"
+                    type="email"
+                    value={invoiceData.customBusiness.email}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, email: e.target.value }
+                    }))}
+                    placeholder="Enter business email"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessPhone">Phone</Label>
+                  <Input
+                    id="businessPhone"
+                    value={invoiceData.customBusiness.phone}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, phone: e.target.value }
+                    }))}
+                    placeholder="Enter business phone"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessVatNumber">VAT Number</Label>
+                  <Input
+                    id="businessVatNumber"
+                    value={invoiceData.customBusiness.vatNumber}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, vatNumber: e.target.value }
+                    }))}
+                    placeholder="Enter VAT number"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessCompanyNumber">Company Number</Label>
+                  <Input
+                    id="businessCompanyNumber"
+                    value={invoiceData.customBusiness.companyNumber}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, companyNumber: e.target.value }
+                    }))}
+                    placeholder="Enter company number"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="businessAddress1">Address Line 1</Label>
+                  <Input
+                    id="businessAddress1"
+                    value={invoiceData.customBusiness.addressLine1}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, addressLine1: e.target.value }
+                    }))}
+                    placeholder="Enter business address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessAddress2">Address Line 2 (Optional)</Label>
+                  <Input
+                    id="businessAddress2"
+                    value={invoiceData.customBusiness.addressLine2}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, addressLine2: e.target.value }
+                    }))}
+                    placeholder="Apartment, suite, etc."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessCity">City</Label>
+                  <Input
+                    id="businessCity"
+                    value={invoiceData.customBusiness.city}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, city: e.target.value }
+                    }))}
+                    placeholder="City"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessCounty">County</Label>
+                  <Input
+                    id="businessCounty"
+                    value={invoiceData.customBusiness.county}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, county: e.target.value }
+                    }))}
+                    placeholder="County"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="businessPostcode">Postcode</Label>
+                  <Input
+                    id="businessPostcode"
+                    value={invoiceData.customBusiness.postcode}
+                    onChange={(e) => setInvoiceData(prev => ({
+                      ...prev,
+                      customBusiness: { ...prev.customBusiness, postcode: e.target.value }
+                    }))}
+                    placeholder="Postcode"
+                  />
+                </div>
+              </div>
+            )
+          ) : null}
         </CardContent>
       </Card>
 

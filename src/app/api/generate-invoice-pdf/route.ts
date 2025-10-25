@@ -11,6 +11,7 @@ interface InvoicePreviewData {
   dueDate: string;
   invoiceTitle?: string;
   invoiceType?: 'purchase' | 'standard';
+  recipientType?: 'customer' | 'business' | 'myself';
   items: Array<{
     description: string;
     quantity: number;
@@ -96,18 +97,91 @@ interface InvoicePreviewData {
     country?: string;
     displayName?: string;
     fullName?: string;
+    businessName?: string;
+  } | null;
+  business?: {
+    businessName?: string;
+    email?: string;
+    phone?: string;
+    vatNumber?: string;
+    companyNumber?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    city?: string;
+    county?: string;
+    postcode?: string;
+    country?: string;
   } | null;
 }
 
 // Function to convert InvoicePreviewData to ComprehensiveInvoiceData
-function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): ComprehensiveInvoiceData {
+function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): any {
+  // Helper function to create customer data based on recipient type
+  const createCustomerData = () => {
+    if (previewData.recipientType === 'business' && previewData.business) {
+      // Map business data to Business interface format
+      return {
+        businessName: previewData.business.businessName || previewData?.customer?.businessName || previewData.customer?.displayName || '',
+        email: previewData.business.email || '',
+        phone: previewData.business.phone || '',
+        vatNumber: previewData.business.vatNumber || '',
+        companyNumber: previewData.business.companyNumber || '',
+        address: {
+          firstLine: previewData.business.addressLine1 || '',
+          secondLine: previewData.business.addressLine2 || '',
+          city: previewData.business.city || '',
+          county: previewData.business.county || '',
+          postCode: previewData.business.postcode || '',
+          country: previewData.business.country || 'United Kingdom',
+        },
+      };
+    } else if (previewData.recipientType === 'myself') {
+      // Map company info to Business interface format (since company is essentially a business)
+      return {
+        businessName: previewData.companyInfo?.companyName || 'Your Company Name',
+        email: previewData.companyInfo?.email || '',
+        phone: previewData.companyInfo?.phone || '',
+        vatNumber: previewData.companyInfo?.vatNumber || '',
+        companyNumber: previewData.companyInfo?.companyNumber || '',
+        address: {
+          firstLine: previewData.companyInfo?.addressLine1 || '',
+          secondLine: previewData.companyInfo?.addressLine2 || '',
+          city: previewData.companyInfo?.city || '',
+          county: previewData.companyInfo?.county || '',
+          postCode: previewData.companyInfo?.postcode || '',
+          country: previewData.companyInfo?.country || 'United Kingdom',
+        },
+      };
+    } else {
+      // Standard customer data mapped to Customer interface format
+      return {
+        businessName: previewData?.customer?.businessName || previewData.customer?.displayName || '',
+        firstName: previewData.customer?.firstName || '',
+        lastName: previewData.customer?.lastName || '',
+        email: previewData.customer?.email || '',
+        phone: previewData.customer?.phone || '',
+        address: {
+          firstLine: previewData.customer?.addressLine1 || '',
+          secondLine: previewData.customer?.addressLine2 || '',
+          city: previewData.customer?.city || '',
+          county: previewData.customer?.county || '',
+          postCode: previewData.customer?.postcode || '',
+          country: previewData.customer?.country || 'United Kingdom',
+        },
+      };
+    }
+  };
+
   return {
+    // Include recipient type for PDF component
+    recipientType: previewData.recipientType,
+    
     // Meta Information
     invoiceNumber: previewData.invoiceNumber,
     invoiceDate: previewData.invoiceDate,
     saleType: 'Retail' as const,
     invoiceType: 'Retail (Customer) Invoice' as const,
-    invoiceTo: 'Customer' as const,
+    // invoiceTo: 'Customer' as const,
     
     // Company Information
     companyInfo: {
@@ -129,30 +203,8 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): Comp
       logo: previewData.companyInfo?.companyLogo || '',
     },
     
-    // Customer Information
-    customer: {
-      title: '',
-      firstName: previewData.customer?.firstName || '',
-      middleName: '',
-      lastName: previewData.customer?.lastName || '',
-      address: {
-        firstLine: previewData.customer?.addressLine1 || '',
-        secondLine: previewData.customer?.addressLine2 || '',
-        city: previewData.customer?.city || '',
-        county: previewData.customer?.county || '',
-        postCode: previewData.customer?.postcode || '',
-        country: previewData.customer?.country || 'United Kingdom',
-      },
-      contact: {
-        phone: previewData.customer?.phone || '',
-        email: previewData.customer?.email || '',
-      },
-      flags: {
-        vulnerabilityMarker: false,
-        gdprConsent: false,
-        salesMarketingConsent: false,
-      },
-    },
+    // Customer Information (can be customer, business, or company data)
+    customer: createCustomerData(),
     
     // Vehicle Information
     vehicle: {
@@ -343,7 +395,7 @@ export async function POST(request: NextRequest) {
 
     // Generate PDF buffer using the professional invoice preview PDF component
     const pdfBuffer = await renderToBuffer(
-      ProfessionalInvoicePreviewPDF({ invoiceData: comprehensiveData })
+      ProfessionalInvoicePreviewPDF({ invoiceData: comprehensiveData as any })
     );
 
     console.log('✅ PDF generated successfully:', {
@@ -356,7 +408,7 @@ export async function POST(request: NextRequest) {
     const filename = `${comprehensiveData.invoiceNumber}_${comprehensiveData.vehicle.registration || 'INVOICE'}_${new Date().toISOString().split('T')[0]}.pdf`;
 
     // Return PDF as response
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

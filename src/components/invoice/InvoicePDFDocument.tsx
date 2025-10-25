@@ -367,6 +367,27 @@ interface Customer {
   fullName?: string;
 }
 
+interface Business {
+  id?: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  vatNumber?: string;
+  companyNumber?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  county?: string;
+  postcode?: string;
+  country?: string;
+  status?: string;
+  notes?: string;
+  businessSource?: string;
+  preferredContactMethod?: string;
+  tags?: string[];
+  customFields?: Record<string, any>;
+}
+
 interface CompanyInfo {
   companyName?: string;
   companyLogo?: string;
@@ -389,6 +410,7 @@ interface InvoicePDFData {
   invoiceDate: string;
   dueDate: string;
   invoiceTitle?: string;
+  recipientType?: 'customer' | 'business' | 'myself';
   items: InvoiceItem[];
   subtotal: number;
   vatRate: number;
@@ -411,7 +433,7 @@ interface InvoicePDFData {
   paymentInstructions: string;
   companyInfo: CompanyInfo | null;
   vehicle: Vehicle | null;
-  customer: Customer | null;
+  customer: Customer | Business | null;
 }
 
 interface InvoicePDFDocumentProps {
@@ -475,28 +497,100 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
 
         {/* Customer and Vehicle Details */}
         <View style={styles.detailsSection}>
-          {/* Customer Info */}
+          {/* Recipient Info */}
           <View style={styles.detailBox}>
-            <Text style={styles.detailBoxTitle}>Bill To:</Text>
-            <Text style={styles.detailName}>
-              {invoiceData.customer?.firstName} {invoiceData.customer?.lastName}
+            <Text style={styles.detailBoxTitle}>
+              {invoiceData.recipientType === 'myself' ? 'Bill To:' : 
+               invoiceData.recipientType === 'business' ? 'Bill To:' : 
+               'Bill To:'}
             </Text>
-            {invoiceData.customer?.addressLine1 && (
-              <Text style={styles.detailInfo}>{invoiceData.customer.addressLine1}</Text>
+            
+            {/* Render content based on recipient type */}
+            {invoiceData.recipientType === 'myself' && invoiceData.companyInfo && (
+              <>
+                <Text style={styles.detailName}>
+                  {invoiceData.companyInfo.companyName}
+                </Text>
+                {invoiceData.companyInfo.addressLine1 && (
+                  <Text style={styles.detailInfo}>{invoiceData.companyInfo.addressLine1}</Text>
+                )}
+                {invoiceData.companyInfo.addressLine2 && (
+                  <Text style={styles.detailInfo}>{invoiceData.companyInfo.addressLine2}</Text>
+                )}
+                {invoiceData.companyInfo.city && invoiceData.companyInfo.postcode && (
+                  <Text style={styles.detailInfo}>
+                    {invoiceData.companyInfo.city}, {invoiceData.companyInfo.postcode}
+                  </Text>
+                )}
+                {invoiceData.companyInfo.email && (
+                  <Text style={styles.detailInfo}>Email: {invoiceData.companyInfo.email}</Text>
+                )}
+                {invoiceData.companyInfo.phone && (
+                  <Text style={styles.detailInfo}>Phone: {invoiceData.companyInfo.phone}</Text>
+                )}
+                {invoiceData.companyInfo.vatNumber && (
+                  <Text style={styles.detailInfo}>VAT: {invoiceData.companyInfo.vatNumber}</Text>
+                )}
+                {invoiceData.companyInfo.companyNumber && (
+                  <Text style={styles.detailInfo}>Company No: {invoiceData.companyInfo.companyNumber}</Text>
+                )}
+              </>
             )}
-            {invoiceData.customer?.addressLine2 && (
-              <Text style={styles.detailInfo}>{invoiceData.customer.addressLine2}</Text>
+
+            {invoiceData.recipientType === 'business' && invoiceData.customer && (
+              <>
+                <Text style={styles.detailName}>
+                  {(invoiceData.customer as Business).businessName}
+                </Text>
+                {invoiceData.customer.addressLine1 && (
+                  <Text style={styles.detailInfo}>{invoiceData.customer.addressLine1}</Text>
+                )}
+                {invoiceData.customer.addressLine2 && (
+                  <Text style={styles.detailInfo}>{invoiceData.customer.addressLine2}</Text>
+                )}
+                {invoiceData.customer.city && invoiceData.customer.postcode && (
+                  <Text style={styles.detailInfo}>
+                    {invoiceData.customer.city}, {invoiceData.customer.postcode}
+                  </Text>
+                )}
+                {invoiceData.customer.email && (
+                  <Text style={styles.detailInfo}>Email: {invoiceData.customer.email}</Text>
+                )}
+                {invoiceData.customer.phone && (
+                  <Text style={styles.detailInfo}>Phone: {invoiceData.customer.phone}</Text>
+                )}
+                {(invoiceData.customer as Business).vatNumber && (
+                  <Text style={styles.detailInfo}>VAT Number: {(invoiceData.customer as Business).vatNumber}</Text>
+                )}
+                {(invoiceData.customer as Business).companyNumber && (
+                  <Text style={styles.detailInfo}>Company Number: {(invoiceData.customer as Business).companyNumber}</Text>
+                )}
+              </>
             )}
-            {invoiceData.customer?.city && invoiceData.customer?.postcode && (
-              <Text style={styles.detailInfo}>
-                {invoiceData.customer.city}, {invoiceData.customer.postcode}
-              </Text>
-            )}
-            {invoiceData.customer?.email && (
-              <Text style={styles.detailInfo}>{invoiceData.customer.email}</Text>
-            )}
-            {invoiceData.customer?.phone && (
-              <Text style={styles.detailInfo}>{invoiceData.customer.phone}</Text>
+
+            {invoiceData.recipientType === 'customer' && invoiceData.customer && (
+              <>
+                <Text style={styles.detailName}>
+                  {(invoiceData.customer as Customer).firstName} {(invoiceData.customer as Customer).lastName}
+                </Text>
+                {invoiceData.customer.addressLine1 && (
+                  <Text style={styles.detailInfo}>{invoiceData.customer.addressLine1}</Text>
+                )}
+                {invoiceData.customer.addressLine2 && (
+                  <Text style={styles.detailInfo}>{invoiceData.customer.addressLine2}</Text>
+                )}
+                {invoiceData.customer.city && invoiceData.customer.postcode && (
+                  <Text style={styles.detailInfo}>
+                    {invoiceData.customer.city}, {invoiceData.customer.postcode}
+                  </Text>
+                )}
+                {invoiceData.customer.email && (
+                  <Text style={styles.detailInfo}>Email: {invoiceData.customer.email}</Text>
+                )}
+                {invoiceData.customer.phone && (
+                  <Text style={styles.detailInfo}>Phone: {invoiceData.customer.phone}</Text>
+                )}
+              </>
             )}
           </View>
 

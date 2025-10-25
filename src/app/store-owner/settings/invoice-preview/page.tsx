@@ -84,6 +84,27 @@ interface Customer {
   fullName?: string;
 }
 
+interface Business {
+  id?: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  vatNumber?: string;
+  companyNumber?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  county?: string;
+  postcode?: string;
+  country?: string;
+  status?: string;
+  notes?: string;
+  businessSource?: string;
+  preferredContactMethod?: string;
+  tags?: string[];
+  customFields?: Record<string, any>;
+}
+
 interface CompanyInfo {
   companyName?: string;
   companyLogo?: string;
@@ -131,6 +152,7 @@ interface InvoicePreviewData {
   dueDate: string;
   invoiceTitle?: string; // Make invoice title editable
   invoiceType?: 'purchase' | 'standard'; // Invoice type
+  recipientType?: 'customer' | 'business' | 'myself'; // Recipient type
   items: InvoiceItem[];
   subtotal: number;
   vatRate: number; // Global VAT rate (used when vatMode is 'global')
@@ -155,7 +177,7 @@ interface InvoicePreviewData {
   paymentInstructions: string;
   companyInfo: CompanyInfo | null;
   vehicle: Vehicle | null;
-  customer: Customer | null;
+  customer: Customer | Business | null; // This can now hold customer or business data
 }
 
 export default function InvoicePreviewPage() {
@@ -172,10 +194,16 @@ export default function InvoicePreviewPage() {
     if (storedData) {
       try {
         const parsedData = JSON.parse(storedData);
+        console.log("🚀 ~ InvoicePreviewPage ~ parsedData:", parsedData)
         
         // Ensure numeric values are properly converted
         const sanitizedData = {
           ...parsedData,
+          recipientType: parsedData.recipientType || 'customer', // Default to customer if not specified
+          customer: {
+            displayName: parsedData.customer?.displayName || parsedData.customer?.businessName || '',
+            ...parsedData.customer,
+          },
           items: parsedData.items?.map((item: InvoiceItem) => ({
             ...item,
             quantity: item.quantity === 0 || item.quantity === '0' ? '' : (item.quantity || ''),
@@ -281,7 +309,7 @@ export default function InvoicePreviewPage() {
     }));
   };
 
-  const updateCustomerInfo = (field: keyof Customer, value: string | number) => {
+  const updateCustomerInfo = (field: string, value: string | number) => {
     if (!invoiceData) return;
     
     setInvoiceData(prev => ({
@@ -573,25 +601,64 @@ export default function InvoicePreviewPage() {
     if (!invoiceData) return;
 
     try {
+      // Prepare customer data based on recipient type
+      let customerName = '';
+      let customerEmail = '';
+      let customerPhone = '';
+      let customerAddress = null;
+
+      if (invoiceData.recipientType === 'customer') {
+        const customer = invoiceData.customer as Customer;
+        if (customer?.firstName && customer?.lastName) {
+          customerName = `${customer.firstName} ${customer.lastName}`.trim();
+        }
+        customerEmail = customer?.email || '';
+        customerPhone = customer?.phone || '';
+        customerAddress = customer ? {
+          addressLine1: customer.addressLine1,
+          addressLine2: customer.addressLine2,
+          city: customer.city,
+          county: customer.county,
+          postcode: customer.postcode,
+          country: customer.country
+        } : null;
+      } else if (invoiceData.recipientType === 'business') {
+        const business = invoiceData.customer as Business;
+        customerName = business?.businessName || '';
+        customerEmail = business?.email || '';
+        customerPhone = business?.phone || '';
+        customerAddress = business ? {
+          addressLine1: business.addressLine1,
+          addressLine2: business.addressLine2,
+          city: business.city,
+          county: business.county,
+          postcode: business.postcode,
+          country: business.country
+        } : null;
+      } else if (invoiceData.recipientType === 'myself') {
+        customerName = invoiceData.companyInfo?.companyName || '';
+        customerEmail = invoiceData.companyInfo?.email || '';
+        customerPhone = invoiceData.companyInfo?.phone || '';
+        customerAddress = invoiceData.companyInfo ? {
+          addressLine1: invoiceData.companyInfo.addressLine1,
+          addressLine2: invoiceData.companyInfo.addressLine2,
+          city: invoiceData.companyInfo.city,
+          county: invoiceData.companyInfo.county,
+          postcode: invoiceData.companyInfo.postcode,
+          country: invoiceData.companyInfo.country
+        } : null;
+      }
+
       const saveData = {
         invoiceNumber: invoiceData.invoiceNumber,
         invoiceDate: invoiceData.invoiceDate,
         dueDate: invoiceData.dueDate,
         invoiceTitle: invoiceData.invoiceTitle || 'INVOICE',
         invoiceType: invoiceData.invoiceType || 'standard',
-        customerName: invoiceData.customer?.firstName && invoiceData.customer?.lastName 
-          ? `${invoiceData.customer.firstName} ${invoiceData.customer.lastName}`.trim()
-          : '',
-        customerEmail: invoiceData.customer?.email || '',
-        customerPhone: invoiceData.customer?.phone || '',
-        customerAddress: invoiceData.customer ? {
-          addressLine1: invoiceData.customer.addressLine1,
-          addressLine2: invoiceData.customer.addressLine2,
-          city: invoiceData.customer.city,
-          county: invoiceData.customer.county,
-          postcode: invoiceData.customer.postcode,
-          country: invoiceData.customer.country
-        } : null,
+        customerName,
+        customerEmail,
+        customerPhone,
+        customerAddress,
         companyInfo: invoiceData.companyInfo,
         vehicleInfo: invoiceData.vehicle,
         deliveryAddress: invoiceData.deliveryAddress,
@@ -637,6 +704,7 @@ export default function InvoicePreviewPage() {
   };
 
   const generateFinalPDF = async () => {
+    console.log("🚀 ~ generateFinalPDF ~ invoiceData:", invoiceData)
     if (!invoiceData) return;
     
     setGeneratingPdf(true);
@@ -666,7 +734,7 @@ export default function InvoicePreviewPage() {
         
         // Clear session storage and redirect back
         sessionStorage.removeItem('invoicePreviewData');
-        router.push('/store-owner/settings?tab=invoice-generator');
+        // router.push('/store-owner/settings?tab=invoice-generator');
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to generate PDF');
@@ -1025,47 +1093,91 @@ export default function InvoicePreviewPage() {
 
                   {/* Deliver To Section */}
                   <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-                    <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Deliver To</h3>
+                    <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
+                      {invoiceData.recipientType === 'customer' ? 'Deliver To' : 
+                       invoiceData.recipientType === 'business' ? 'Business Recipient' : 
+                       'Invoice To Self'}
+                    </h3>
                     <div className="space-y-1 text-sm">
-                      <div className="flex space-x-2">
-                        <EditableField
-                          value={invoiceData.customer?.firstName}
-                          onUpdate={(value) => updateCustomerInfo('firstName', value)}
-                          fieldKey="customer-firstName"
-                          placeholder="First Name"
-                          className="flex-1 font-semibold"
-                        />
-                        <EditableField
-                          value={invoiceData.customer?.lastName}
-                          onUpdate={(value) => updateCustomerInfo('lastName', value)}
-                          fieldKey="customer-lastName"
-                          placeholder="Last Name"
-                          className="flex-1 font-semibold"
-                        />
-                      </div>
-                      <EditableField
-                        value={invoiceData.customer?.addressLine1}
-                        onUpdate={(value) => updateCustomerInfo('addressLine1', value)}
-                        fieldKey="customer-address1"
-                        placeholder="Address Line 1"
-                        className="text-slate-600"
-                      />
-                      <div className="flex space-x-2">
-                        <EditableField
-                          value={invoiceData.customer?.city}
-                          onUpdate={(value) => updateCustomerInfo('city', value)}
-                          fieldKey="customer-city"
-                          placeholder="City"
-                          className="flex-1 text-slate-600"
-                        />
-                        <EditableField
-                          value={invoiceData.customer?.postcode}
-                          onUpdate={(value) => updateCustomerInfo('postcode', value)}
-                          fieldKey="customer-postcode"
-                          placeholder="Postcode"
-                          className="w-20 font-semibold text-slate-600"
-                        />
-                      </div>
+                      {invoiceData.recipientType === 'customer' ? (
+                        <>
+                          <div className="flex space-x-2">
+                            <EditableField
+                              value={(invoiceData.customer as Customer)?.firstName}
+                              onUpdate={(value) => updateCustomerInfo('firstName', value)}
+                              fieldKey="customer-firstName"
+                              placeholder="First Name"
+                              className="flex-1 font-semibold"
+                            />
+                            <EditableField
+                              value={(invoiceData.customer as Customer)?.lastName}
+                              onUpdate={(value) => updateCustomerInfo('lastName', value)}
+                              fieldKey="customer-lastName"
+                              placeholder="Last Name"
+                              className="flex-1 font-semibold"
+                            />
+                          </div>
+                        </>
+                      ) : invoiceData.recipientType === 'business' ? (
+                        <>
+                          <EditableField
+                            value={(invoiceData.customer as Business)?.businessName}
+                            onUpdate={(value) => updateCustomerInfo('businessName', value)}
+                            fieldKey="business-name"
+                            placeholder="Business Name"
+                            className="font-semibold"
+                          />
+                          <div className="flex space-x-2">
+                            <EditableField
+                              value={(invoiceData.customer as Business)?.vatNumber}
+                              onUpdate={(value) => updateCustomerInfo('vatNumber', value)}
+                              fieldKey="business-vat"
+                              placeholder="VAT Number"
+                              className="flex-1 text-slate-600"
+                            />
+                            <EditableField
+                              value={(invoiceData.customer as Business)?.companyNumber}
+                              onUpdate={(value) => updateCustomerInfo('companyNumber', value)}
+                              fieldKey="business-company"
+                              placeholder="Company Number"
+                              className="flex-1 text-slate-600"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-sm text-slate-600">
+                          Invoice recipient is the same as company information above.
+                        </div>
+                      )}
+                      
+                      {/* Common address fields for customer and business */}
+                      {invoiceData.recipientType !== 'myself' && (
+                        <>
+                          <EditableField
+                            value={invoiceData.customer?.addressLine1}
+                            onUpdate={(value) => updateCustomerInfo('addressLine1', value)}
+                            fieldKey="customer-address1"
+                            placeholder="Address Line 1"
+                            className="text-slate-600"
+                          />
+                          <div className="flex space-x-2">
+                            <EditableField
+                              value={invoiceData.customer?.city}
+                              onUpdate={(value) => updateCustomerInfo('city', value)}
+                              fieldKey="customer-city"
+                              placeholder="City"
+                              className="flex-1 text-slate-600"
+                            />
+                            <EditableField
+                              value={invoiceData.customer?.postcode}
+                              onUpdate={(value) => updateCustomerInfo('postcode', value)}
+                              fieldKey="customer-postcode"
+                              placeholder="Postcode"
+                              className="w-20 font-semibold text-slate-600"
+                            />
+                          </div>
+                        </>
+                      )}
                       
                       {/* Delivery Address Section */}
                       <div className="mt-3 pt-3 border-t border-slate-200">
@@ -1153,9 +1265,25 @@ export default function InvoicePreviewPage() {
 
                   {/* Purchase From Section - Matching PDF */}
                   <div className="bg-slate-50 p-3 text-right">
-                    <h3 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>PURCHASE FROM</h3>
+                    <h3 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
+                      {invoiceData.recipientType === 'customer' ? 'PURCHASE FROM' : 
+                       invoiceData.recipientType === 'business' ? 'BUSINESS' : 
+                       'COMPANY INVOICE'}
+                    </h3>
                     <div className="text-xs font-semibold text-slate-800 mb-1">
-                      {invoiceData.customer?.firstName} {invoiceData.customer?.lastName}
+                      {invoiceData.recipientType === 'customer' ? (
+                        <>
+                          {(invoiceData.customer as Customer)?.firstName} {(invoiceData.customer as Customer)?.lastName}
+                        </>
+                      ) : invoiceData.recipientType === 'business' ? (
+                        <>
+                          {(invoiceData.customer as Business)?.businessName}
+                        </>
+                      ) : (
+                        <>
+                          {invoiceData.companyInfo?.companyName}
+                        </>
+                      )}
                     </div>
                     <div className="text-xs text-slate-600 space-y-0.5">
                       <div>{invoiceData.customer?.addressLine1}</div>
