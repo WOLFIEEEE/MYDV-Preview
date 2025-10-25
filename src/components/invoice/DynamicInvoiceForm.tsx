@@ -976,6 +976,7 @@ export default function DynamicInvoiceForm({
     invoiceData.delivery?.postDiscountCost,
     invoiceData.pricing.outstandingDepositFinance,
     invoiceData.pricing.outstandingDepositCustomer,
+    invoiceData.pricing?.voluntaryContribution,
     onUpdate
   ]);
 
@@ -2224,7 +2225,7 @@ export default function DynamicInvoiceForm({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormSelect
                       label="Warranty Level"
-                      value={invoiceData.warranty.level}
+                      value={invoiceData.warranty.level || 'None Selected'}
                       onChange={(value) => updateNestedData('warranty.level', value)}
                       options={WARRANTY_LEVELS}
                       icon={Shield}
@@ -2259,37 +2260,39 @@ export default function DynamicInvoiceForm({
 
                   <Separator />
 
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Warranty Pricing</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormInput
-                        label="Warranty Price"
-                        value={invoiceData.pricing.warrantyPrice || 0}
-                        onChange={createChangeHandler('pricing.warrantyPrice')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
+                  {invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected' && (
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Warranty Pricing</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormInput
+                          label="Warranty Price"
+                          value={invoiceData.pricing.warrantyPrice || 0}
+                          onChange={createChangeHandler('pricing.warrantyPrice')}
+                          type="number"
+                          icon={PoundSterling}
+                        />
 
-                      <FormInput
-                        label="Discount on Warranty"
-                        value={invoiceData.pricing.discountOnWarranty || 0}
-                        onChange={createChangeHandler('pricing.discountOnWarranty')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
+                        <FormInput
+                          label="Discount on Warranty"
+                          value={invoiceData.pricing.discountOnWarranty || 0}
+                          onChange={createChangeHandler('pricing.discountOnWarranty')}
+                          type="number"
+                          icon={PoundSterling}
+                        />
 
-                      <FormInput
-                        label="Warranty Price Post-Discount"
-                        value={
-                          (invoiceData.pricing.warrantyPrice || 0) - (invoiceData.pricing.discountOnWarranty || 0)
-                        }
-                        onChange={createChangeHandler('pricing.warrantyPricePostDiscount')}
-                        type="number"
-                        icon={PoundSterling}
-                        disabled
-                      />
+                        <FormInput
+                          label="Warranty Price Post-Discount"
+                          value={
+                            (invoiceData.pricing.warrantyPrice || 0) - (invoiceData.pricing.discountOnWarranty || 0)
+                          }
+                          onChange={createChangeHandler('pricing.warrantyPricePostDiscount')}
+                          type="number"
+                          icon={PoundSterling}
+                          disabled
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <Separator />
                 </CardContent>
