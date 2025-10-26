@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { UserButton, useAuth, useUser } from '@clerk/nextjs';
-import { Menu, X, Sun, Moon, ChevronDown, Search, Package, BarChart3, Shield, BookOpen, Phone, HelpCircle, Settings, Kanban, ClipboardCheck, PoundSterling, Undo, Handshake, FileText, Users, Car, Banknote, PiggyBank, Receipt, FileImage } from "lucide-react";
+import { Menu, X, Sun, Moon, ChevronDown, Search, Package, BarChart3, Shield, BookOpen, Phone, HelpCircle, Settings, Kanban, ClipboardCheck, PoundSterling, Undo, Handshake, FileText, Users, Car, Banknote, PiggyBank, Receipt, FileImage, Bell } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import NotificationBell from "@/components/shared/NotificationBell";
 import { hasSettingsAccess, fetchUserRoleInfo, type UserRoleInfo } from "@/lib/userRoleUtils.client";
@@ -548,6 +548,15 @@ export default function Header() {
                       <div>
                         <div className={headerStyle.text}>Vehicle Inventory Report</div>
                         <div className={`text-xs ${headerStyle.textSecondary}`}>Comprehensive inventory & profit analysis</div>
+                      </div>
+                    </Link>
+                    <Link href="/store-owner/notifications" className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      headerStyle.textSecondary
+                    } ${headerStyle.hover}`}>
+                      <Bell className="h-4 w-4" />
+                      <div>
+                        <div className={headerStyle.text}>Notifications</div>
+                        <div className={`text-xs ${headerStyle.textSecondary}`}>View notifications from your site</div>
                       </div>
                     </Link>
                     <div className={`border-t ${headerStyle.border} my-2`}></div>
