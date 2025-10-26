@@ -7,7 +7,7 @@ import { eq, and } from 'drizzle-orm';
 // GET /api/external-notifications/[id] - Get a specific external notification
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     const { userId } = await auth();
@@ -64,7 +64,7 @@ export async function GET(
 // PATCH /api/external-notifications/[id] - Update a specific external notification
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: any
 ) {
   try {
     const { userId } = await auth();

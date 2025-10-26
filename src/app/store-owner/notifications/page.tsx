@@ -240,8 +240,6 @@ export default function NotificationsPage() {
         setSelectedNotification(prev => prev ? { ...prev, isRead: false, readAt: null } : null);
       }
       
-      // Refresh stats
-      fetchStats();
     } catch (err) {
       console.error('Error marking as unread:', err);
     }
