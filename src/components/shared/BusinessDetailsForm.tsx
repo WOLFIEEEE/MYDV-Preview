@@ -71,7 +71,8 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
         county: editBusiness?.county || '',
         postcode: editBusiness?.postcode || '',
         country: editBusiness?.country || 'United Kingdom',
-        businessSource: editBusiness?.businessSource || 'manual_entry',
+        businessSource: 'business_contact',
+        // businessSource: editBusiness?.businessSource || 'manual_entry',
         preferredContactMethod: editBusiness?.preferredContactMethod || 'email',
         notes: editBusiness?.notes || ''
       };
@@ -99,7 +100,7 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
         county: '',
         postcode: '',
         country: 'United Kingdom',
-        businessSource: 'manual_entry',
+        businessSource: 'business_contact',
         preferredContactMethod: 'email',
         notes: ''
       };
@@ -136,7 +137,7 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
             county: '',
             postcode: '',
             country: 'United Kingdom',
-            businessSource: 'manual_entry',
+            businessSource: 'business_contact',
             preferredContactMethod: 'email',
             notes: ''
           });
@@ -246,6 +247,7 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
     e.preventDefault();
     
     if (!validateForm()) {
+      alert(errors[Object.keys(errors)[0]]);
       return;
     }
 
@@ -266,7 +268,7 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
         postcode: formData.postcode,
         country: formData.country,
         notes: formData.notes,
-        businessSource: formData.businessSource || 'manual_entry',
+        businessSource: formData.businessSource || 'business_contact',
         preferredContactMethod: formData.preferredContactMethod || 'email',
         status: 'active',
         tags: null,
@@ -326,7 +328,7 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
       county: '',
       postcode: '',
       country: 'United Kingdom',
-      businessSource: 'manual_entry',
+      businessSource: 'business_contact',
       preferredContactMethod: 'email',
       notes: ''
     };
@@ -504,7 +506,7 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
                   </select>
                 </div>
 
-                <div>
+                {/* <div>
                   <label className={labelClass}>
                     <Building className="inline h-4 w-4 mr-2" />
                     Business Source
@@ -521,7 +523,7 @@ export default function BusinessDetailsForm({ onSuccess, editBusiness, isEditMod
                     <option value="cold_call">Cold Call</option>
                     <option value="advertisement">Advertisement</option>
                   </select>
-                </div>
+                </div> */}
               </div>
             </div>
 

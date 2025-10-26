@@ -603,7 +603,7 @@ export default function CustomerManagement() {
                           </th>
                           <th className="px-6 py-4 text-left">
                             <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Additional Info
+                              Relationship Type
                             </span>
                           </th>
                           <th className="px-6 py-4 text-left">
@@ -650,11 +650,6 @@ export default function CustomerManagement() {
                                   {entity.type === 'customer' && entity.dateOfBirth && (
                                     <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-500'}`}>
                                       DOB: {new Date(entity.dateOfBirth).toLocaleDateString()}
-                                    </p>
-                                  )}
-                                  {entity.type === 'business' && entity.companyNumber && (
-                                    <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-500'}`}>
-                                      Reg: {entity.companyNumber}
                                     </p>
                                   )}
                                 </div>
@@ -710,16 +705,16 @@ export default function CustomerManagement() {
                             <td className="px-6 py-4">
                               {entity.type === 'customer' && entity.enquiryType ? (
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400`}>
-                                  {entity.enquiryType}
+                                  {entity.enquiryType?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                                 </span>
                               ) : entity.type === 'business' && entity.vatNumber ? (
                                 <div className="space-y-1">
-                                  <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                  {/* <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
                                     VAT: {entity.vatNumber}
-                                  </div>
+                                  </div> */}
                                   {entity.businessSource && (
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400`}>
-                                      {entity.businessSource}
+                                      {entity.businessSource?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                                     </span>
                                   )}
                                 </div>
