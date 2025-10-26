@@ -96,14 +96,37 @@ interface ExternalNotification {
   updatedAt: string;
 }
 
+interface NotificationStats {
+  summary: {
+    total: number;
+    unread: number;
+    highPriorityUnread: number;
+    responded: number;
+    responseRate: number;
+    avgResponseTimeHours: number;
+  };
+  timePeriods: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  breakdown: {
+    byStatus: Record<string, number>;
+    byEnquiryType: Record<string, number>;
+    byPriority: Record<string, number>;
+  };
+}
+
 export default function NotificationsPage() {
   const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
   const { isDarkMode } = useTheme();
   
   const [notifications, setNotifications] = useState<ExternalNotification[]>([]);
+  const [stats, setStats] = useState<NotificationStats | null>(null);
   
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -157,11 +180,43 @@ export default function NotificationsPage() {
     }
   };
 
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await fetch('/api/external-notifications/stats');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+      
+      const data = await response.json();
+      setStats(data);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     if (isSignedIn) {
       fetchNotifications();
+      fetchStats();
     }
+  }, [isSignedIn]);
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    if (!isSignedIn) return;
+    
+    const intervalId = setInterval(() => {
+      fetchNotifications();
+      fetchStats();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(intervalId);
   }, [isSignedIn]);
 
   // Refetch when filters change
@@ -174,7 +229,7 @@ export default function NotificationsPage() {
   // Handle refresh
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchNotifications()]);
+    await Promise.all([fetchNotifications(), fetchStats()]);
     setRefreshing(false);
   };
 
@@ -312,6 +367,78 @@ export default function NotificationsPage() {
     }
   };
 
+  // Handle update status
+  const handleUpdateStatus = async (notificationId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/external-notifications/${notificationId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId 
+            ? { ...notif, status: newStatus, updatedAt: new Date().toISOString() }
+            : notif
+        )
+      );
+      
+      // Update selected notification if it's the same one
+      if (selectedNotification && selectedNotification.id === notificationId) {
+        setSelectedNotification(prev => prev ? { ...prev, status: newStatus, updatedAt: new Date().toISOString() } : null);
+      }
+      
+      // Refresh stats
+      fetchStats();
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
+  };
+
+  // Handle update priority
+  const handleUpdatePriority = async (notificationId: string, newPriority: string) => {
+    try {
+      const response = await fetch(`/api/external-notifications/${notificationId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ priority: newPriority }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update priority');
+      }
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId 
+            ? { ...notif, priority: newPriority, updatedAt: new Date().toISOString() }
+            : notif
+        )
+      );
+      
+      // Update selected notification if it's the same one
+      if (selectedNotification && selectedNotification.id === notificationId) {
+        setSelectedNotification(prev => prev ? { ...prev, priority: newPriority, updatedAt: new Date().toISOString() } : null);
+      }
+      
+      // Refresh stats
+      fetchStats();
+    } catch (err) {
+      console.error('Error updating priority:', err);
+    }
+  };
+
   // Handle sort
   const handleSort = (field: keyof ExternalNotification) => {
     if (sortField === field) {
@@ -359,14 +486,20 @@ export default function NotificationsPage() {
     switch (status) {
       case 'new':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
-      case 'viewed':
+      case 'assigned':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
-      case 'in_progress':
+      case 'actioned':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400';
-      case 'contacted':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
-      case 'completed':
+      case 'closed':
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+      case 'viewed':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
+      case 'in_progress':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400';
+      case 'contacted':
+        return 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400';
+      case 'completed':
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400';
       case 'archived':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-white';
       default:
@@ -506,6 +639,9 @@ export default function NotificationsPage() {
                       >
                         <option value="all">All Status</option>
                         <option value="new">New</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="actioned">Actioned</option>
+                        <option value="closed">Closed</option>
                         <option value="viewed">Viewed</option>
                         <option value="in_progress">In Progress</option>
                         <option value="contacted">Contacted</option>
@@ -604,7 +740,17 @@ export default function NotificationsPage() {
                         <tr>
                           <th className="px-6 py-4 text-left">
                             <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Status
+                              Vehicle Info
+                            </span>
+                          </th>
+                          <th className="px-6 py-4 text-left">
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                              Source
+                            </span>
+                          </th>
+                          <th className="px-6 py-4 text-left">
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                              Enquiry Type
                             </span>
                           </th>
                           <th className="px-6 py-4 text-left">
@@ -622,31 +768,18 @@ export default function NotificationsPage() {
                           </th>
                           <th className="px-6 py-4 text-left">
                             <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Enquiry Type
-                            </span>
-                          </th>
-                          <th className="px-6 py-4 text-left">
-                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                               Contact
                             </span>
                           </th>
                           <th className="px-6 py-4 text-left">
                             <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Vehicle Info
+                              Status
                             </span>
                           </th>
                           <th className="px-6 py-4 text-left">
-                            <button
-                              onClick={() => handleSort('priority')}
-                              className={`flex items-center gap-2 text-sm font-medium ${
-                                isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'
-                              }`}
-                            >
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                               Priority
-                              {sortField === 'priority' && (
-                                sortDirection === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
-                              )}
-                            </button>
+                            </span>
                           </th>
                           <th className="px-6 py-4 text-left">
                             <button
@@ -671,16 +804,64 @@ export default function NotificationsPage() {
                       <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                         {filteredAndSortedNotifications.map((notification) => (
                           <tr key={notification.id} className={`${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors ${!notification.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                            {/* Vehicle Info - First Column */}
+                            <td className="px-6 py-4">
+                              {notification.vehicleMake || notification.vehicleModel ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Car className="w-4 h-4 text-slate-400" />
+                                    <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                      {`${notification.vehicleMake || ''} ${notification.vehicleModel || ''}`.trim()}
+                                    </span>
+                                  </div>
+                                  {notification.vehicleRegistration && (
+                                    <div className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                      {notification.vehicleRegistration}
+                                    </div>
+                                  )}
+                                  {notification.vehiclePrice && (
+                                    <div className={`text-sm font-medium text-green-600 dark:text-green-400`}>
+                                      £{parseFloat(notification.vehiclePrice).toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : notification.reservationAmount ? (
+                                <div className="flex items-center gap-2">
+                                  <Star className="w-4 h-4 text-slate-400" />
+                                  <span className={`text-sm font-medium text-green-600 dark:text-green-400`}>
+                                    £{(parseFloat(notification.reservationAmount) / 100).toLocaleString()}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-400'}`}>
+                                  No vehicle info
+                                </span>
+                              )}
+                            </td>
+                            
+                            {/* Source - Second Column */}
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
-                                {!notification.isRead && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                )}
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(notification.status)}`}>
-                                  {notification.status.charAt(0).toUpperCase() + notification.status.slice(1).replace('_', ' ')}
+                                <Building className="w-4 h-4 text-slate-400" />
+                                <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
+                                  {notification.sourceWebsite ? 'Dealer Website' : 'External Form'}
                                 </span>
                               </div>
                             </td>
+                            
+                            {/* Enquiry Type - Third Column */}
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400`}>
+                                {getEnquiryTypeIcon(notification.enquiryType)}
+                                <span className="ml-1">
+                                  {notification.enquiryType.split('-').map(word => 
+                                    word.charAt(0).toUpperCase() + word.slice(1)
+                                  ).join(' ')}
+                                </span>
+                              </span>
+                            </td>
+                            
+                            {/* Customer - Fourth Column */}
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
@@ -706,16 +887,8 @@ export default function NotificationsPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400`}>
-                                {getEnquiryTypeIcon(notification.enquiryType)}
-                                <span className="ml-1">
-                                  {notification.enquiryType.split('-').map(word => 
-                                    word.charAt(0).toUpperCase() + word.slice(1)
-                                  ).join(' ')}
-                                </span>
-                              </span>
-                            </td>
+                            
+                            {/* Contact - Fifth Column */}
                             <td className="px-6 py-4">
                               <div className="space-y-1">
                                 {notification.personalEmail && (
@@ -736,45 +909,43 @@ export default function NotificationsPage() {
                                 )}
                               </div>
                             </td>
+                            
+                            {/* Status - Sixth Column with Dropdown */}
                             <td className="px-6 py-4">
-                              {notification.vehicleMake || notification.vehicleModel ? (
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <Car className="w-4 h-4 text-slate-400" />
-                                    <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                      {`${notification.vehicleMake || ''} ${notification.vehicleModel || ''}`.trim()}
-                                    </span>
-                                  </div>
-                                  {notification.vehicleRegistration && (
-                                    <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
-                                      {notification.vehicleRegistration}
-                                    </span>
-                                  )}
-                                  {notification.vehiclePrice && (
-                                    <span className={`text-sm font-medium text-green-600 dark:text-green-400`}>
-                                      £{parseFloat(notification.vehiclePrice).toLocaleString()}
-                                    </span>
-                                  )}
-                                </div>
-                              ) : notification.reservationAmount ? (
-                                <div className="flex items-center gap-2">
-                                  <Star className="w-4 h-4 text-slate-400" />
-                                  <span className={`text-sm font-medium text-green-600 dark:text-green-400`}>
-                                    £{(parseFloat(notification.reservationAmount) / 100).toLocaleString()}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className={`text-sm ${isDarkMode ? 'text-white' : 'text-slate-400'}`}>
-                                  No vehicle info
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {!notification.isRead && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                )}
+                                <select
+                                  value={notification.status}
+                                  onChange={(e) => handleUpdateStatus(notification.id, e.target.value)}
+                                  className={`text-xs font-medium px-2 py-1 rounded-full text-center border-0 outline-none cursor-pointer ${getStatusBadgeColor(notification.status)} appearance-none`}
+                                >
+                                  <option value="new">New</option>
+                                  <option value="assigned">Assigned</option>
+                                  <option value="actioned">Actioned</option>
+                                  <option value="closed">Closed</option>
+                                </select>
+                              </div>
                             </td>
+                            
+                            {/* Priority - Seventh Column with Dropdown */}
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityBadgeColor(notification.priority)}`}>
-                                {notification.priority === 'urgent' && <AlertTriangle className="w-3 h-3 mr-1" />}
-                                {notification.priority.charAt(0).toUpperCase() + notification.priority.slice(1)}
-                              </span>
+                              <select
+                                value={notification.priority}
+                                onChange={(e) => handleUpdatePriority(notification.id, e.target.value)}
+                                className={`text-xs font-medium px-2 py-1 rounded-full text-center border-0 outline-none cursor-pointer ${getPriorityBadgeColor(notification.priority)} appearance-none`}
+                              >
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">
+                                  {notification.priority === 'urgent' ? '🔺 Urgent' : 'Urgent'}
+                                </option>
+                              </select>
                             </td>
+                            
+                            {/* Received - Eighth Column */}
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-slate-400" />
@@ -789,6 +960,8 @@ export default function NotificationsPage() {
                                 </span>
                               </div>
                             </td>
+                            
+                            {/* Actions - Last Column */}
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-end gap-2">
                                 <Button
@@ -910,19 +1083,40 @@ export default function NotificationsPage() {
             
             <div className="p-6 space-y-6">
               {/* Status and Priority */}
-              <div className="flex items-center gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-600 dark:text-white">Status:</span>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(selectedNotification.status)}`}>
-                    {selectedNotification.status.charAt(0).toUpperCase() + selectedNotification.status.slice(1).replace('_', ' ')}
-                  </span>
+                  <select
+                    value={selectedNotification.status}
+                    onChange={(e) => handleUpdateStatus(selectedNotification.id, e.target.value)}
+                    className={`px-3 py-1.5 rounded-lg border text-sm font-medium ${
+                      isDarkMode 
+                        ? 'bg-slate-700 border-slate-600 text-white' 
+                        : 'bg-white border-slate-300 text-slate-900'
+                    } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  >
+                    <option value="new">New</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="actioned">Actioned</option>
+                    <option value="closed">Closed</option>
+                  </select>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-600 dark:text-white">Priority:</span>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityBadgeColor(selectedNotification.priority)}`}>
-                    {selectedNotification.priority === 'urgent' && <AlertTriangle className="w-3 h-3 mr-1" />}
-                    {selectedNotification.priority.charAt(0).toUpperCase() + selectedNotification.priority.slice(1)}
-                  </span>
+                  <select
+                    value={selectedNotification.priority}
+                    onChange={(e) => handleUpdatePriority(selectedNotification.id, e.target.value)}
+                    className={`px-3 py-1.5 rounded-lg border text-sm font-medium ${
+                      isDarkMode 
+                        ? 'bg-slate-700 border-slate-600 text-white' 
+                        : 'bg-white border-slate-300 text-slate-900'
+                    } focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-600 dark:text-white">Read:</span>
