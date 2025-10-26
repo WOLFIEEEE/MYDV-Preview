@@ -6,11 +6,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { UserButton, useAuth, useUser } from '@clerk/nextjs';
-import { Menu, X, Sun, Moon, ChevronDown, Search, Package, BarChart3, Shield, BookOpen, Phone, HelpCircle, Settings, Kanban, ClipboardCheck, PoundSterling, Undo, Handshake, FileText, Users, Car, Banknote, PiggyBank, Receipt, FileImage, Bell } from "lucide-react";
+import { Menu, X, Sun, Moon, ChevronDown, Search, Package, BarChart3, Shield, BookOpen, Phone, HelpCircle, Settings, Kanban, ClipboardCheck, PoundSterling, Undo, Handshake, FileText, Users, Car, Banknote, PiggyBank, Receipt, FileImage, Bell, Funnel, MessageCircleCode, MessageCircleMore } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import NotificationBell from "@/components/shared/NotificationBell";
 import { hasSettingsAccess, fetchUserRoleInfo, type UserRoleInfo } from "@/lib/userRoleUtils.client";
 import { getLogoWithCache, setupCacheInvalidationListener, type LogoCacheData } from "@/lib/logoCache";
+import { useNotificationCount } from "@/hooks/useNotificationCount";
 
 interface UserLogoData {
   logo: string | null;
@@ -30,6 +31,7 @@ export default function Header() {
   const { isDarkMode, toggleTheme } = useTheme();
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
+  const { unreadCount } = useNotificationCount();
 
   // Check if we're on the landing page
   const isLandingPage = pathname === '/';
@@ -292,6 +294,25 @@ export default function Header() {
           {/* Enhanced Navigation */}
           <nav className="hidden lg:flex items-center space-x-0.5">
             <Link 
+              href="/store-owner/notifications"
+              className={`relative flex items-center space-x-1.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                isActivePage('/store-owner/notifications')
+                  ? `${headerStyle.active} shadow-lg`
+                  : `${headerStyle.textSecondary} ${headerStyle.hover}`
+              }`}
+            >
+              <div className="relative">
+                <MessageCircleMore className="h-4 w-4" />
+                {unreadCount > 0 && !isActivePage('/store-owner/notifications') && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full h-4 w-4 flex items-center justify-center border-2 border-white dark:border-slate-900">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
+              <span>Leads</span>
+            </Link>
+
+            <Link 
               href="/store-owner/dashboard" 
               className={`flex items-center space-x-1.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                 isActivePage('/store-owner/dashboard')
@@ -550,15 +571,6 @@ export default function Header() {
                         <div className={`text-xs ${headerStyle.textSecondary}`}>Comprehensive inventory & profit analysis</div>
                       </div>
                     </Link>
-                    <Link href="/store-owner/notifications" className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                      headerStyle.textSecondary
-                    } ${headerStyle.hover}`}>
-                      <Bell className="h-4 w-4" />
-                      <div>
-                        <div className={headerStyle.text}>Notifications</div>
-                        <div className={`text-xs ${headerStyle.textSecondary}`}>View notifications from your site</div>
-                      </div>
-                    </Link>
                     <div className={`border-t ${headerStyle.border} my-2`}></div>
                   </div>
                 </div>
@@ -635,6 +647,26 @@ export default function Header() {
             isDarkMode ? 'border-slate-700/30' : 'border-slate-200/30'
           }`}>
             <nav className="space-y-2">
+              <Link 
+                href="/store-owner/notifications" 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`relative flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  isActivePage('/store-owner/notifications')
+                    ? `${isDarkMode ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'} shadow-lg`
+                    : `${isDarkMode ? 'text-slate-300 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50'}`
+                }`}
+              >
+                <div className="relative">
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white dark:border-slate-900 animate-pulse">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </div>
+                <span>Leads</span>
+              </Link>
+
               <Link 
                 href="/store-owner/dashboard" 
                 onClick={() => setIsMobileMenuOpen(false)}
