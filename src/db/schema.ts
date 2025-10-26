@@ -1529,6 +1529,47 @@ export type NewStockImage = typeof stockImages.$inferInsert
 // NOTIFICATIONS SCHEMA
 // ================================
 
+// External website enquiry types
+export const externalEnquiryTypes = [
+  'part-exchange',
+  'find-your-next-car', 
+  'book-appointment',
+  'request-finance',
+  'general-contact',
+  'vehicle-reservation'
+] as const
+
+export type ExternalEnquiryType = typeof externalEnquiryTypes[number]
+
+// Employment status options
+export const employmentStatuses = [
+  'Employed Full-Time',
+  'Employed Part-Time', 
+  'Self-Employed',
+  'Unemployed',
+  'Retired',
+  'Student',
+  'Annuitant',
+  'Pensioner',
+  'Other'
+] as const
+
+export type EmploymentStatus = typeof employmentStatuses[number]
+
+// Find your next car enquiry sub-types
+export const findYourNextCarTypes = [
+  'stock-vehicle',
+  'help-finding-car',
+  'general-enquiry',
+  'car-enhancement',
+  'finance',
+  'warranty',
+  'feedback',
+  'part-exchange'
+] as const
+
+export type FindYourNextCarType = typeof findYourNextCarTypes[number]
+
 // Notification types enum - all possible notification categories
 export const notificationTypes = [
   // Stock & Inventory
@@ -1819,8 +1860,162 @@ export const dealersRelationsWithNotifications = relations(dealers, ({ many, one
   sentNotifications: many(notifications, { relationName: 'sentNotifications' }),
   notificationPreferences: many(notificationPreferences),
   notificationTemplates: many(notificationTemplates),
+  // External Notification Relations
+  receivedExternalNotifications: many(externalNotifications, { relationName: 'receivedExternalNotifications' }),
+  assignedExternalNotifications: many(externalNotifications, { relationName: 'assignedExternalNotifications' }),
   // Company Settings Relation
   companySettings: one(companySettings),
+}))
+
+// ================================
+// EXTERNAL WEBSITE NOTIFICATIONS
+// ================================
+
+// External notifications table - handles notifications from client websites
+export const externalNotifications = pgTable('external_notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  dealerId: uuid('dealer_id').notNull(), // Reference to dealer receiving the notification
+  
+  // Enquiry Type
+  enquiryType: varchar('enquiry_type', { length: 50 }).notNull(), // From ExternalEnquiryType enum
+  
+  // Personal Information (all optional as different enquiry types have different requirements)
+  personalTitle: varchar('personal_title', { length: 20 }),
+  personalFirstName: varchar('personal_first_name', { length: 255 }),
+  personalLastName: varchar('personal_last_name', { length: 255 }),
+  personalEmail: varchar('personal_email', { length: 255 }),
+  personalPhoneNumber: varchar('personal_phone_number', { length: 50 }),
+  personalGender: varchar('personal_gender', { length: 20 }),
+  personalCountryOfOrigin: varchar('personal_country_of_origin', { length: 100 }),
+  personalDateOfBirth: varchar('personal_date_of_birth', { length: 20 }),
+  personalMaritalStatus: varchar('personal_marital_status', { length: 50 }),
+  personalDependents: integer('personal_dependents'),
+  personalAddress: text('personal_address'),
+  
+  // Vehicle Details (vehicle they're interested in)
+  vehicleStockId: varchar('vehicle_stock_id', { length: 255 }),
+  vehicleMake: varchar('vehicle_make', { length: 100 }),
+  vehicleModel: varchar('vehicle_model', { length: 100 }),
+  vehicleRegistration: varchar('vehicle_registration', { length: 50 }),
+  vehicleMileage: varchar('vehicle_mileage', { length: 50 }),
+  vehicleYear: varchar('vehicle_year', { length: 10 }),
+  vehicleRecentValuations: text('vehicle_recent_valuations'),
+  vehiclePrice: decimal('vehicle_price', { precision: 10, scale: 2 }),
+  vehicleInitialDeposit: decimal('vehicle_initial_deposit', { precision: 10, scale: 2 }),
+  vehicleLoanTerm: integer('vehicle_loan_term'),
+  vehicleApr: decimal('vehicle_apr', { precision: 5, scale: 2 }),
+  vehicleAmountToFinance: decimal('vehicle_amount_to_finance', { precision: 10, scale: 2 }),
+  vehicleMonthlyPayment: decimal('vehicle_monthly_payment', { precision: 10, scale: 2 }),
+  
+  // User's Own Vehicle (for part-exchange)
+  userVehicleMake: varchar('user_vehicle_make', { length: 100 }),
+  userVehicleModel: varchar('user_vehicle_model', { length: 100 }),
+  userVehicleRegistration: varchar('user_vehicle_registration', { length: 50 }),
+  userVehicleMileage: varchar('user_vehicle_mileage', { length: 50 }),
+  userVehicleYear: varchar('user_vehicle_year', { length: 10 }),
+  userVehicleRecentValuations: text('user_vehicle_recent_valuations'),
+  
+  // Find Your Next Car Specific
+  findYourNextCarEnquiryType: varchar('find_your_next_car_enquiry_type', { length: 50 }),
+  findYourNextCarVehiclePreferences: text('find_your_next_car_vehicle_preferences'),
+  
+  // Test Drive Details
+  testDriveIsTestDrive: boolean('test_drive_is_test_drive'),
+  testDriveDate: varchar('test_drive_date', { length: 20 }),
+  testDriveTime: varchar('test_drive_time', { length: 20 }),
+  testDriveAdditionalRequirements: text('test_drive_additional_requirements'),
+  
+  // Employment Information
+  employmentStatus: varchar('employment_status', { length: 50 }),
+  employmentAnnualIncome: decimal('employment_annual_income', { precision: 12, scale: 2 }),
+  employmentEmployerName: varchar('employment_employer_name', { length: 255 }),
+  employmentTimeInEmployment: varchar('employment_time_in_employment', { length: 100 }),
+  employmentGrossAnnualIncome: decimal('employment_gross_annual_income', { precision: 12, scale: 2 }),
+  
+  // Finance Information
+  financeMonthlyExpenses: decimal('finance_monthly_expenses', { precision: 10, scale: 2 }),
+  financeExistenceCreditCommitments: decimal('finance_existence_credit_commitments', { precision: 10, scale: 2 }),
+  
+  // Bank Information
+  bankAccountHolderName: varchar('bank_account_holder_name', { length: 255 }),
+  bankName: varchar('bank_name', { length: 255 }),
+  bankSortCode: varchar('bank_sort_code', { length: 20 }),
+  bankAccountNumber: varchar('bank_account_number', { length: 50 }),
+  bankTimeWithBank: varchar('bank_time_with_bank', { length: 100 }),
+  
+  // Vehicle Reservation Specific (for vehicle-reservation type)
+  reservationAmount: decimal('reservation_amount', { precision: 10, scale: 2 }), // Amount in pence
+  
+  // General Fields
+  notes: text('notes'),
+  
+  // Status and Management
+  status: varchar('status', { length: 50 }).notNull().default('new'), // 'new', 'viewed', 'in_progress', 'contacted', 'completed', 'archived'
+  priority: varchar('priority', { length: 20 }).notNull().default('medium'), // 'low', 'medium', 'high', 'urgent'
+  assignedTo: uuid('assigned_to'), // Reference to dealer/team member assigned to handle this
+  
+  // Source Information
+  sourceWebsite: varchar('source_website', { length: 255 }), // Which client website this came from
+  sourceIp: varchar('source_ip', { length: 45 }), // IP address of the enquirer
+  userAgent: text('user_agent'), // Browser/device information
+  
+  // Response Tracking
+  isRead: boolean('is_read').notNull().default(false),
+  readAt: timestamp('read_at'),
+  respondedAt: timestamp('responded_at'),
+  lastContactedAt: timestamp('last_contacted_at'),
+  
+  // Additional metadata
+  metadata: jsonb('metadata'), // For any additional data that doesn't fit other fields
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  // Foreign key relationships
+  dealerFk: foreignKey({
+    columns: [table.dealerId],
+    foreignColumns: [dealers.id],
+  }),
+  assignedToFk: foreignKey({
+    columns: [table.assignedTo],
+    foreignColumns: [dealers.id],
+  }),
+  
+  // Indexes for performance
+  dealerIdx: index('idx_external_notifications_dealer').on(table.dealerId),
+  enquiryTypeIdx: index('idx_external_notifications_enquiry_type').on(table.enquiryType),
+  statusIdx: index('idx_external_notifications_status').on(table.status),
+  priorityIdx: index('idx_external_notifications_priority').on(table.priority),
+  assignedToIdx: index('idx_external_notifications_assigned_to').on(table.assignedTo),
+  isReadIdx: index('idx_external_notifications_is_read').on(table.isRead),
+  createdAtIdx: index('idx_external_notifications_created_at').on(table.createdAt),
+  emailIdx: index('idx_external_notifications_email').on(table.personalEmail),
+  phoneIdx: index('idx_external_notifications_phone').on(table.personalPhoneNumber),
+  vehicleStockIdx: index('idx_external_notifications_vehicle_stock').on(table.vehicleStockId),
+  sourceWebsiteIdx: index('idx_external_notifications_source_website').on(table.sourceWebsite),
+  
+  // Composite indexes
+  dealerStatusIdx: index('idx_external_notifications_dealer_status').on(table.dealerId, table.status),
+  dealerTypeIdx: index('idx_external_notifications_dealer_type').on(table.dealerId, table.enquiryType),
+  statusPriorityIdx: index('idx_external_notifications_status_priority').on(table.status, table.priority),
+}))
+
+// ================================
+// EXTERNAL NOTIFICATIONS RELATIONS
+// ================================
+
+export const externalNotificationsRelations = relations(externalNotifications, ({ one }) => ({
+  dealer: one(dealers, {
+    fields: [externalNotifications.dealerId],
+    references: [dealers.id],
+    relationName: 'receivedExternalNotifications',
+  }),
+  assignedToDealer: one(dealers, {
+    fields: [externalNotifications.assignedTo],
+    references: [dealers.id],
+    relationName: 'assignedExternalNotifications',
+  }),
 }))
 
 // ================================
@@ -1913,6 +2108,10 @@ export type NewNotificationDeliveryLog = typeof notificationDeliveryLog.$inferIn
 
 export type NotificationTemplate = typeof notificationTemplates.$inferSelect
 export type NewNotificationTemplate = typeof notificationTemplates.$inferInsert
+
+// External Notification Types
+export type ExternalNotification = typeof externalNotifications.$inferSelect
+export type NewExternalNotification = typeof externalNotifications.$inferInsert
 
 // Company Settings Types
 export type CompanySettings = typeof companySettings.$inferSelect
