@@ -114,6 +114,7 @@ export default function NotificationsPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedNotification, setSelectedNotification] = useState<ExternalNotification | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [addingCustomer, setAddingCustomer] = useState(false);
 
   // Authentication check
   useEffect(() => {
@@ -239,8 +240,77 @@ export default function NotificationsPage() {
         setSelectedNotification(prev => prev ? { ...prev, isRead: false, readAt: null } : null);
       }
       
+      // Refresh stats
+      fetchStats();
     } catch (err) {
       console.error('Error marking as unread:', err);
+    }
+  };
+
+  // Handle add customer from notification
+  const handleAddCustomer = async (notification: ExternalNotification) => {
+    if (!notification) return;
+    
+    setAddingCustomer(true);
+    
+    try {
+      // Prepare customer data from notification
+      const customerData = {
+        firstName: notification.personalFirstName || '',
+        lastName: notification.personalLastName || '',
+        email: notification.personalEmail || '',
+        phone: notification.personalPhoneNumber || '',
+        dateOfBirth: null, // Not available in notifications
+        addressLine1: notification.personalAddress || '',
+        addressLine2: '',
+        city: '',
+        county: '',
+        postcode: '',
+        country: 'United Kingdom',
+        marketingConsent: false,
+        salesConsent: false,
+        gdprConsent: true, // Assume consent since they submitted the form
+        notes: `Customer added from external notification (${notification.enquiryType})\n\nOriginal enquiry notes: ${notification.notes || 'No additional notes'}`,
+        customerSource: 'external_notification',
+        preferredContactMethod: notification.personalEmail ? 'email' : 'phone',
+        status: 'prospect',
+        tags: [notification.enquiryType],
+        enquiryType: notification.enquiryType,
+      };
+
+      // Check if we have minimum required data
+      if (!customerData.firstName && !customerData.lastName) {
+        throw new Error('Customer name is required to create a customer record');
+      }
+
+      if (!customerData.email && !customerData.phone) {
+        throw new Error('Either email or phone number is required to create a customer record');
+      }
+
+      // Submit to API
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(customerData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create customer');
+      }
+
+      const newCustomer = await response.json();
+      console.log('Customer created successfully:', newCustomer);
+      
+      alert('Customer added successfully! You can find them in your customer management section.');
+      
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      alert(error instanceof Error ? error.message : 'Failed to create customer. Please try again.');
+    } finally {
+      setAddingCustomer(false);
     }
   };
 
@@ -789,6 +859,23 @@ export default function NotificationsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => handleAddCustomer(selectedNotification)}
+                  disabled={addingCustomer}
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                >
+                  {addingCustomer ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-4 h-4 mr-2" />
+                      Add Customer
+                    </>
+                  )}
+                </Button>
                 {selectedNotification.isRead ? (
                   <Button
                     variant="ghost"
