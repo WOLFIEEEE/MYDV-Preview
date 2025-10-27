@@ -141,6 +141,20 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
     return totalVAT;
   };
 
+  // Helper function to check if VAT is applied to any item
+  const hasVATApplied = (invoiceData: ComprehensiveInvoiceData): boolean => {
+    return invoiceData.pricing.applyVatToSalePrice ||
+           invoiceData.pricing.applyVatToWarranty ||
+           invoiceData.pricing.applyVatToEnhancedWarranty ||
+           invoiceData.pricing.applyVatToDelivery ||
+           invoiceData.addons?.customer?.addon1?.applyVat ||
+           invoiceData.addons?.customer?.addon2?.applyVat ||
+           invoiceData.addons?.finance?.addon1?.applyVat ||
+           invoiceData.addons?.finance?.addon2?.applyVat ||
+           (Array.isArray(invoiceData.addons?.customer?.dynamicAddons) && invoiceData.addons.customer.dynamicAddons.some((addon: any) => addon.applyVat)) ||
+           (Array.isArray(invoiceData.addons?.finance?.dynamicAddons) && invoiceData.addons.finance.dynamicAddons.some((addon: any) => addon.applyVat));
+  };
+
   const calculateRemainingBalance = (invoiceData: ComprehensiveInvoiceData): number => {
     if (invoiceData.invoiceTo === 'Finance Company') {
       return invoiceData.payment.balanceToFinance ?? 0;
@@ -305,11 +319,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   VAT No: {invoiceData.companyInfo.vatNumber}
                 </div>
               )}
-              <div style={{ fontSize: '7px', fontWeight: 'bold', color: '#000', marginBottom: '6px' }}>
-                VAT INVOICE
-              </div>
               <div style={{ fontSize: '7px', color: '#000', marginBottom: '6px' }}>
-                VAT: MARGIN SCHEME
+                {hasVATApplied(invoiceData) ? 'VAT INVOICE' : 'VAT MARGIN SCHEME'}
               </div>
               <div style={{ fontSize: '7px', color: '#000', marginBottom: '1px' }}>
                 {invoiceData.companyInfo.contact.phone}
@@ -440,7 +451,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ fontSize: '7px', fontWeight: 'bold', flex: '1', textAlign: 'right' }}>RATE</div>
           <div style={{ fontSize: '7px', fontWeight: 'bold', flex: '1', textAlign: 'center' }}>QTY</div>
           <div style={{ fontSize: '7px', fontWeight: 'bold', flex: '1', textAlign: 'right' }}>DISCOUNT</div>
-          <div style={{ fontSize: '7px', fontWeight: 'bold', flex: '1', textAlign: 'right' }}>VAT</div>
+          {hasVATApplied(invoiceData) && <div style={{ fontSize: '7px', fontWeight: 'bold', flex: '1', textAlign: 'right' }}>VAT</div>}
           <div style={{ fontSize: '7px', fontWeight: 'bold', flex: '1', textAlign: 'right' }}>TOTAL</div>
         </div>
         {/* Vehicle Row */}
@@ -461,9 +472,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
             {invoiceData.pricing.discountOnSalePrice ? formatCurrency(invoiceData.pricing.discountOnSalePrice) : '-'}
           </div>
-          <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-            {invoiceData.pricing.applyVatToSalePrice ? formatCurrency(invoiceData.pricing.salePriceVatAmount || 0) : '-'}
-          </div>
+          {hasVATApplied(invoiceData) && (
+            <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+              {invoiceData.pricing.applyVatToSalePrice ? formatCurrency(invoiceData.pricing.salePriceVatAmount || 0) : '-'}
+            </div>
+          )}
           <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
             {formatCurrency(
               invoiceData.pricing.applyVatToSalePrice 
@@ -497,9 +510,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
               {invoiceData.pricing.discountOnWarranty ? formatCurrency(invoiceData.pricing.discountOnWarranty) : '-'}
             </div>
-            <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-              {invoiceData.pricing.applyVatToWarranty ? formatCurrency(invoiceData.pricing.warrantyVatAmount || 0) : '-'}
-            </div>
+            {hasVATApplied(invoiceData) && (
+              <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                {invoiceData.pricing.applyVatToWarranty ? formatCurrency(invoiceData.pricing.warrantyVatAmount || 0) : '-'}
+              </div>
+            )}
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
               {formatCurrency(
                 invoiceData.pricing.applyVatToWarranty
@@ -531,9 +546,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
               {invoiceData.pricing.discountOnEnhancedWarranty ? formatCurrency(invoiceData.pricing.discountOnEnhancedWarranty) : '-'}
             </div>
-            <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-              {invoiceData.pricing.applyVatToEnhancedWarranty ? formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0) : '-'}
-            </div>
+            {hasVATApplied(invoiceData) && (
+              <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                {invoiceData.pricing.applyVatToEnhancedWarranty ? formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0) : '-'}
+              </div>
+            )}
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
               {formatCurrency(
                 invoiceData.pricing.applyVatToEnhancedWarranty
@@ -564,9 +581,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
                   {invoiceData.addons.customer.addon1.discount ? formatCurrency(invoiceData.addons.customer.addon1.discount) : '-'}
                 </div>
-                <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-                  {invoiceData.addons.customer.addon1.applyVat ? formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0) : '-'}
-                </div>
+                {hasVATApplied(invoiceData) && (
+                  <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                    {invoiceData.addons.customer.addon1.applyVat ? formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0) : '-'}
+                  </div>
+                )}
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
                   {formatCurrency(
                     invoiceData.addons.customer.addon1.applyVat
@@ -593,9 +612,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
                   {invoiceData.addons.customer.addon2.discount ? formatCurrency(invoiceData.addons.customer.addon2.discount) : '-'}
                 </div>
-                <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-                  {invoiceData.addons.customer.addon2.applyVat ? formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0) : '-'}
-                </div>
+                {hasVATApplied(invoiceData) && (
+                  <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                    {invoiceData.addons.customer.addon2.applyVat ? formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0) : '-'}
+                  </div>
+                )}
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
                   {formatCurrency(
                     invoiceData.addons.customer.addon2.applyVat
@@ -629,9 +650,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
                   {addon.discount ? formatCurrency(addon.discount) : '-'}
                 </div>
-                <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-                  {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
-                </div>
+                {hasVATApplied(invoiceData) && (
+                  <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                    {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
+                  </div>
+                )}
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
                   {formatCurrency(
                     addon.applyVat
@@ -665,9 +688,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
                     {invoiceData.addons.finance.addon1.discount ? formatCurrency(invoiceData.addons.finance.addon1.discount) : '-'}
                   </div>
-                  <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-                    {invoiceData.addons.finance.addon1.applyVat ? formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0) : '-'}
-                  </div>
+                  {hasVATApplied(invoiceData) && (
+                    <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                      {invoiceData.addons.finance.addon1.applyVat ? formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0) : '-'}
+                    </div>
+                  )}
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
                     {formatCurrency(
                       invoiceData.addons.finance.addon1.applyVat
@@ -705,9 +730,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
                     {invoiceData.addons.finance.addon2.discount ? formatCurrency(invoiceData.addons.finance.addon2.discount) : '-'}
                   </div>
-                  <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-                    {invoiceData.addons.finance.addon2.applyVat ? formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0) : '-'}
-                  </div>
+                  {hasVATApplied(invoiceData) && (
+                    <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                      {invoiceData.addons.finance.addon2.applyVat ? formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0) : '-'}
+                    </div>
+                  )}
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
                     {formatCurrency(
                       invoiceData.addons.finance.addon2.applyVat
@@ -752,9 +779,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
                     {addon.discount ? formatCurrency(addon.discount) : '-'}
                   </div>
-                  <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-                    {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
-                  </div>
+                  {hasVATApplied(invoiceData) && (
+                    <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                      {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
+                    </div>
+                  )}
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
                     {formatCurrency(
                       addon.applyVat
@@ -797,9 +826,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', color: '#000' }}>
               {(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) > 0 ? formatCurrency(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) : '-'}
             </div>
-            <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-              {invoiceData.pricing.applyVatToDelivery ? formatCurrency(invoiceData.pricing.deliveryVatAmount || 0) : '-'}
-            </div>
+            {hasVATApplied(invoiceData) && (
+              <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
+                {invoiceData.pricing.applyVatToDelivery ? formatCurrency(invoiceData.pricing.deliveryVatAmount || 0) : '-'}
+              </div>
+            )}
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
               {formatCurrency(
                 invoiceData.pricing.applyVatToDelivery
@@ -1016,7 +1047,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ marginLeft: '0' }}>
             <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
-                VAT (20%):
+                VAT ({hasVATApplied(invoiceData) ? '20%' : '0%'}):
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
                 {formatCurrency(calculateVAT(invoiceData))}

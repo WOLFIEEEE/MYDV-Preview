@@ -1419,6 +1419,20 @@ export default function DynamicInvoiceForm({
     performCalculations();
   }, [performCalculations]);
 
+  // Helper function to check if VAT is applied to any item
+  const hasVATApplied = useCallback(() => {
+    return invoiceData.pricing.applyVatToSalePrice ||
+           invoiceData.pricing.applyVatToWarranty ||
+           invoiceData.pricing.applyVatToEnhancedWarranty ||
+           invoiceData.pricing.applyVatToDelivery ||
+           invoiceData.addons?.customer?.addon1?.applyVat ||
+           invoiceData.addons?.customer?.addon2?.applyVat ||
+           invoiceData.addons?.finance?.addon1?.applyVat ||
+           invoiceData.addons?.finance?.addon2?.applyVat ||
+           (Array.isArray(invoiceData.addons?.customer?.dynamicAddons) && invoiceData.addons.customer.dynamicAddons.some((addon: any) => addon.applyVat)) ||
+           (Array.isArray(invoiceData.addons?.finance?.dynamicAddons) && invoiceData.addons.finance.dynamicAddons.some((addon: any) => addon.applyVat));
+  }, [invoiceData]);
+
   // Determine which sections should be visible based on form data
   const getSectionVisibility = useCallback((sectionId: string): boolean => {
     switch (sectionId) {
@@ -2710,13 +2724,31 @@ export default function DynamicInvoiceForm({
                   <div className="space-y-4">
                     <h4 className="font-medium">Delivery Pricing</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormInput
-                        label="Delivery Cost"
-                        value={invoiceData.delivery.cost || 0}
-                        onChange={createChangeHandler('delivery.cost')}
-                        type="number"
-                        icon={PoundSterling}
-                      />
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                            <PoundSterling className="h-4 w-4 mr-2" />
+                            Delivery Cost
+                          </Label>
+                          {hasVATApplied() && (
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={invoiceData.pricing.applyVatToDelivery || false}
+                                onCheckedChange={(checked) => updateNestedData('pricing.applyVatToDelivery', checked)}
+                              />
+                              <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                VAT
+                              </Label>
+                            </div>
+                          )}
+                        </div>
+                        <Input
+                          value={invoiceData.delivery.cost || 0}
+                          onChange={(e) => createChangeHandler('delivery.cost')(e.target.value)}
+                          type="number"
+                          className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                        />
+                      </div>
 
                       <FormInput
                         label="Discount on Delivery"
@@ -2734,42 +2766,6 @@ export default function DynamicInvoiceForm({
                         icon={PoundSterling}
                         disabled={true}
                       />
-                    </div>
-
-                    {/* VAT Option for Delivery */}
-                    <div className={`p-4 border rounded-lg ${isDarkMode ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={invoiceData.pricing.applyVatToDelivery || false}
-                            onCheckedChange={(checked) => updateNestedData('pricing.applyVatToDelivery', checked)}
-                          />
-                          <Label className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                            Apply VAT to Delivery (20%)
-                          </Label>
-                        </div>
-                      </div>
-                      
-                      {invoiceData.pricing.applyVatToDelivery && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
-                          <FormInput
-                            label="VAT Amount"
-                            value={invoiceData.pricing.deliveryVatAmount || 0}
-                            onChange={() => {}} // Calculated field
-                            type="number"
-                            icon={PoundSterling}
-                            disabled
-                          />
-                          <FormInput
-                            label="Delivery Cost Including VAT"
-                            value={invoiceData.pricing.deliveryIncludingVat || 0}
-                            onChange={() => {}} // Calculated field
-                            type="number"
-                            icon={PoundSterling}
-                            disabled
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -2846,13 +2842,31 @@ export default function DynamicInvoiceForm({
                     <div className="space-y-4">
                       <h4 className="font-medium">Warranty Pricing</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormInput
-                          label="Warranty Price"
-                          value={invoiceData.pricing.warrantyPrice || 0}
-                          onChange={createChangeHandler('pricing.warrantyPrice')}
-                          type="number"
-                          icon={PoundSterling}
-                        />
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                              <PoundSterling className="h-4 w-4 mr-2" />
+                              Warranty Price
+                            </Label>
+                            {hasVATApplied() && (
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={invoiceData.pricing.applyVatToWarranty || false}
+                                  onCheckedChange={(checked) => updateNestedData('pricing.applyVatToWarranty', checked)}
+                                />
+                                <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                  VAT
+                                </Label>
+                              </div>
+                            )}
+                          </div>
+                          <Input
+                            value={invoiceData.pricing.warrantyPrice || 0}
+                            onChange={(e) => createChangeHandler('pricing.warrantyPrice')(e.target.value)}
+                            type="number"
+                            className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                          />
+                        </div>
 
                         <FormInput
                           label="Discount on Warranty"
@@ -2872,42 +2886,6 @@ export default function DynamicInvoiceForm({
                           icon={PoundSterling}
                           disabled
                         />
-                      </div>
-
-                      {/* VAT Option for Warranty */}
-                      <div className={`p-4 border rounded-lg ${isDarkMode ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              checked={invoiceData.pricing.applyVatToWarranty || false}
-                              onCheckedChange={(checked) => updateNestedData('pricing.applyVatToWarranty', checked)}
-                            />
-                            <Label className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Apply VAT to Warranty (20%)
-                            </Label>
-                          </div>
-                        </div>
-                        
-                        {invoiceData.pricing.applyVatToWarranty && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
-                            <FormInput
-                              label="VAT Amount"
-                              value={invoiceData.pricing.warrantyVatAmount || 0}
-                              onChange={() => {}} // Calculated field
-                              type="number"
-                              icon={PoundSterling}
-                              disabled
-                            />
-                            <FormInput
-                              label="Warranty Price Including VAT"
-                              value={invoiceData.pricing.warrantyIncludingVat || 0}
-                              onChange={() => {}} // Calculated field
-                              type="number"
-                              icon={PoundSterling}
-                              disabled
-                            />
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
@@ -2987,13 +2965,31 @@ export default function DynamicInvoiceForm({
                     {invoiceData.warranty.enhanced && (
                       <>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <FormInput
-                            label="Enhanced Warranty Price"
-                            value={invoiceData.pricing.enhancedWarrantyPrice || 0}
-                            onChange={createChangeHandler('pricing.enhancedWarrantyPrice')}
-                            type="number"
-                            icon={PoundSterling}
-                          />
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                <PoundSterling className="h-4 w-4 mr-2" />
+                                Enhanced Warranty Price
+                              </Label>
+                              {hasVATApplied() && (
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    checked={invoiceData.pricing.applyVatToEnhancedWarranty || false}
+                                    onCheckedChange={(checked) => updateNestedData('pricing.applyVatToEnhancedWarranty', checked)}
+                                  />
+                                  <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    VAT
+                                  </Label>
+                                </div>
+                              )}
+                            </div>
+                            <Input
+                              value={invoiceData.pricing.enhancedWarrantyPrice || 0}
+                              onChange={(e) => createChangeHandler('pricing.enhancedWarrantyPrice')(e.target.value)}
+                              type="number"
+                              className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                            />
+                          </div>
 
                           <FormInput
                             label="Discount on Enhanced Warranty"
@@ -3013,42 +3009,6 @@ export default function DynamicInvoiceForm({
                             icon={PoundSterling}
                             disabled
                           />
-                        </div>
-
-                        {/* VAT Option for Enhanced Warranty */}
-                        <div className={`p-4 border rounded-lg ${isDarkMode ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                checked={invoiceData.pricing.applyVatToEnhancedWarranty || false}
-                                onCheckedChange={(checked) => updateNestedData('pricing.applyVatToEnhancedWarranty', checked)}
-                              />
-                              <Label className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                                Apply VAT to Enhanced Warranty (20%)
-                              </Label>
-                            </div>
-                          </div>
-                          
-                          {invoiceData.pricing.applyVatToEnhancedWarranty && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
-                              <FormInput
-                                label="VAT Amount"
-                                value={invoiceData.pricing.enhancedWarrantyVatAmount || 0}
-                                onChange={() => {}} // Calculated field
-                                type="number"
-                                icon={PoundSterling}
-                                disabled
-                              />
-                              <FormInput
-                                label="Enhanced Warranty Including VAT"
-                                value={invoiceData.pricing.enhancedWarrantyIncludingVat || 0}
-                                onChange={() => {}} // Calculated field
-                                type="number"
-                                icon={PoundSterling}
-                                disabled
-                              />
-                            </div>
-                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -3104,13 +3064,31 @@ export default function DynamicInvoiceForm({
                                 value={invoiceData.addons.finance.addon1?.name || ''}
                                 onChange={(value) => updateNestedData('addons.finance.addon1.name', value)}
                               />
-                              <FormInput
-                                label="Cost"
-                                value={invoiceData.addons.finance.addon1?.cost || 0}
-                                onChange={(value) => updateNestedData('addons.finance.addon1.cost', parseFloat(value) || 0)}
-                                type="number"
-                                icon={PoundSterling}
-                              />
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                    <PoundSterling className="h-4 w-4 mr-2" />
+                                    Cost
+                                  </Label>
+                                  {hasVATApplied() && (
+                                    <div className="flex items-center space-x-2">
+                                      <Switch
+                                        checked={invoiceData.addons.finance.addon1?.applyVat || false}
+                                        onCheckedChange={(checked) => updateNestedData('addons.finance.addon1.applyVat', checked)}
+                                      />
+                                      <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        VAT
+                                      </Label>
+                                    </div>
+                                  )}
+                                </div>
+                                <Input
+                                  value={invoiceData.addons.finance.addon1?.cost || 0}
+                                  onChange={(e) => updateNestedData('addons.finance.addon1.cost', parseFloat(e.target.value) || 0)}
+                                  type="number"
+                                  className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                                />
+                              </div>
                               <FormInput
                                 label="Discount"
                                 value={invoiceData.addons.finance.addon1?.discount || 0}
@@ -3129,38 +3107,6 @@ export default function DynamicInvoiceForm({
                                 disabled
                               />
                             </div>
-                            {/* VAT Option for Finance Add-on 1 */}
-                            <div className={`mt-3 p-3 border rounded-lg ${isDarkMode ? 'bg-slate-800/20 border-slate-700' : 'bg-blue-50/30 border-blue-200'}`}>
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Switch
-                                  checked={invoiceData.addons.finance.addon1?.applyVat || false}
-                                  onCheckedChange={(checked) => updateNestedData('addons.finance.addon1.applyVat', checked)}
-                                />
-                                <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                                  Apply VAT (20%)
-                                </Label>
-                              </div>
-                              {invoiceData.addons.finance.addon1?.applyVat && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 hidden">
-                                  <FormInput
-                                    label="VAT Amount"
-                                    value={invoiceData.addons.finance.addon1?.vatAmount || 0}
-                                    onChange={() => {}}
-                                    type="number"
-                                    icon={PoundSterling}
-                                    disabled
-                                  />
-                                  <FormInput
-                                    label="Cost Including VAT"
-                                    value={invoiceData.addons.finance.addon1?.costIncludingVat || 0}
-                                    onChange={() => {}}
-                                    type="number"
-                                    icon={PoundSterling}
-                                    disabled
-                                  />
-                                </div>
-                              )}
-                            </div>
                           </div>
 
                           {invoiceData.addons.finance.addon2 && (
@@ -3172,13 +3118,31 @@ export default function DynamicInvoiceForm({
                                   value={invoiceData.addons.finance.addon2.name}
                                   onChange={(value) => updateNestedData('addons.finance.addon2.name', value)}
                                 />
-                                <FormInput
-                                  label="Cost"
-                                  value={invoiceData.addons.finance.addon2.cost}
-                                  onChange={(value) => updateNestedData('addons.finance.addon2.cost', parseFloat(value) || 0)}
-                                  type="number"
-                                  icon={PoundSterling}
-                                />
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                      <PoundSterling className="h-4 w-4 mr-2" />
+                                      Cost
+                                    </Label>
+                                    {hasVATApplied() && (
+                                      <div className="flex items-center space-x-2">
+                                        <Switch
+                                          checked={invoiceData.addons.finance.addon2?.applyVat || false}
+                                          onCheckedChange={(checked) => updateNestedData('addons.finance.addon2.applyVat', checked)}
+                                        />
+                                        <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          VAT
+                                        </Label>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Input
+                                    value={invoiceData.addons.finance.addon2.cost}
+                                    onChange={(e) => updateNestedData('addons.finance.addon2.cost', parseFloat(e.target.value) || 0)}
+                                    type="number"
+                                    className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                                  />
+                                </div>
                                 <FormInput
                                   label="Discount"
                                   value={invoiceData.addons.finance.addon2.discount || 0}
@@ -3391,13 +3355,31 @@ export default function DynamicInvoiceForm({
                               value={invoiceData.addons.customer.addon1?.name || ''}
                               onChange={(value) => updateNestedData('addons.customer.addon1.name', value)}
                             />
-                            <FormInput
-                              label="Cost"
-                              value={invoiceData.addons.customer.addon1?.cost || 0}
-                              onChange={(value) => updateNestedData('addons.customer.addon1.cost', parseFloat(value) || 0)}
-                              type="number"
-                              icon={PoundSterling}
-                            />
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                  <PoundSterling className="h-4 w-4 mr-2" />
+                                  Cost
+                                </Label>
+                                {hasVATApplied() && (
+                                  <div className="flex items-center space-x-2">
+                                    <Switch
+                                      checked={invoiceData.addons.customer.addon1?.applyVat || false}
+                                      onCheckedChange={(checked) => updateNestedData('addons.customer.addon1.applyVat', checked)}
+                                    />
+                                    <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                      VAT
+                                    </Label>
+                                  </div>
+                                )}
+                              </div>
+                              <Input
+                                value={invoiceData.addons.customer.addon1?.cost || 0}
+                                onChange={(e) => updateNestedData('addons.customer.addon1.cost', parseFloat(e.target.value) || 0)}
+                                type="number"
+                                className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                              />
+                            </div>
                             <FormInput
                               label="Discount"
                               value={invoiceData.addons.customer.addon1?.discount || 0}
@@ -3416,37 +3398,6 @@ export default function DynamicInvoiceForm({
                               disabled
                             />
                           </div>
-                          
-                          {/* VAT Toggle for Customer Add-on 1 */}
-                          <div className="mt-4 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={invoiceData.addons.customer.addon1?.applyVat || false}
-                                onCheckedChange={(checked) => updateNestedData('addons.customer.addon1.applyVat', checked)}
-                              />
-                              <Label>Apply VAT (20%)</Label>
-                            </div>
-                            {invoiceData.addons.customer.addon1?.applyVat && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8 hidden">
-                                <FormInput
-                                  label="VAT Amount"
-                                  value={invoiceData.addons.customer.addon1?.vatAmount || 0}
-                                  onChange={() => {}}
-                                  type="number"
-                                  icon={PoundSterling}
-                                  disabled
-                                />
-                                <FormInput
-                                  label="Cost Including VAT"
-                                  value={invoiceData.addons.customer.addon1?.costIncludingVat || 0}
-                                  onChange={() => {}}
-                                  type="number"
-                                  icon={PoundSterling}
-                                  disabled
-                                />
-                              </div>
-                            )}
-                          </div>
                         </div>
 
                         {invoiceData.addons.customer.addon2 && (
@@ -3458,13 +3409,31 @@ export default function DynamicInvoiceForm({
                                 value={invoiceData.addons.customer.addon2.name}
                                 onChange={(value) => updateNestedData('addons.customer.addon2.name', value)}
                               />
-                              <FormInput
-                                label="Cost"
-                                value={invoiceData.addons.customer.addon2.cost}
-                                onChange={(value) => updateNestedData('addons.customer.addon2.cost', parseFloat(value) || 0)}
-                                type="number"
-                                icon={PoundSterling}
-                              />
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                                    <PoundSterling className="h-4 w-4 mr-2" />
+                                    Cost
+                                  </Label>
+                                  {hasVATApplied() && (
+                                    <div className="flex items-center space-x-2">
+                                      <Switch
+                                        checked={invoiceData.addons.customer.addon2?.applyVat || false}
+                                        onCheckedChange={(checked) => updateNestedData('addons.customer.addon2.applyVat', checked)}
+                                      />
+                                      <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        VAT
+                                      </Label>
+                                    </div>
+                                  )}
+                                </div>
+                                <Input
+                                  value={invoiceData.addons.customer.addon2.cost}
+                                  onChange={(e) => updateNestedData('addons.customer.addon2.cost', parseFloat(e.target.value) || 0)}
+                                  type="number"
+                                  className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
+                                />
+                              </div>
                               <FormInput
                                 label="Discount"
                                 value={invoiceData.addons.customer.addon2.discount || 0}
@@ -3482,37 +3451,6 @@ export default function DynamicInvoiceForm({
                                 icon={PoundSterling}
                                 disabled
                               />
-                            </div>
-                            
-                            {/* VAT Toggle for Customer Add-on 2 */}
-                            <div className="mt-4 space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={invoiceData.addons.customer.addon2?.applyVat || false}
-                                  onCheckedChange={(checked) => updateNestedData('addons.customer.addon2.applyVat', checked)}
-                                />
-                                <Label>Apply VAT (20%)</Label>
-                              </div>
-                              {invoiceData.addons.customer.addon2?.applyVat && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8 hidden">
-                                  <FormInput
-                                    label="VAT Amount"
-                                    value={invoiceData.addons.customer.addon2?.vatAmount || 0}
-                                    onChange={() => {}}
-                                    type="number"
-                                    icon={PoundSterling}
-                                    disabled
-                                  />
-                                  <FormInput
-                                    label="Cost Including VAT"
-                                    value={invoiceData.addons.customer.addon2?.costIncludingVat || 0}
-                                    onChange={() => {}}
-                                    type="number"
-                                    icon={PoundSterling}
-                                    disabled
-                                  />
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}

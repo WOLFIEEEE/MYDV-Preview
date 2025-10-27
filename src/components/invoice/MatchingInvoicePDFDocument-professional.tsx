@@ -932,6 +932,20 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
     return new Date(dateString).toLocaleDateString('en-GB');
   };
 
+  // Helper function to check if VAT is applied to any item
+  const hasVATApplied = (invoiceData: any): boolean => {
+    return invoiceData.pricing.applyVatToSalePrice ||
+           invoiceData.pricing.applyVatToWarranty ||
+           invoiceData.pricing.applyVatToEnhancedWarranty ||
+           invoiceData.pricing.applyVatToDelivery ||
+           invoiceData.addons?.customer?.addon1?.applyVat ||
+           invoiceData.addons?.customer?.addon2?.applyVat ||
+           invoiceData.addons?.finance?.addon1?.applyVat ||
+           invoiceData.addons?.finance?.addon2?.applyVat ||
+           (Array.isArray(invoiceData.addons?.customer?.dynamicAddons) && invoiceData.addons.customer.dynamicAddons.some((addon: any) => addon.applyVat)) ||
+           (Array.isArray(invoiceData.addons?.finance?.dynamicAddons) && invoiceData.addons.finance.dynamicAddons.some((addon: any) => addon.applyVat));
+  };
+
   // Get background image source
   const backgroundImageSrc = getBackgroundImageSrc(undefined, invoiceData.companyInfo.logo);
 
@@ -1688,11 +1702,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     VAT No: {invoiceData.companyInfo.vatNumber}
                   </Text>
                 )}
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
-                  VAT INVOICE
-                </Text>
                 <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
-                  VAT: MARGIN SCHEME
+                  {hasVATApplied(invoiceData) ? 'VAT INVOICE' : 'VAT MARGIN SCHEME'}
                 </Text>
                 <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                   {invoiceData.companyInfo.contact.phone}
@@ -1822,7 +1833,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>RATE</Text>
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'center' }}>QTY</Text>
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>DISCOUNT</Text>
-               <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>VAT</Text>
+               {hasVATApplied(invoiceData) && <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>VAT</Text>}
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>TOTAL</Text>
              </View>
             
@@ -1848,9 +1859,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                    )
                  )}
                </Text>
-               <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                 {invoiceData.pricing.applyVatToSalePrice ? formatCurrency(invoiceData.pricing.salePriceVatAmount || 0) : '-'}
-               </Text>
+               {hasVATApplied(invoiceData) && (
+                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                   {invoiceData.pricing.applyVatToSalePrice ? formatCurrency(invoiceData.pricing.salePriceVatAmount || 0) : '-'}
+                 </Text>
+               )}
                <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
                  {formatCurrency(
                    invoiceData.pricing.applyVatToSalePrice 
@@ -1881,9 +1894,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateWarrantyDiscount(invoiceData)
                    )}
                  </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                   {invoiceData.pricing.applyVatToWarranty ? formatCurrency(invoiceData.pricing.warrantyVatAmount || 0) : '-'}
-                 </Text>
+                 {hasVATApplied(invoiceData) && (
+                   <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                     {invoiceData.pricing.applyVatToWarranty ? formatCurrency(invoiceData.pricing.warrantyVatAmount || 0) : '-'}
+                   </Text>
+                 )}
                  <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                    {formatCurrency(
                      invoiceData.pricing.applyVatToWarranty
@@ -1914,9 +1929,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateEnhancedWarrantyDiscount(invoiceData)
                    )}
                  </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                   {invoiceData.pricing.applyVatToEnhancedWarranty ? formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0) : '-'}
-                 </Text>
+                 {hasVATApplied(invoiceData) && (
+                   <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                     {invoiceData.pricing.applyVatToEnhancedWarranty ? formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0) : '-'}
+                   </Text>
+                 )}
                 <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                   {formatCurrency(
                     invoiceData.pricing.applyVatToEnhancedWarranty
@@ -1948,9 +1965,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon1)
                        )}
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                       {invoiceData.addons.customer.addon1.applyVat ? formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0) : '-'}
-                     </Text>
+                     {hasVATApplied(invoiceData) && (
+                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                         {invoiceData.addons.customer.addon1.applyVat ? formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0) : '-'}
+                       </Text>
+                     )}
                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                       {formatCurrency(
                         invoiceData.addons.customer.addon1.applyVat
@@ -1978,9 +1997,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon2)
                        )}
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                       {invoiceData.addons.customer.addon2.applyVat ? formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0) : '-'}
-                     </Text>
+                     {hasVATApplied(invoiceData) && (
+                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                         {invoiceData.addons.customer.addon2.applyVat ? formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0) : '-'}
+                       </Text>
+                     )}
                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                       {formatCurrency(
                         invoiceData.addons.customer.addon2.applyVat
@@ -2019,9 +2040,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(addon)
                        )}
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                       {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
-                     </Text>
+                     {hasVATApplied(invoiceData) && (
+                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                         {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
+                       </Text>
+                     )}
                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                       {formatCurrency(
                         addon.applyVat
@@ -2060,9 +2083,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
-                      <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                        {invoiceData.addons.finance.addon1.applyVat ? formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0) : '-'}
-                      </Text>
+                      {hasVATApplied(invoiceData) && (
+                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                          {invoiceData.addons.finance.addon1.applyVat ? formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0) : '-'}
+                        </Text>
+                      )}
                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                         {formatCurrency(
                           invoiceData.addons.finance.addon1.applyVat
@@ -2105,9 +2130,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
-                      <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                        {invoiceData.addons.finance.addon2.applyVat ? formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0) : '-'}
-                      </Text>
+                      {hasVATApplied(invoiceData) && (
+                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                          {invoiceData.addons.finance.addon2.applyVat ? formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0) : '-'}
+                        </Text>
+                      )}
                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                         {formatCurrency(
                           invoiceData.addons.finance.addon2.applyVat
@@ -2160,9 +2187,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
-                      <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                        {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
-                      </Text>
+                      {hasVATApplied(invoiceData) && (
+                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                          {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
+                        </Text>
+                      )}
                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                         {formatCurrency(
                           addon.applyVat
@@ -2206,9 +2235,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateDeliveryDiscount(invoiceData)
                    )}
                  </Text>
-                <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                  {invoiceData.pricing.applyVatToDelivery ? formatCurrency(invoiceData.pricing.deliveryVatAmount || 0) : '-'}
-                </Text>
+                {hasVATApplied(invoiceData) && (
+                  <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                    {invoiceData.pricing.applyVatToDelivery ? formatCurrency(invoiceData.pricing.deliveryVatAmount || 0) : '-'}
+                  </Text>
+                )}
                 <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                   {formatCurrency(
                     invoiceData.pricing.applyVatToDelivery
@@ -2428,7 +2459,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               <View style={{ marginLeft: 0 }}>
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
-                    VAT (20%):
+                    VAT ({hasVATApplied(invoiceData) ? '20%' : '0%'}):
                   </Text>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                     {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData))}
