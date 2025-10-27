@@ -301,9 +301,11 @@ const GLOBAL_CALCULATION_CONFIG = {
         return invoiceData.payment.balanceToFinance || 0;
       }
       
-      // For trade sales, calculate: Subtotal (including delivery) - All Payments
+      // For trade sales, calculate: Subtotal + VAT - All Payments
       if (invoiceData.saleType === 'Trade') {
         const subtotal = GLOBAL_CALCULATION_CONFIG.calculations.calculateSubtotal(invoiceData);
+        const totalVAT = GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData);
+        const totalIncludingVAT = subtotal + totalVAT;
         
         // Sum all payments
         const totalCardPayments = (invoiceData.payment?.breakdown?.cardPayments || []).reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0);
@@ -314,7 +316,7 @@ const GLOBAL_CALCULATION_CONFIG = {
         const totalDepositPayments = (invoiceData.pricing?.amountPaidDepositCustomer || 0);
         const totalPayments = totalDirectPayments + totalDepositPayments;
         
-        return Math.max(0, subtotal - totalPayments);
+        return Math.max(0, totalIncludingVAT - totalPayments);
       }
       
       // For retail customer invoices

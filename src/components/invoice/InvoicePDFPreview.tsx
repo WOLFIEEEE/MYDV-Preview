@@ -146,9 +146,11 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
       return invoiceData.payment.balanceToFinance ?? 0;
     }
     
-    // For trade sales, calculate: Subtotal (including delivery) - All Payments
+    // For trade sales, calculate: Subtotal + VAT - All Payments
     if (invoiceData.saleType === 'Trade') {
       const subtotal = calculateSubtotal(invoiceData);
+      const totalVAT = calculateVAT(invoiceData);
+      const totalIncludingVAT = subtotal + totalVAT;
       
       // Sum all payments
       const totalCardPayments = (invoiceData.payment?.breakdown?.cardPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
@@ -159,7 +161,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
       const totalDepositPayments = (invoiceData.pricing?.amountPaidDepositCustomer ?? 0);
       const totalPayments = totalDirectPayments + totalDepositPayments;
       
-      return Math.max(0, subtotal - totalPayments);
+      return Math.max(0, totalIncludingVAT - totalPayments);
     }
     
     // For retail customer invoices - check multiple possible locations

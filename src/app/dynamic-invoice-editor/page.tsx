@@ -1688,9 +1688,9 @@ function DynamicInvoiceEditorContent() {
           termsDataRaw: result.data.terms
         });
         
-        // Apply URL parameters for saleType and invoiceTo if provided
-        if (saleType || invoiceTo) {
-          console.log(`🔧 [EDITOR] Applying URL parameters: saleType=${saleType}, invoiceTo=${invoiceTo}`);
+        // Apply URL parameters for saleType, invoiceTo, and vatScheme if provided
+        if (saleType || invoiceTo || vatScheme) {
+          console.log(`🔧 [EDITOR] Applying URL parameters: saleType=${saleType}, invoiceTo=${invoiceTo}, vatScheme=${vatScheme}`);
           
           const updatedData = { ...result.data };
           
@@ -1703,7 +1703,13 @@ function DynamicInvoiceEditorContent() {
             updatedData.invoiceTo = invoiceTo as 'Customer' | 'Finance Company';
           }
           
-          console.log(`✅ [EDITOR] URL parameters applied: saleType=${updatedData.saleType}, invoiceTo=${updatedData.invoiceTo}`);
+          // Apply VAT scheme if provided
+          if (vatScheme === 'VAT') {
+            console.log('🔵 [EDITOR] Applying VAT scheme from URL - enabling VAT on sale price');
+            updatedData.pricing.applyVatToSalePrice = true;
+          }
+          
+          console.log(`✅ [EDITOR] URL parameters applied: saleType=${updatedData.saleType}, invoiceTo=${updatedData.invoiceTo}, applyVatToSalePrice=${updatedData.pricing.applyVatToSalePrice}`);
           setInvoiceData(updatedData);
         } else {
           setInvoiceData(result.data);
