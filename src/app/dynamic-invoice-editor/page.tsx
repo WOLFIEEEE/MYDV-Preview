@@ -558,6 +558,10 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
       // Balance calculation fields (required by save API) - use calculated values
       remainingBalance: calculatedBalances.remainingBalance,
       tradeBalanceDue: calculatedBalances.tradeBalanceDue,
+      // VAT fields for Sale Price - initialized with defaults
+      applyVatToSalePrice: false,
+      salePriceVatAmount: 0,
+      salePriceIncludingVat: parseFloat(formData.salePricePostDiscount?.toString() || formData.salePrice?.toString() || '0'),
       // Note: Additional pricing fields stored in notes section
     },
     
