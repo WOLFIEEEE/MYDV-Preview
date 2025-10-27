@@ -586,6 +586,31 @@ export default function DynamicInvoiceForm({
       hasChanges = true;
     }
 
+    // 1a. Sale Price VAT calculation (20%)
+    if (invoiceData.pricing.applyVatToSalePrice) {
+      const salePriceVatAmount = parseFloat((salePricePostDiscount * 0.20).toFixed(2));
+      const salePriceIncludingVat = parseFloat((salePricePostDiscount + salePriceVatAmount).toFixed(2));
+
+      if (invoiceData.pricing.salePriceVatAmount !== salePriceVatAmount) {
+        calculations['pricing.salePriceVatAmount'] = salePriceVatAmount;
+        hasChanges = true;
+      }
+      if (invoiceData.pricing.salePriceIncludingVat !== salePriceIncludingVat) {
+        calculations['pricing.salePriceIncludingVat'] = salePriceIncludingVat;
+        hasChanges = true;
+      }
+    } else {
+      // Clear VAT amounts if VAT is not applied
+      if (invoiceData.pricing.salePriceVatAmount !== 0) {
+        calculations['pricing.salePriceVatAmount'] = 0;
+        hasChanges = true;
+      }
+      if (invoiceData.pricing.salePriceIncludingVat !== salePricePostDiscount) {
+        calculations['pricing.salePriceIncludingVat'] = salePricePostDiscount;
+        hasChanges = true;
+      }
+    }
+
     // 2. Warranty Price Post-Discount calculation (skip for trade sales)
     if (invoiceData.saleType !== 'Trade') {
       const warrantyPrice = invoiceData.pricing.warrantyPrice || 0;
@@ -597,6 +622,31 @@ export default function DynamicInvoiceForm({
         hasChanges = true;
       }
 
+      // 2a. Warranty VAT calculation (20%)
+      if (invoiceData.pricing.applyVatToWarranty) {
+        const warrantyVatAmount = parseFloat((warrantyPricePostDiscount * 0.20).toFixed(2));
+        const warrantyIncludingVat = parseFloat((warrantyPricePostDiscount + warrantyVatAmount).toFixed(2));
+
+        if (invoiceData.pricing.warrantyVatAmount !== warrantyVatAmount) {
+          calculations['pricing.warrantyVatAmount'] = warrantyVatAmount;
+          hasChanges = true;
+        }
+        if (invoiceData.pricing.warrantyIncludingVat !== warrantyIncludingVat) {
+          calculations['pricing.warrantyIncludingVat'] = warrantyIncludingVat;
+          hasChanges = true;
+        }
+      } else {
+        // Clear VAT amounts if VAT is not applied
+        if (invoiceData.pricing.warrantyVatAmount !== 0) {
+          calculations['pricing.warrantyVatAmount'] = 0;
+          hasChanges = true;
+        }
+        if (invoiceData.pricing.warrantyIncludingVat !== warrantyPricePostDiscount) {
+          calculations['pricing.warrantyIncludingVat'] = warrantyPricePostDiscount;
+          hasChanges = true;
+        }
+      }
+
       // 3. Enhanced Warranty Price Post-Discount calculation
       const enhancedWarrantyPrice = invoiceData.pricing.enhancedWarrantyPrice || 0;
       const discountOnEnhancedWarranty = invoiceData.pricing.discountOnEnhancedWarranty || 0;
@@ -606,6 +656,31 @@ export default function DynamicInvoiceForm({
         calculations['pricing.enhancedWarrantyPricePostDiscount'] = enhancedWarrantyPricePostDiscount;
         hasChanges = true;
       }
+
+      // 3a. Enhanced Warranty VAT calculation (20%)
+      if (invoiceData.pricing.applyVatToEnhancedWarranty) {
+        const enhancedWarrantyVatAmount = parseFloat((enhancedWarrantyPricePostDiscount * 0.20).toFixed(2));
+        const enhancedWarrantyIncludingVat = parseFloat((enhancedWarrantyPricePostDiscount + enhancedWarrantyVatAmount).toFixed(2));
+
+        if (invoiceData.pricing.enhancedWarrantyVatAmount !== enhancedWarrantyVatAmount) {
+          calculations['pricing.enhancedWarrantyVatAmount'] = enhancedWarrantyVatAmount;
+          hasChanges = true;
+        }
+        if (invoiceData.pricing.enhancedWarrantyIncludingVat !== enhancedWarrantyIncludingVat) {
+          calculations['pricing.enhancedWarrantyIncludingVat'] = enhancedWarrantyIncludingVat;
+          hasChanges = true;
+        }
+      } else {
+        // Clear VAT amounts if VAT is not applied
+        if (invoiceData.pricing.enhancedWarrantyVatAmount !== 0) {
+          calculations['pricing.enhancedWarrantyVatAmount'] = 0;
+          hasChanges = true;
+        }
+        if (invoiceData.pricing.enhancedWarrantyIncludingVat !== enhancedWarrantyPricePostDiscount) {
+          calculations['pricing.enhancedWarrantyIncludingVat'] = enhancedWarrantyPricePostDiscount;
+          hasChanges = true;
+        }
+      }
     } else {
       // For trade sales, set warranty prices to 0
       if (invoiceData.pricing.warrantyPricePostDiscount !== 0) {
@@ -614,6 +689,15 @@ export default function DynamicInvoiceForm({
       }
       if (invoiceData.pricing.enhancedWarrantyPricePostDiscount !== 0) {
         calculations['pricing.enhancedWarrantyPricePostDiscount'] = 0;
+        hasChanges = true;
+      }
+      // Also clear VAT amounts for trade sales
+      if (invoiceData.pricing.warrantyVatAmount !== 0) {
+        calculations['pricing.warrantyVatAmount'] = 0;
+        hasChanges = true;
+      }
+      if (invoiceData.pricing.enhancedWarrantyVatAmount !== 0) {
+        calculations['pricing.enhancedWarrantyVatAmount'] = 0;
         hasChanges = true;
       }
     }
@@ -629,6 +713,31 @@ export default function DynamicInvoiceForm({
       hasChanges = true;
     }
 
+    // 4a. Delivery VAT calculation (20%)
+    if (invoiceData.pricing.applyVatToDelivery) {
+      const deliveryVatAmount = parseFloat((deliveryCostPostDiscount * 0.20).toFixed(2));
+      const deliveryIncludingVat = parseFloat((deliveryCostPostDiscount + deliveryVatAmount).toFixed(2));
+
+      if (invoiceData.pricing.deliveryVatAmount !== deliveryVatAmount) {
+        calculations['pricing.deliveryVatAmount'] = deliveryVatAmount;
+        hasChanges = true;
+      }
+      if (invoiceData.pricing.deliveryIncludingVat !== deliveryIncludingVat) {
+        calculations['pricing.deliveryIncludingVat'] = deliveryIncludingVat;
+        hasChanges = true;
+      }
+    } else {
+      // Clear VAT amounts if VAT is not applied
+      if (invoiceData.pricing.deliveryVatAmount !== 0) {
+        calculations['pricing.deliveryVatAmount'] = 0;
+        hasChanges = true;
+      }
+      if (invoiceData.pricing.deliveryIncludingVat !== deliveryCostPostDiscount) {
+        calculations['pricing.deliveryIncludingVat'] = deliveryCostPostDiscount;
+        hasChanges = true;
+      }
+    }
+
     // 5. Finance Add-on Post-Discount calculations
     if (invoiceData.addons?.finance?.addon1) {
       const addon1Cost = invoiceData.addons.finance.addon1.cost || 0;
@@ -638,6 +747,31 @@ export default function DynamicInvoiceForm({
       if (invoiceData.addons.finance.addon1.postDiscountCost !== addon1PostDiscount) {
         calculations['addons.finance.addon1.postDiscountCost'] = addon1PostDiscount;
         hasChanges = true;
+      }
+
+      // 5a. Finance Add-on 1 VAT calculation (20%)
+      if (invoiceData.addons.finance.addon1.applyVat) {
+        const addon1VatAmount = parseFloat((addon1PostDiscount * 0.20).toFixed(2));
+        const addon1IncludingVat = parseFloat((addon1PostDiscount + addon1VatAmount).toFixed(2));
+
+        if (invoiceData.addons.finance.addon1.vatAmount !== addon1VatAmount) {
+          calculations['addons.finance.addon1.vatAmount'] = addon1VatAmount;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.finance.addon1.costIncludingVat !== addon1IncludingVat) {
+          calculations['addons.finance.addon1.costIncludingVat'] = addon1IncludingVat;
+          hasChanges = true;
+        }
+      } else {
+        // Clear VAT amounts if VAT is not applied
+        if (invoiceData.addons.finance.addon1.vatAmount !== 0) {
+          calculations['addons.finance.addon1.vatAmount'] = 0;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.finance.addon1.costIncludingVat !== addon1PostDiscount) {
+          calculations['addons.finance.addon1.costIncludingVat'] = addon1PostDiscount;
+          hasChanges = true;
+        }
       }
     }
 
@@ -649,6 +783,31 @@ export default function DynamicInvoiceForm({
       if (invoiceData.addons.finance.addon2.postDiscountCost !== addon2PostDiscount) {
         calculations['addons.finance.addon2.postDiscountCost'] = addon2PostDiscount;
         hasChanges = true;
+      }
+
+      // 5b. Finance Add-on 2 VAT calculation (20%)
+      if (invoiceData.addons.finance.addon2.applyVat) {
+        const addon2VatAmount = parseFloat((addon2PostDiscount * 0.20).toFixed(2));
+        const addon2IncludingVat = parseFloat((addon2PostDiscount + addon2VatAmount).toFixed(2));
+
+        if (invoiceData.addons.finance.addon2.vatAmount !== addon2VatAmount) {
+          calculations['addons.finance.addon2.vatAmount'] = addon2VatAmount;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.finance.addon2.costIncludingVat !== addon2IncludingVat) {
+          calculations['addons.finance.addon2.costIncludingVat'] = addon2IncludingVat;
+          hasChanges = true;
+        }
+      } else {
+        // Clear VAT amounts if VAT is not applied
+        if (invoiceData.addons.finance.addon2.vatAmount !== 0) {
+          calculations['addons.finance.addon2.vatAmount'] = 0;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.finance.addon2.costIncludingVat !== addon2PostDiscount) {
+          calculations['addons.finance.addon2.costIncludingVat'] = addon2PostDiscount;
+          hasChanges = true;
+        }
       }
     }
 
@@ -662,6 +821,31 @@ export default function DynamicInvoiceForm({
         calculations['addons.customer.addon1.postDiscountCost'] = addon1PostDiscount;
         hasChanges = true;
       }
+
+      // 6a. Customer Add-on 1 VAT calculation (20%)
+      if (invoiceData.addons.customer.addon1.applyVat) {
+        const addon1VatAmount = parseFloat((addon1PostDiscount * 0.20).toFixed(2));
+        const addon1IncludingVat = parseFloat((addon1PostDiscount + addon1VatAmount).toFixed(2));
+
+        if (invoiceData.addons.customer.addon1.vatAmount !== addon1VatAmount) {
+          calculations['addons.customer.addon1.vatAmount'] = addon1VatAmount;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.customer.addon1.costIncludingVat !== addon1IncludingVat) {
+          calculations['addons.customer.addon1.costIncludingVat'] = addon1IncludingVat;
+          hasChanges = true;
+        }
+      } else {
+        // Clear VAT amounts if VAT is not applied
+        if (invoiceData.addons.customer.addon1.vatAmount !== 0) {
+          calculations['addons.customer.addon1.vatAmount'] = 0;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.customer.addon1.costIncludingVat !== addon1PostDiscount) {
+          calculations['addons.customer.addon1.costIncludingVat'] = addon1PostDiscount;
+          hasChanges = true;
+        }
+      }
     }
 
     if (invoiceData.addons?.customer?.addon2) {
@@ -673,9 +857,34 @@ export default function DynamicInvoiceForm({
         calculations['addons.customer.addon2.postDiscountCost'] = addon2PostDiscount;
         hasChanges = true;
       }
+
+      // 6b. Customer Add-on 2 VAT calculation (20%)
+      if (invoiceData.addons.customer.addon2.applyVat) {
+        const addon2VatAmount = parseFloat((addon2PostDiscount * 0.20).toFixed(2));
+        const addon2IncludingVat = parseFloat((addon2PostDiscount + addon2VatAmount).toFixed(2));
+
+        if (invoiceData.addons.customer.addon2.vatAmount !== addon2VatAmount) {
+          calculations['addons.customer.addon2.vatAmount'] = addon2VatAmount;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.customer.addon2.costIncludingVat !== addon2IncludingVat) {
+          calculations['addons.customer.addon2.costIncludingVat'] = addon2IncludingVat;
+          hasChanges = true;
+        }
+      } else {
+        // Clear VAT amounts if VAT is not applied
+        if (invoiceData.addons.customer.addon2.vatAmount !== 0) {
+          calculations['addons.customer.addon2.vatAmount'] = 0;
+          hasChanges = true;
+        }
+        if (invoiceData.addons.customer.addon2.costIncludingVat !== addon2PostDiscount) {
+          calculations['addons.customer.addon2.costIncludingVat'] = addon2PostDiscount;
+          hasChanges = true;
+        }
+      }
     }
 
-    // 7. Dynamic Finance Add-ons Post-Discount calculations
+    // 7. Dynamic Finance Add-ons Post-Discount and VAT calculations
     if (invoiceData.addons?.finance?.dynamicAddons && Array.isArray(invoiceData.addons.finance.dynamicAddons)) {
       invoiceData.addons.finance.dynamicAddons.forEach((addon, index) => {
         const addonCost = addon.cost || 0;
@@ -686,10 +895,36 @@ export default function DynamicInvoiceForm({
           calculations[`addons.finance.dynamicAddons.${index}.postDiscountCost`] = addonPostDiscount;
           hasChanges = true;
         }
+
+        // VAT calculations for dynamic finance addons
+        if (addon.applyVat) {
+          const vatAmount = addonPostDiscount * 0.20; // 20% VAT
+          const costIncludingVat = addonPostDiscount + vatAmount;
+
+          if (addon.vatAmount !== vatAmount) {
+            calculations[`addons.finance.dynamicAddons.${index}.vatAmount`] = vatAmount;
+            hasChanges = true;
+          }
+
+          if (addon.costIncludingVat !== costIncludingVat) {
+            calculations[`addons.finance.dynamicAddons.${index}.costIncludingVat`] = costIncludingVat;
+            hasChanges = true;
+          }
+        } else {
+          // Clear VAT fields when VAT is not applied
+          if (addon.vatAmount !== 0) {
+            calculations[`addons.finance.dynamicAddons.${index}.vatAmount`] = 0;
+            hasChanges = true;
+          }
+          if (addon.costIncludingVat !== addonPostDiscount) {
+            calculations[`addons.finance.dynamicAddons.${index}.costIncludingVat`] = addonPostDiscount;
+            hasChanges = true;
+          }
+        }
       });
     }
 
-    // 8. Dynamic Customer Add-ons Post-Discount calculations
+    // 8. Dynamic Customer Add-ons Post-Discount and VAT calculations
     if (invoiceData.addons?.customer?.dynamicAddons && Array.isArray(invoiceData.addons.customer.dynamicAddons)) {
       invoiceData.addons.customer.dynamicAddons.forEach((addon, index) => {
         const addonCost = addon.cost || 0;
@@ -700,33 +935,84 @@ export default function DynamicInvoiceForm({
           calculations[`addons.customer.dynamicAddons.${index}.postDiscountCost`] = addonPostDiscount;
           hasChanges = true;
         }
+
+        // VAT calculations for dynamic customer addons
+        if (addon.applyVat) {
+          const vatAmount = addonPostDiscount * 0.20; // 20% VAT
+          const costIncludingVat = addonPostDiscount + vatAmount;
+
+          if (addon.vatAmount !== vatAmount) {
+            calculations[`addons.customer.dynamicAddons.${index}.vatAmount`] = vatAmount;
+            hasChanges = true;
+          }
+
+          if (addon.costIncludingVat !== costIncludingVat) {
+            calculations[`addons.customer.dynamicAddons.${index}.costIncludingVat`] = costIncludingVat;
+            hasChanges = true;
+          }
+        } else {
+          // Clear VAT fields when VAT is not applied
+          if (addon.vatAmount !== 0) {
+            calculations[`addons.customer.dynamicAddons.${index}.vatAmount`] = 0;
+            hasChanges = true;
+          }
+          if (addon.costIncludingVat !== addonPostDiscount) {
+            calculations[`addons.customer.dynamicAddons.${index}.costIncludingVat`] = addonPostDiscount;
+            hasChanges = true;
+          }
+        }
       });
     }
 
     // 9. Compulsory Sale Deposit (Finance) calculation - automatic for Finance Company
     if (invoiceData.invoiceTo === 'Finance Company') {
-      // Calculate compulsory deposit using formula: Post Discount Warranty + Post Discount Enhanced Warranty + Post Discount Delivery + All Customer Add-ons
-      const warrantyPricePostDiscount = invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0;
-      const enhancedWarrantyPricePostDiscount = invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0;
-      const deliveryPricePostDiscount = invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0;
+      // Calculate compulsory deposit using VAT-INCLUSIVE prices when VAT is applied
+      // Formula: Warranty + Enhanced Warranty + Delivery + All Customer Add-ons (all with VAT if applicable)
+      
+      // Warranty - use VAT-inclusive price if VAT is applied
+      const warrantyPrice = invoiceData.pricing.applyVatToWarranty
+        ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+        : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
+      
+      // Enhanced Warranty - use VAT-inclusive price if VAT is applied
+      const enhancedWarrantyPrice = invoiceData.pricing.applyVatToEnhancedWarranty
+        ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+        : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
+      
+      // Delivery - use VAT-inclusive price if VAT is applied
+      const deliveryPrice = invoiceData.pricing.applyVatToDelivery
+        ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
+        : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0);
 
-      // Calculate all customer add-ons (post-discount)
-      const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-      const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-      const customerDynamicAddonsCost = (() => {
-        let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
-        if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-          dynamicAddons = Object.values(dynamicAddons);
-        }
-        return Array.isArray(dynamicAddons)
-          ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number }) =>
-            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
-          : 0;
-      })();
+      // Calculate all customer add-ons with VAT-inclusive prices - CALCULATE LOCALLY for immediate updates
+      const customerAddon1PostDiscount = Math.max(0, (invoiceData.addons?.customer?.addon1?.cost || 0) - (invoiceData.addons?.customer?.addon1?.discount || 0));
+      const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
+        ? customerAddon1PostDiscount * 1.20 // Add 20% VAT immediately
+        : customerAddon1PostDiscount;
+      
+      const customerAddon2PostDiscount = Math.max(0, (invoiceData.addons?.customer?.addon2?.cost || 0) - (invoiceData.addons?.customer?.addon2?.discount || 0));
+      const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
+        ? customerAddon2PostDiscount * 1.20 // Add 20% VAT immediately
+        : customerAddon2PostDiscount;
+      
+      // Helper to calculate customer add-on cost with VAT
+      const calculateCustomerAddonCost = (addon: { cost?: number; discount?: number; applyVat?: boolean }) => {
+        const addonCost = addon.cost || 0;
+        const addonDiscount = addon.discount || 0;
+        const postDiscount = Math.max(0, addonCost - addonDiscount);
+        return addon.applyVat 
+          ? postDiscount * 1.20 // Add 20% VAT immediately
+          : postDiscount;
+      };
+
+      const customerDynamicAddonsCost = ensureArrayFormat(invoiceData.addons?.customer?.dynamicAddons)
+        .reduce((sum: number, addon: { cost?: number; discount?: number; applyVat?: boolean }) => {
+          return sum + calculateCustomerAddonCost(addon);
+        }, 0);
 
       const totalCustomerAddons = customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost;
 
-      const calculatedCompulsorySaleDepositFinance = warrantyPricePostDiscount + enhancedWarrantyPricePostDiscount + deliveryPricePostDiscount + totalCustomerAddons;
+      const calculatedCompulsorySaleDepositFinance = warrantyPrice + enhancedWarrantyPrice + deliveryPrice + totalCustomerAddons;
 
       if (invoiceData.pricing.compulsorySaleDepositFinance !== calculatedCompulsorySaleDepositFinance) {
         calculations['pricing.compulsorySaleDepositFinance'] = calculatedCompulsorySaleDepositFinance;
@@ -742,9 +1028,7 @@ export default function DynamicInvoiceForm({
 
       // CRITICAL FIX: Calculate overpayments (Finance) - matches Stock Invoice Form
       // Formula: Math.max(0, totalPaid - compulsory)
-      const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - ((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)));
-      // const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - compulsorySaleDepositFinance); 
-      console.log((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0))
+      const overpaymentsFinance = Math.max(0, totalFinanceDepositPaid - ((invoiceData.pricing?.compulsorySaleDepositCustomer || invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0)))
 
       if (invoiceData.pricing.outstandingDepositFinance !== outstandingDepositFinance ||
         invoiceData.pricing.totalFinanceDepositPaid !== totalFinanceDepositPaid ||
@@ -756,7 +1040,62 @@ export default function DynamicInvoiceForm({
       }
     }
 
-    // 10. Outstanding Deposit calculations (Customer)
+    // 10. Compulsory Sale Deposit (Customer) calculation - automatic for Customer invoices
+    // For customer invoices, calculate the same way as Finance but store in compulsorySaleDepositCustomer
+    if (invoiceData.invoiceTo === 'Customer') {
+      // Calculate compulsory deposit using VAT-INCLUSIVE prices when VAT is applied
+      // Formula: Warranty + Enhanced Warranty + Delivery + All Customer Add-ons (all with VAT if applicable)
+      
+      // Warranty - use VAT-inclusive price if VAT is applied
+      const warrantyPriceCustomer = invoiceData.pricing.applyVatToWarranty
+        ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+        : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
+      
+      // Enhanced Warranty - use VAT-inclusive price if VAT is applied
+      const enhancedWarrantyPriceCustomer = invoiceData.pricing.applyVatToEnhancedWarranty
+        ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+        : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
+      
+      // Delivery - use VAT-inclusive price if VAT is applied
+      const deliveryPriceCustomer = invoiceData.pricing.applyVatToDelivery
+        ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
+        : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0);
+
+      // Helper to calculate customer add-on cost with VAT for customer deposit
+      const calculateCustomerAddonCostForCustomer = (addon: { cost?: number; discount?: number; applyVat?: boolean }) => {
+        const addonCost = addon.cost || 0;
+        const addonDiscount = addon.discount || 0;
+        const postDiscount = Math.max(0, addonCost - addonDiscount);
+        return addon.applyVat 
+          ? postDiscount * 1.20 // Add 20% VAT immediately
+          : postDiscount;
+      };
+
+      // Static customer add-ons - calculate VAT-inclusive values LOCALLY for immediate updates
+      const customerAddon1CostCustomer = invoiceData.addons?.customer?.addon1 
+        ? calculateCustomerAddonCostForCustomer(invoiceData.addons.customer.addon1)
+        : 0;
+      
+      const customerAddon2CostCustomer = invoiceData.addons?.customer?.addon2 
+        ? calculateCustomerAddonCostForCustomer(invoiceData.addons.customer.addon2)
+        : 0;
+
+      // Dynamic customer add-ons - calculate VAT-inclusive values LOCALLY for immediate updates
+      const customerDynamicAddonsCostCustomer = ensureArrayFormat(invoiceData.addons?.customer?.dynamicAddons)
+        .reduce((sum: number, addon: { cost?: number; discount?: number; applyVat?: boolean }) => {
+          return sum + calculateCustomerAddonCostForCustomer(addon);
+        }, 0);
+
+      const calculatedCompulsorySaleDepositCustomer = warrantyPriceCustomer + enhancedWarrantyPriceCustomer + deliveryPriceCustomer + 
+        customerAddon1CostCustomer + customerAddon2CostCustomer + customerDynamicAddonsCostCustomer;
+
+      if (invoiceData.pricing.compulsorySaleDepositCustomer !== calculatedCompulsorySaleDepositCustomer) {
+        calculations['pricing.compulsorySaleDepositCustomer'] = calculatedCompulsorySaleDepositCustomer;
+        hasChanges = true;
+      }
+    }
+
+    // 11. Outstanding Deposit calculations (Customer)
     const compulsorySaleDepositCustomer = invoiceData.pricing.compulsorySaleDepositCustomer || 0;
     const amountPaidDepositCustomer = invoiceData.pricing.amountPaidDepositCustomer || 0;
     const outstandingDepositCustomer = compulsorySaleDepositCustomer - amountPaidDepositCustomer;
@@ -791,16 +1130,33 @@ export default function DynamicInvoiceForm({
       }
     }
 
-    // 11. Balance to Finance calculation - CORRECTED to match BalanceSummary logic
+    // 11. Balance to Finance calculation - Uses VAT-INCLUSIVE prices when VAT is applied
     if (invoiceData.invoiceTo === 'Finance Company') {
-      // Use POST-DISCOUNT values for finance add-ons
-      const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.postDiscountCost || invoiceData.addons?.finance?.addon1?.cost || 0;
-      const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.postDiscountCost || invoiceData.addons?.finance?.addon2?.cost || 0;
-      const financeDynamicAddonsCost = Array.isArray(invoiceData.addons?.finance?.dynamicAddons)
-        ? invoiceData.addons.finance.dynamicAddons.reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) =>
-          sum + (addon.postDiscountCost || addon.cost || 0), 0)
-        : 0;
+      // Helper function to calculate VAT-inclusive cost for a single add-on
+      const calculateAddonCostWithVat = (addon: { cost?: number; discount?: number; applyVat?: boolean }) => {
+        const addonCost = addon.cost || 0;
+        const addonDiscount = addon.discount || 0;
+        const postDiscount = Math.max(0, addonCost - addonDiscount);
+        return addon.applyVat 
+          ? postDiscount * 1.20 // Add 20% VAT immediately
+          : postDiscount;
+      };
 
+      // Calculate ALL finance add-ons (static + dynamic) with VAT
+      const financeAddon1Cost = invoiceData.addons?.finance?.addon1 
+        ? calculateAddonCostWithVat(invoiceData.addons.finance.addon1)
+        : 0;
+      
+      const financeAddon2Cost = invoiceData.addons?.finance?.addon2 
+        ? calculateAddonCostWithVat(invoiceData.addons.finance.addon2)
+        : 0;
+      
+      // Use ensureArrayFormat to properly handle both array and object formats
+      const financeDynamicAddonsCost = ensureArrayFormat(invoiceData.addons?.finance?.dynamicAddons)
+        .reduce((sum: number, addon: { cost?: number; discount?: number; applyVat?: boolean }) => {
+          return sum + calculateAddonCostWithVat(addon);
+        }, 0);
+      
       // Sum all card, BACS, and cash payments from arrays
       const totalCardPayments = (invoiceData.payment?.breakdown?.cardPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
       const totalBacsPayments = (invoiceData.payment?.breakdown?.bacsPayments || []).reduce((sum, payment) => sum + (payment.amount || 0), 0);
@@ -811,10 +1167,14 @@ export default function DynamicInvoiceForm({
         totalCashPayments +
         (invoiceData.payment?.partExchange?.amountPaid || 0);
 
-      // CORRECTED: Balance to Finance = Sale Price + Settlement + Finance Add-ons - Overpayments (F) - Direct Payments
-      // Formula matches PaymentsAgainstBalance and BalanceSummary exactly
+      // CORRECTED: Balance to Finance = Sale Price (with VAT if applied) + Finance Add-ons (with VAT if applied) - Overpayments (F) - Direct Payments
+      // Use VAT-inclusive sale price when VAT is applied
+      const salePriceForBalance = invoiceData.pricing.applyVatToSalePrice
+        ? (invoiceData.pricing.salePriceIncludingVat || salePricePostDiscount)
+        : salePricePostDiscount;
+      
       const balanceToFinance = Math.max(0,
-        salePricePostDiscount +
+        salePriceForBalance +
         financeAddon1Cost +
         financeAddon2Cost +
         financeDynamicAddonsCost -
@@ -852,23 +1212,72 @@ export default function DynamicInvoiceForm({
     const totalDepositPayments = (invoiceData.pricing?.amountPaidDepositCustomer || 0);
     const totalPayments = totalDirectPayments + totalDepositPayments;
 
-    // Calculate subtotal from all components
-    const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-    const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-    const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
-    const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
-    const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
-    const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-    const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
-    // FIXED: Use helper function for consistent array handling
+    // Calculate subtotal from all components - USE VAT-INCLUSIVE PRICES when VAT is applied
+    
+    // Sale Price - use VAT-inclusive if VAT applied
+    const salePriceForSubtotal = invoiceData.pricing.applyVatToSalePrice
+      ? (invoiceData.pricing.salePriceIncludingVat || salePricePostDiscount)
+      : salePricePostDiscount;
+    
+    // Warranty - use VAT-inclusive if VAT applied (exclude for trade sales)
+    const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+      invoiceData.pricing.applyVatToWarranty
+        ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+        : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+    );
+    
+    // Enhanced Warranty - use VAT-inclusive if VAT applied (exclude for trade sales)
+    const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+      invoiceData.pricing.applyVatToEnhancedWarranty
+        ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+        : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+    );
+    
+    // Delivery - use VAT-inclusive if VAT applied
+    const deliveryPrice = invoiceData.pricing.applyVatToDelivery
+      ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0)
+      : (invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0);
+    
+    // Finance Add-ons - use VAT-inclusive if VAT applied (only for Finance Company invoices)
+    const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+      invoiceData.addons?.finance?.addon1?.applyVat
+        ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
+        : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+    );
+    
+    const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+      invoiceData.addons?.finance?.addon2?.applyVat
+        ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
+        : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+    );
+    
+    // Customer Add-ons - use VAT-inclusive if VAT applied
+    const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
+      ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
+      : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+    
+    const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
+      ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
+      : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
+    
+    // Dynamic Finance Add-ons - use VAT-inclusive if VAT applied (only for Finance Company)
     const financeDynamicAddonsCost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 :
-      ensureArrayFormat(invoiceData.addons?.finance?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) =>
-        sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0);
+      ensureArrayFormat(invoiceData.addons?.finance?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number; applyVat?: boolean; costIncludingVat?: number }) => {
+        const addonCost = addon.applyVat
+          ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+          : (addon.postDiscountCost ?? addon.cost ?? 0);
+        return sum + addonCost;
+      }, 0);
 
-    const customerDynamicAddonsCost = ensureArrayFormat(invoiceData.addons?.customer?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number }) =>
-      sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0);
+    // Dynamic Customer Add-ons - use VAT-inclusive if VAT applied
+    const customerDynamicAddonsCost = ensureArrayFormat(invoiceData.addons?.customer?.dynamicAddons).reduce((sum: number, addon: { cost?: number; postDiscountCost?: number; applyVat?: boolean; costIncludingVat?: number }) => {
+      const addonCost = addon.applyVat
+        ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+        : (addon.postDiscountCost ?? addon.cost ?? 0);
+      return sum + addonCost;
+    }, 0);
 
-    const balanceSubtotal = salePricePostDiscount + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
+    const balanceSubtotal = salePriceForSubtotal + warrantyPrice + enhancedWarrantyPrice + deliveryPrice +
       financeAddon1Cost + financeAddon2Cost + customerAddon1Cost + customerAddon2Cost +
       financeDynamicAddonsCost + customerDynamicAddonsCost;
 
@@ -940,6 +1349,19 @@ export default function DynamicInvoiceForm({
     invoiceData.pricing.discountOnEnhancedWarranty,
     invoiceData.delivery?.cost,
     invoiceData.delivery?.discount,
+    // VAT dependencies - CRITICAL: Include both toggles AND calculated values
+    invoiceData.pricing.applyVatToSalePrice,
+    invoiceData.pricing.salePriceVatAmount,
+    invoiceData.pricing.salePriceIncludingVat,
+    invoiceData.pricing.applyVatToWarranty,
+    invoiceData.pricing.warrantyVatAmount,
+    invoiceData.pricing.warrantyIncludingVat,
+    invoiceData.pricing.applyVatToEnhancedWarranty,
+    invoiceData.pricing.enhancedWarrantyVatAmount,
+    invoiceData.pricing.enhancedWarrantyIncludingVat,
+    invoiceData.pricing.applyVatToDelivery,
+    invoiceData.pricing.deliveryVatAmount,
+    invoiceData.pricing.deliveryIncludingVat,
     // Deposit dependencies
     invoiceData.pricing.compulsorySaleDepositFinance,
     invoiceData.pricing.amountPaidDepositFinance,
@@ -957,15 +1379,27 @@ export default function DynamicInvoiceForm({
     invoiceData.payment?.partExchange?.amountPaid,
     invoiceData.payment?.balanceToFinance,
     invoiceData.vatAmount,
-    // Add-on dependencies
+    // Add-on dependencies - CRITICAL: Include VAT-inclusive values
     invoiceData.addons?.finance?.addon1?.cost,
     invoiceData.addons?.finance?.addon1?.discount,
+    invoiceData.addons?.finance?.addon1?.applyVat,
+    invoiceData.addons?.finance?.addon1?.vatAmount,
+    invoiceData.addons?.finance?.addon1?.costIncludingVat,
     invoiceData.addons?.finance?.addon2?.cost,
     invoiceData.addons?.finance?.addon2?.discount,
+    invoiceData.addons?.finance?.addon2?.applyVat,
+    invoiceData.addons?.finance?.addon2?.vatAmount,
+    invoiceData.addons?.finance?.addon2?.costIncludingVat,
     invoiceData.addons?.customer?.addon1?.cost,
     invoiceData.addons?.customer?.addon1?.discount,
+    invoiceData.addons?.customer?.addon1?.applyVat,
+    invoiceData.addons?.customer?.addon1?.vatAmount,
+    invoiceData.addons?.customer?.addon1?.costIncludingVat,
     invoiceData.addons?.customer?.addon2?.cost,
     invoiceData.addons?.customer?.addon2?.discount,
+    invoiceData.addons?.customer?.addon2?.applyVat,
+    invoiceData.addons?.customer?.addon2?.vatAmount,
+    invoiceData.addons?.customer?.addon2?.costIncludingVat,
     // FIXED: Add proper dynamic addon dependencies
     JSON.stringify(invoiceData.addons?.finance?.dynamicAddons || []),
     JSON.stringify(invoiceData.addons?.customer?.dynamicAddons || []),
@@ -984,6 +1418,20 @@ export default function DynamicInvoiceForm({
   useEffect(() => {
     performCalculations();
   }, [performCalculations]);
+
+  // Helper function to check if VAT is applied to any item
+  const hasVATApplied = useCallback(() => {
+    return invoiceData.pricing.applyVatToSalePrice ||
+           invoiceData.pricing.applyVatToWarranty ||
+           invoiceData.pricing.applyVatToEnhancedWarranty ||
+           invoiceData.pricing.applyVatToDelivery ||
+           invoiceData.addons?.customer?.addon1?.applyVat ||
+           invoiceData.addons?.customer?.addon2?.applyVat ||
+           invoiceData.addons?.finance?.addon1?.applyVat ||
+           invoiceData.addons?.finance?.addon2?.applyVat ||
+           (Array.isArray(invoiceData.addons?.customer?.dynamicAddons) && invoiceData.addons.customer.dynamicAddons.some((addon: any) => addon.applyVat)) ||
+           (Array.isArray(invoiceData.addons?.finance?.dynamicAddons) && invoiceData.addons.finance.dynamicAddons.some((addon: any) => addon.applyVat));
+  }, [invoiceData]);
 
   // Determine which sections should be visible based on form data
   const getSectionVisibility = useCallback((sectionId: string): boolean => {
@@ -1416,6 +1864,42 @@ export default function DynamicInvoiceForm({
                   />
                 </div>
 
+                {/* VAT Option for Sale Price - Hidden, automatically applied when vatScheme=VAT */}
+                <div className={`p-4 border rounded-lg hidden ${isDarkMode ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={invoiceData.pricing.applyVatToSalePrice || false}
+                        onCheckedChange={(checked) => updateNestedData('pricing.applyVatToSalePrice', checked)}
+                      />
+                      <Label className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                        Apply VAT to Sale Price (20%)
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  {invoiceData.pricing.applyVatToSalePrice && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
+                      <FormInput
+                        label="VAT Amount"
+                        value={invoiceData.pricing.salePriceVatAmount || 0}
+                        onChange={() => {}} // Calculated field
+                        type="number"
+                        icon={PoundSterling}
+                        disabled
+                      />
+                      <FormInput
+                        label="Sale Price Including VAT"
+                        value={invoiceData.pricing.salePriceIncludingVat || 0}
+                        onChange={() => {}} // Calculated field
+                        type="number"
+                        icon={PoundSterling}
+                        disabled
+                      />
+                    </div>
+                  )}
+                </div>
+
               </CardContent>
             </Card>
           </TabsContent>
@@ -1707,31 +2191,69 @@ export default function DynamicInvoiceForm({
                           <FormInput
                             label="Subtotal"
                             value={(() => {
-                              const salePrice = invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0;
-                              const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-                              const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-                              const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                              // Use VAT-INCLUSIVE prices when VAT is applied
+                              const salePrice = invoiceData.pricing.applyVatToSalePrice
+                                ? (invoiceData.pricing.salePriceIncludingVat ?? invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0)
+                                : (invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0);
+                              
+                              const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+                                invoiceData.pricing.applyVatToWarranty
+                                  ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                                  : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                              );
+                              
+                              const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+                                invoiceData.pricing.applyVatToEnhancedWarranty
+                                  ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                                  : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                              );
+                              
+                              const deliveryPrice = invoiceData.pricing.applyVatToDelivery
+                                ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0)
+                                : (invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0);
 
-                              // Finance addons
-                              const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0;
-                              const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0;
+                              // Finance addons - use VAT-inclusive when VAT is applied
+                              const financeAddon1Cost = invoiceData.addons?.finance?.addon1?.applyVat
+                                ? (invoiceData.addons?.finance?.addon1?.costIncludingVat ?? invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+                                : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
+                              
+                              const financeAddon2Cost = invoiceData.addons?.finance?.addon2?.applyVat
+                                ? (invoiceData.addons?.finance?.addon2?.costIncludingVat ?? invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+                                : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
+                              
                               const financeDynamicAddonsCost = (() => {
                                 let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
                                 if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                                   dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
                                 }
-                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => {
+                                  const addonCost = addon.applyVat
+                                    ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                                    : (addon.postDiscountCost ?? addon.cost ?? 0);
+                                  return sum + addonCost;
+                                }, 0) : 0;
                               })();
 
-                              // Customer addons
-                              const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                              const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                              // Customer addons - use VAT-inclusive when VAT is applied
+                              const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
+                                ? (invoiceData.addons?.customer?.addon1?.costIncludingVat ?? invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0)
+                                : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+                              
+                              const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
+                                ? (invoiceData.addons?.customer?.addon2?.costIncludingVat ?? invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0)
+                                : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
+                              
                               const customerDynamicAddonsCost = (() => {
                                 let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
                                 if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                                   dynamicAddons = Object.values(dynamicAddons as Record<string, any>);
                                 }
-                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                                return (dynamicAddons && Array.isArray(dynamicAddons)) ? (dynamicAddons as any[]).reduce((sum, addon) => {
+                                  const addonCost = addon.applyVat
+                                    ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                                    : (addon.postDiscountCost ?? addon.cost ?? 0);
+                                  return sum + addonCost;
+                                }, 0) : 0;
                               })();
 
                               // Settlement amount - only for finance company invoices with part exchange
@@ -1756,21 +2278,40 @@ export default function DynamicInvoiceForm({
                           value={(() => {
                             // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
                             // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
-                            const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
-                            const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
-                            const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                            // Use VAT-INCLUSIVE prices when VAT is applied
+                            const postWarrantyPrice = invoiceData.pricing.applyVatToWarranty
+                              ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0)
+                              : (invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0);
+                            
+                            const postEnhancedWarrantyPrice = invoiceData.pricing.applyVatToEnhancedWarranty
+                              ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0)
+                              : (invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0);
+                            
+                            const postDeliveryPrice = invoiceData.pricing.applyVatToDelivery
+                              ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0)
+                              : (invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0);
 
-                            // Static customer add-ons (use post-discount values when available)
-                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                            // Static customer add-ons (use VAT-inclusive values when VAT is applied)
+                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.applyVat
+                              ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0)
+                              : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+                            
+                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.applyVat
+                              ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0)
+                              : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
 
-                            // Dynamic customer add-ons (use post-discount values when available)
+                            // Dynamic customer add-ons (use VAT-inclusive values when VAT is applied)
                             const postDynamicCustomerAddons = (() => {
                               let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
                               if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                                 dynamicAddons = Object.values(dynamicAddons);
                               }
-                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => {
+                                const addonCost = addon.applyVat
+                                  ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                                  : (addon.postDiscountCost ?? addon.cost ?? 0);
+                                return sum + addonCost;
+                              }, 0) : 0;
                             })();
 
                             const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
@@ -1988,21 +2529,40 @@ export default function DynamicInvoiceForm({
                           value={(() => {
                             // CORRECTED: Balance to Customer = Post Warranty + Post Enhanced Warranty + Post Delivery + Post Customer Add-ons - Total Finance Deposit Paid
                             // Total Finance Deposit Paid = Dealer Deposit Paid + Finance Deposit Paid (matches Stock Invoice Form)
-                            const postWarrantyPrice = invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0;
-                            const postEnhancedWarrantyPrice = invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0;
-                            const postDeliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                            // Use VAT-INCLUSIVE prices when VAT is applied
+                            const postWarrantyPrice = invoiceData.pricing.applyVatToWarranty
+                              ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0)
+                              : (invoiceData.pricing?.warrantyPricePostDiscount ?? invoiceData.pricing?.warrantyPrice ?? 0);
+                            
+                            const postEnhancedWarrantyPrice = invoiceData.pricing.applyVatToEnhancedWarranty
+                              ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0)
+                              : (invoiceData.pricing?.enhancedWarrantyPricePostDiscount ?? 0);
+                            
+                            const postDeliveryPrice = invoiceData.pricing.applyVatToDelivery
+                              ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0)
+                              : (invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0);
 
-                            // Static customer add-ons (use post-discount values when available)
-                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                            // Static customer add-ons (use VAT-inclusive values when VAT is applied)
+                            const postCustomerAddon1 = invoiceData.addons?.customer?.addon1?.applyVat
+                              ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0)
+                              : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+                            
+                            const postCustomerAddon2 = invoiceData.addons?.customer?.addon2?.applyVat
+                              ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0)
+                              : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
 
-                            // Dynamic customer add-ons (use post-discount values when available)
+                            // Dynamic customer add-ons (use VAT-inclusive values when VAT is applied)
                             const postDynamicCustomerAddons = (() => {
                               let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
                               if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                                 dynamicAddons = Object.values(dynamicAddons);
                               }
-                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                              return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => {
+                                const addonCost = addon.applyVat
+                                  ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                                  : (addon.postDiscountCost ?? addon.cost ?? 0);
+                                return sum + addonCost;
+                              }, 0) : 0;
                             })();
 
                             const totalCustomerItems = postWarrantyPrice + postEnhancedWarrantyPrice + postDeliveryPrice +
@@ -2162,7 +2722,20 @@ export default function DynamicInvoiceForm({
                 {/* Delivery Pricing Section - Only show for Delivery type */}
                 {invoiceData.delivery.type === 'delivery' && (
                   <div className="space-y-4">
-                    <h4 className="font-medium">Delivery Pricing</h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Delivery Pricing</h4>
+                      {hasVATApplied() && (
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={invoiceData.pricing.applyVatToDelivery || false}
+                            onCheckedChange={(checked) => updateNestedData('pricing.applyVatToDelivery', checked)}
+                          />
+                          <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                            Apply VAT (20%)
+                          </Label>
+                        </div>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormInput
                         label="Delivery Cost"
@@ -2262,7 +2835,20 @@ export default function DynamicInvoiceForm({
 
                   {invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected' && (
                     <div className="space-y-4">
-                      <h4 className="font-medium">Warranty Pricing</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Warranty Pricing</h4>
+                        {hasVATApplied() && (
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={invoiceData.pricing.applyVatToWarranty || false}
+                              onCheckedChange={(checked) => updateNestedData('pricing.applyVatToWarranty', checked)}
+                            />
+                            <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              Apply VAT (20%)
+                            </Label>
+                          </div>
+                        )}
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormInput
                           label="Warranty Price"
@@ -2368,33 +2954,49 @@ export default function DynamicInvoiceForm({
 
                     {invoiceData.warranty.enhanced && (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <FormInput
-                            label="Enhanced Warranty Price"
-                            value={invoiceData.pricing.enhancedWarrantyPrice || 0}
-                            onChange={createChangeHandler('pricing.enhancedWarrantyPrice')}
-                            type="number"
-                            icon={PoundSterling}
-                          />
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">Enhanced Warranty Pricing</h4>
+                            {hasVATApplied() && (
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={invoiceData.pricing.applyVatToEnhancedWarranty || false}
+                                  onCheckedChange={(checked) => updateNestedData('pricing.applyVatToEnhancedWarranty', checked)}
+                                />
+                                <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                  Apply VAT (20%)
+                                </Label>
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormInput
+                              label="Enhanced Warranty Price"
+                              value={invoiceData.pricing.enhancedWarrantyPrice || 0}
+                              onChange={createChangeHandler('pricing.enhancedWarrantyPrice')}
+                              type="number"
+                              icon={PoundSterling}
+                            />
 
-                          <FormInput
-                            label="Discount on Enhanced Warranty"
-                            value={invoiceData.pricing.discountOnEnhancedWarranty || 0}
-                            onChange={createChangeHandler('pricing.discountOnEnhancedWarranty')}
-                            type="number"
-                            icon={PoundSterling}
-                          />
+                            <FormInput
+                              label="Discount on Enhanced Warranty"
+                              value={invoiceData.pricing.discountOnEnhancedWarranty || 0}
+                              onChange={createChangeHandler('pricing.discountOnEnhancedWarranty')}
+                              type="number"
+                              icon={PoundSterling}
+                            />
 
-                          <FormInput
-                            label="Enhanced Warranty Post-Discount"
-                            value={
-                              (invoiceData.pricing.enhancedWarrantyPrice || 0) - (invoiceData.pricing.discountOnEnhancedWarranty || 0)
-                            }
-                            onChange={createChangeHandler('pricing.enhancedWarrantyPricePostDiscount')}
-                            type="number"
-                            icon={PoundSterling}
-                            disabled
-                          />
+                            <FormInput
+                              label="Enhanced Warranty Post-Discount"
+                              value={
+                                (invoiceData.pricing.enhancedWarrantyPrice || 0) - (invoiceData.pricing.discountOnEnhancedWarranty || 0)
+                              }
+                              onChange={createChangeHandler('pricing.enhancedWarrantyPricePostDiscount')}
+                              type="number"
+                              icon={PoundSterling}
+                              disabled
+                            />
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -2443,7 +3045,20 @@ export default function DynamicInvoiceForm({
                         {/* Static Add-ons */}
                         <div className="space-y-6">
                           <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                            <h5 className="font-medium mb-3">Finance Add-on 1</h5>
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="font-medium">Finance Add-on 1</h5>
+                              {hasVATApplied() && (
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    checked={invoiceData.addons.finance.addon1?.applyVat || false}
+                                    onCheckedChange={(checked) => updateNestedData('addons.finance.addon1.applyVat', checked)}
+                                  />
+                                  <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    Apply VAT (20%)
+                                  </Label>
+                                </div>
+                              )}
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <FormInput
                                 label="Name"
@@ -2479,7 +3094,20 @@ export default function DynamicInvoiceForm({
 
                           {invoiceData.addons.finance.addon2 && (
                             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                              <h5 className="font-medium mb-3">Finance Add-on 2</h5>
+                              <div className="flex items-center justify-between mb-3">
+                                <h5 className="font-medium">Finance Add-on 2</h5>
+                                {hasVATApplied() && (
+                                  <div className="flex items-center space-x-2">
+                                    <Switch
+                                      checked={invoiceData.addons.finance.addon2?.applyVat || false}
+                                      onCheckedChange={(checked) => updateNestedData('addons.finance.addon2.applyVat', checked)}
+                                    />
+                                    <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                      Apply VAT (20%)
+                                    </Label>
+                                  </div>
+                                )}
+                              </div>
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <FormInput
                                   label="Name"
@@ -2556,15 +3184,37 @@ export default function DynamicInvoiceForm({
                                           if (invoiceData.addons.finance.addon2) count++;
                                           return count + index + 1;
                                         })()}</h5>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => removeFinanceAddon(index)}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                        >
-                                          <Minus className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex items-center gap-2">
+                                          {hasVATApplied() && (
+                                            <div className="flex items-center space-x-2">
+                                              <Switch
+                                                checked={addon.applyVat || false}
+                                                onCheckedChange={(checked) => {
+                                                  let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
+                                                  if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                                    dynamicAddons = Object.values(dynamicAddons);
+                                                  }
+                                                  const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                                  const newAddons = [...currentAddons];
+                                                  newAddons[index] = { ...newAddons[index], applyVat: checked };
+                                                  updateNestedData('addons.finance.dynamicAddons', newAddons);
+                                                }}
+                                              />
+                                              <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                Apply VAT (20%)
+                                              </Label>
+                                            </div>
+                                          )}
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => removeFinanceAddon(index)}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                          >
+                                            <Minus className="h-4 w-4" />
+                                          </Button>
+                                        </div>
                                       </div>
                                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                         <FormInput
@@ -2656,7 +3306,20 @@ export default function DynamicInvoiceForm({
                       {/* Static Add-ons */}
                       <div className="space-y-6">
                         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                          <h5 className="font-medium mb-3">Customer Add-on 1</h5>
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-medium">Customer Add-on 1</h5>
+                            {hasVATApplied() && (
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={invoiceData.addons.customer.addon1?.applyVat || false}
+                                  onCheckedChange={(checked) => updateNestedData('addons.customer.addon1.applyVat', checked)}
+                                />
+                                <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                  Apply VAT (20%)
+                                </Label>
+                              </div>
+                            )}
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <FormInput
                               label="Name"
@@ -2692,7 +3355,20 @@ export default function DynamicInvoiceForm({
 
                         {invoiceData.addons.customer.addon2 && (
                           <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                            <h5 className="font-medium mb-3">Customer Add-on 2</h5>
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="font-medium">Customer Add-on 2</h5>
+                              {hasVATApplied() && (
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    checked={invoiceData.addons.customer.addon2?.applyVat || false}
+                                    onCheckedChange={(checked) => updateNestedData('addons.customer.addon2.applyVat', checked)}
+                                  />
+                                  <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    Apply VAT (20%)
+                                  </Label>
+                                </div>
+                              )}
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <FormInput
                                 label="Name"
@@ -2778,15 +3454,37 @@ export default function DynamicInvoiceForm({
                                         if (invoiceData.addons.customer.addon2) count++;
                                         return count + index + 1;
                                       })()}</h5>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => removeCustomerAddon(index)}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
+                                      <div className="flex items-center gap-2">
+                                        {hasVATApplied() && (
+                                          <div className="flex items-center space-x-2">
+                                            <Switch
+                                              checked={addon.applyVat || false}
+                                              onCheckedChange={(checked) => {
+                                                let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
+                                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                                  dynamicAddons = Object.values(dynamicAddons);
+                                                }
+                                                const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                                const newAddons = [...currentAddons];
+                                                newAddons[index] = { ...newAddons[index], applyVat: checked };
+                                                updateNestedData('addons.customer.dynamicAddons', newAddons);
+                                              }}
+                                            />
+                                            <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                              Apply VAT (20%)
+                                            </Label>
+                                          </div>
+                                        )}
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => removeCustomerAddon(index)}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        >
+                                          <Minus className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                       <FormInput
@@ -3277,31 +3975,73 @@ export default function DynamicInvoiceForm({
                     <FormInput
                       label="Subtotal"
                       value={(() => {
-                        const salePrice = invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0;
-                        const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-                        const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-                        const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                        // Use VAT-INCLUSIVE prices when VAT is applied
+                        const salePrice = invoiceData.pricing.applyVatToSalePrice
+                          ? (invoiceData.pricing.salePriceIncludingVat ?? invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0)
+                          : (invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0);
+                        
+                        const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+                          invoiceData.pricing.applyVatToWarranty
+                            ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                            : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                        );
+                        
+                        const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+                          invoiceData.pricing.applyVatToEnhancedWarranty
+                            ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                            : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                        );
+                        
+                        const deliveryPrice = invoiceData.pricing.applyVatToDelivery
+                          ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0)
+                          : (invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0);
 
-                        // Finance addons - only for Finance Company invoices
-                        const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
-                        const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
+                        // Finance addons - only for Finance Company invoices, use VAT-inclusive when VAT is applied
+                        const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+                          invoiceData.addons?.finance?.addon1?.applyVat
+                            ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+                            : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+                        );
+                        
+                        const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+                          invoiceData.addons?.finance?.addon2?.applyVat
+                            ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+                            : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+                        );
+                        
                         const financeDynamicAddonsCost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (() => {
                           let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
                           if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                             dynamicAddons = Object.values(dynamicAddons);
                           }
-                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => {
+                            const addonCost = addon.applyVat
+                              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                              : (addon.postDiscountCost ?? addon.cost ?? 0);
+                            return sum + addonCost;
+                          }, 0) : 0;
                         })();
 
-                        // Customer addons
-                        const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                        const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                        // Customer addons - use VAT-inclusive when VAT is applied
+                        const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
+                          ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0)
+                          : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+                        
+                        const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
+                          ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0)
+                          : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
+                        
                         const customerDynamicAddonsCost = (() => {
                           let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
                           if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                             dynamicAddons = Object.values(dynamicAddons);
                           }
-                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => {
+                            const addonCost = addon.applyVat
+                              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                              : (addon.postDiscountCost ?? addon.cost ?? 0);
+                            return sum + addonCost;
+                          }, 0) : 0;
                         })();
 
                         // Settlement amount - only for finance company invoices with part exchange
@@ -3340,32 +4080,73 @@ export default function DynamicInvoiceForm({
                     <FormInput
                       label="Remaining Balance"
                       value={(() => {
-                        // Use the SAME subtotal calculation as the Subtotal field above
-                        const salePrice = invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0;
-                        const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-                        const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-                        const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0;
+                        // Use the SAME subtotal calculation as the Subtotal field above - with VAT-INCLUSIVE prices
+                        const salePrice = invoiceData.pricing.applyVatToSalePrice
+                          ? (invoiceData.pricing.salePriceIncludingVat ?? invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0)
+                          : (invoiceData.pricing.salePricePostDiscount ?? invoiceData.pricing.salePrice ?? 0);
+                        
+                        const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+                          invoiceData.pricing.applyVatToWarranty
+                            ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                            : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                        );
+                        
+                        const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+                          invoiceData.pricing.applyVatToEnhancedWarranty
+                            ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                            : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                        );
+                        
+                        const deliveryPrice = invoiceData.pricing.applyVatToDelivery
+                          ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0)
+                          : (invoiceData.delivery?.postDiscountCost ?? invoiceData.delivery?.cost ?? 0);
 
-                        // Finance addons - only for Finance Company invoices
-                        const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
-                        const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
+                        // Finance addons - only for Finance Company invoices, use VAT-inclusive when VAT is applied
+                        const financeAddon1Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+                          invoiceData.addons?.finance?.addon1?.applyVat
+                            ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+                            : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+                        );
+                        
+                        const financeAddon2Cost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+                          invoiceData.addons?.finance?.addon2?.applyVat
+                            ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+                            : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+                        );
+                        
                         const financeDynamicAddonsCost = (invoiceData.invoiceTo !== 'Finance Company') ? 0 : (() => {
                           let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
                           if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                             dynamicAddons = Object.values(dynamicAddons);
                           }
-                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => {
+                            const addonCost = addon.applyVat
+                              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                              : (addon.postDiscountCost ?? addon.cost ?? 0);
+                            return sum + addonCost;
+                          }, 0) : 0;
                         })();
 
-                        // Customer addons
-                        const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-                        const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+                        // Customer addons - use VAT-inclusive when VAT is applied
+                        const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
+                          ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0)
+                          : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+                        
+                        const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
+                          ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0)
+                          : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
+                        
                         const customerDynamicAddonsCost = (() => {
                           let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
                           if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
                             dynamicAddons = Object.values(dynamicAddons);
                           }
-                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) : 0;
+                          return Array.isArray(dynamicAddons) ? dynamicAddons.reduce((sum, addon) => {
+                            const addonCost = addon.applyVat
+                              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                              : (addon.postDiscountCost ?? addon.cost ?? 0);
+                            return sum + addonCost;
+                          }, 0) : 0;
                         })();
 
                         // Settlement amount - only for finance company invoices with part exchange

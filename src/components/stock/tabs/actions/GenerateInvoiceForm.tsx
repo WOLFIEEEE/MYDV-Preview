@@ -7,7 +7,7 @@ import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { FileText, Package, AlertCircle, CheckCircle, DollarSign, Calendar, Building2, Send } from 'lucide-react';
+import { FileText, Package, AlertCircle, CheckCircle, DollarSign, Calendar, Building2, Send, Receipt } from 'lucide-react';
 import { PREDEFINED_FINANCE_COMPANIES, CUSTOM_FINANCE_COMPANY_ID, getFinanceCompanyById } from '@/lib/financeCompanies';
 import LicensePlate from '@/components/ui/license-plate';
 
@@ -20,6 +20,7 @@ interface GenerateInvoiceFormProps {
 export interface FormData {
   // Step 1: Vehicle & Sale Information
   saleType: string
+  vatScheme: string
   invoiceNumber: string
   invoiceTo: string
   vehicleRegistration: string
@@ -224,6 +225,7 @@ export interface FormData {
 const initialFormData: FormData = {
   // Initialize all fields with empty values
   saleType: '',
+  vatScheme: '',
   invoiceNumber: '',
   invoiceTo: '',
   vehicleRegistration: '',
@@ -407,7 +409,6 @@ export default function GenerateInvoiceForm({ stockData, saleDetailsData }: Gene
 
   const isFinanceInvoice = formData.invoiceTo === 'Finance Company';
   const isCustomerInvoice = formData.invoiceTo === 'Customer';
-  const isCommercialSale = formData.saleType === 'Commercial';
   const isTradeSale = formData.saleType === 'Trade';
 
   // Fetch trade terms from database when it's a trade sale
@@ -677,7 +678,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
   // Handle sale type changes - set default invoiceTo for non-Retail sales
   // useEffect(() => {
   //   if (formData.saleType && formData.saleType !== 'Retail') {
-  //     // For Trade and Commercial sales, default to Customer
+  //     // For Trade sales, default to Customer
   //     if (formData.invoiceTo !== 'Customer') {
   //       handleInputChange('invoiceTo', 'Customer');
   //     }
@@ -732,11 +733,16 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
     setIsSubmitting(true);
 
     try {
-      // Only check saleType and invoiceTo (for Retail sales)
+      // Check saleType, vatScheme, and invoiceTo (for Retail sales)
       const newErrors: Record<string, string> = {};
 
       if (!formData.saleType || formData.saleType === '-') {
         newErrors.saleType = 'Sale type is required';
+      }
+
+      // VAT Scheme is required
+      if (!formData.vatScheme || formData.vatScheme === '') {
+        newErrors.vatScheme = 'VAT scheme is required';
       }
 
       // Invoice To is only required for Retail sales
@@ -765,6 +771,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         stockId: stockId,
         source: 'form',
         saleType: formData.saleType,
+        vatScheme: formData.vatScheme,
         invoiceTo: formData.invoiceTo || 'Customer'
       });
 
@@ -900,7 +907,6 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                 <option value="-">-</option>
                 <option value="Retail">Retail</option>
                 <option value="Trade">Trade</option>
-                <option value="Commercial">Commercial</option>
               </select>
               {errors.saleType && (
                 <p className="text-red-500 text-xs flex items-center gap-1">
@@ -910,6 +916,35 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
               )}
               <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Defines invoice logic and available options
+              </p>
+            </div>
+
+            {/* VAT Scheme */}
+            <div className="space-y-2">
+              <label className={`${labelClass} flex items-center gap-2`}>
+                <Receipt className="h-4 w-4" />
+                VAT Scheme
+                <span className={`text-xs px-2 py-1 rounded ${
+                  isDarkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'
+                }`}>Required</span>
+              </label>
+              <select
+                value={formData.vatScheme}
+                onChange={(e) => handleInputChange('vatScheme', e.target.value)}
+                className={`${inputBaseClass} ${errors.vatScheme ? 'border-red-500' : ''}`}
+              >
+                <option value="">Select VAT Scheme</option>
+                <option value="Margin">Margin</option>
+                <option value="VAT">VAT</option>
+              </select>
+              {errors.vatScheme && (
+                <p className="text-red-500 text-xs flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.vatScheme}
+                </p>
+              )}
+              <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Select Margin for no VAT, or VAT to apply 20% VAT to sales price
               </p>
             </div>
 
