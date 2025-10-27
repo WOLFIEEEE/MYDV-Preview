@@ -642,11 +642,6 @@ export default function NotificationsPage() {
                         <option value="assigned">Assigned</option>
                         <option value="actioned">Actioned</option>
                         <option value="closed">Closed</option>
-                        <option value="viewed">Viewed</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="contacted">Contacted</option>
-                        <option value="completed">Completed</option>
-                        <option value="archived">Archived</option>
                       </select>
                     </div>
                     <div className="flex items-center gap-2">
@@ -740,6 +735,11 @@ export default function NotificationsPage() {
                         <tr>
                           <th className="px-6 py-4 text-left">
                             <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
+                              Status
+                            </span>
+                          </th>
+                          <th className="px-6 py-4 text-left">
+                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                               Vehicle Info
                             </span>
                           </th>
@@ -773,11 +773,6 @@ export default function NotificationsPage() {
                           </th>
                           <th className="px-6 py-4 text-left">
                             <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                              Status
-                            </span>
-                          </th>
-                          <th className="px-6 py-4 text-left">
-                            <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
                               Priority
                             </span>
                           </th>
@@ -804,7 +799,28 @@ export default function NotificationsPage() {
                       <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                         {filteredAndSortedNotifications.map((notification) => (
                           <tr key={notification.id} className={`${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors ${!notification.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
-                            {/* Vehicle Info - First Column */}
+
+                            
+                            {/* Status - First Column with Dropdown */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                {!notification.isRead && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                )}
+                                <select
+                                  value={notification.status}
+                                  onChange={(e) => handleUpdateStatus(notification.id, e.target.value)}
+                                  className={`text-xs font-medium px-2 py-1 rounded-full text-center border-0 outline-none cursor-pointer ${getStatusBadgeColor(notification.status)} appearance-none`}
+                                >
+                                  <option value="new">New</option>
+                                  <option value="assigned">Assigned</option>
+                                  <option value="actioned">Actioned</option>
+                                  <option value="closed">Closed</option>
+                                </select>
+                              </div>
+                            </td>
+
+                            {/* Vehicle Info - Second Column */}
                             <td className="px-6 py-4">
                               {notification.vehicleMake || notification.vehicleModel ? (
                                 <div className="space-y-1">
@@ -839,7 +855,7 @@ export default function NotificationsPage() {
                               )}
                             </td>
                             
-                            {/* Source - Second Column */}
+                            {/* Source - Third Column */}
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <Building className="w-4 h-4 text-slate-400" />
@@ -849,7 +865,7 @@ export default function NotificationsPage() {
                               </div>
                             </td>
                             
-                            {/* Enquiry Type - Third Column */}
+                            {/* Enquiry Type - Fourth Column */}
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400`}>
                                 {getEnquiryTypeIcon(notification.enquiryType)}
@@ -861,7 +877,7 @@ export default function NotificationsPage() {
                               </span>
                             </td>
                             
-                            {/* Customer - Fourth Column */}
+                            {/* Customer - Fifth Column */}
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
@@ -888,7 +904,7 @@ export default function NotificationsPage() {
                               </div>
                             </td>
                             
-                            {/* Contact - Fifth Column */}
+                            {/* Contact - Sixth Column */}
                             <td className="px-6 py-4">
                               <div className="space-y-1">
                                 {notification.personalEmail && (
@@ -907,25 +923,6 @@ export default function NotificationsPage() {
                                     </span>
                                   </div>
                                 )}
-                              </div>
-                            </td>
-                            
-                            {/* Status - Sixth Column with Dropdown */}
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                {!notification.isRead && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                )}
-                                <select
-                                  value={notification.status}
-                                  onChange={(e) => handleUpdateStatus(notification.id, e.target.value)}
-                                  className={`text-xs font-medium px-2 py-1 rounded-full text-center border-0 outline-none cursor-pointer ${getStatusBadgeColor(notification.status)} appearance-none`}
-                                >
-                                  <option value="new">New</option>
-                                  <option value="assigned">Assigned</option>
-                                  <option value="actioned">Actioned</option>
-                                  <option value="closed">Closed</option>
-                                </select>
                               </div>
                             </td>
                             
