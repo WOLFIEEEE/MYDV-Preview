@@ -177,18 +177,35 @@ const GLOBAL_CALCULATION_CONFIG = {
       return addon?.postDiscountCost || addon?.cost || 0;
     },
 
-    // Calculate subtotal for all items
+    // Calculate subtotal for all items - includes VAT when applicable
     calculateSubtotal: (invoiceData: any): number => {
-      const vehiclePrice = invoiceData.pricing.salePricePostDiscount || 0;
+      // Use VAT-inclusive prices when VAT is applied, otherwise use post-discount prices
+      const vehiclePrice = invoiceData.pricing.applyVatToSalePrice 
+        ? (invoiceData.pricing.salePriceIncludingVat || invoiceData.pricing.salePricePostDiscount || 0)
+        : (invoiceData.pricing.salePricePostDiscount || 0);
       
       // For trade sales, exclude warranty and finance add-ons
-      const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-      const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-      const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0;
+      const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+        invoiceData.pricing.applyVatToWarranty
+          ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+          : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+      );
+      const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+        invoiceData.pricing.applyVatToEnhancedWarranty
+          ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+          : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+      );
+      const deliveryPrice = invoiceData.pricing.applyVatToDelivery
+        ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
+        : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0);
       
-      // Customer addons
-      const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-      const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+      // Customer addons - use VAT-inclusive prices when VAT is applied
+      const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
+        ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
+        : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+      const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
+        ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
+        : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
       const customerDynamicAddonsCost = (() => {
         let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
         // Convert object format back to array if needed
@@ -196,14 +213,26 @@ const GLOBAL_CALCULATION_CONFIG = {
           dynamicAddons = Object.values(dynamicAddons);
         }
         return Array.isArray(dynamicAddons) 
-          ? dynamicAddons.reduce((sum: number, addon: any) => 
-              sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) 
+          ? dynamicAddons.reduce((sum: number, addon: any) => {
+              const addonCost = addon.applyVat 
+                ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                : (addon.postDiscountCost ?? addon.cost ?? 0);
+              return sum + addonCost;
+            }, 0)
           : 0;
       })();
       
-      // Finance addons - exclude for trade sales
-      const financeAddon1Cost = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
-      const financeAddon2Cost = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
+      // Finance addons - exclude for trade sales, use VAT-inclusive when applicable
+      const financeAddon1Cost = invoiceData.saleType === 'Trade' ? 0 : (
+        invoiceData.addons?.finance?.addon1?.applyVat
+          ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
+          : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+      );
+      const financeAddon2Cost = invoiceData.saleType === 'Trade' ? 0 : (
+        invoiceData.addons?.finance?.addon2?.applyVat
+          ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
+          : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+      );
       const financeDynamicAddonsCost = invoiceData.saleType === 'Trade' ? 0 : (() => {
         let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
         // Convert object format back to array if needed
@@ -211,14 +240,89 @@ const GLOBAL_CALCULATION_CONFIG = {
           dynamicAddons = Object.values(dynamicAddons);
         }
         return Array.isArray(dynamicAddons) 
-          ? dynamicAddons.reduce((sum: number, addon: any) => 
-              sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0) 
+          ? dynamicAddons.reduce((sum: number, addon: any) => {
+              const addonCost = addon.applyVat 
+                ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                : (addon.postDiscountCost ?? addon.cost ?? 0);
+              return sum + addonCost;
+            }, 0)
           : 0;
       })();
 
       return vehiclePrice + warrantyPrice + enhancedWarrantyPrice + deliveryPrice + 
              customerAddon1Cost + customerAddon2Cost + customerDynamicAddonsCost +
              financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost;
+    },
+    
+    // Calculate total VAT from all items
+    calculateTotalVAT: (invoiceData: any): number => {
+      let totalVAT = 0;
+      
+      // Sale Price VAT
+      if (invoiceData.pricing.applyVatToSalePrice) {
+        totalVAT += invoiceData.pricing.salePriceVatAmount || 0;
+      }
+      
+      // Warranty VAT (exclude for trade sales)
+      if (invoiceData.saleType !== 'Trade' && invoiceData.pricing.applyVatToWarranty) {
+        totalVAT += invoiceData.pricing.warrantyVatAmount || 0;
+      }
+      
+      // Enhanced Warranty VAT (exclude for trade sales)
+      if (invoiceData.saleType !== 'Trade' && invoiceData.pricing.applyVatToEnhancedWarranty) {
+        totalVAT += invoiceData.pricing.enhancedWarrantyVatAmount || 0;
+      }
+      
+      // Delivery VAT
+      if (invoiceData.pricing.applyVatToDelivery) {
+        totalVAT += invoiceData.pricing.deliveryVatAmount || 0;
+      }
+      
+      // Customer Add-ons VAT
+      if (invoiceData.addons?.customer?.addon1?.applyVat) {
+        totalVAT += invoiceData.addons.customer.addon1.vatAmount || 0;
+      }
+      if (invoiceData.addons?.customer?.addon2?.applyVat) {
+        totalVAT += invoiceData.addons.customer.addon2.vatAmount || 0;
+      }
+      
+      // Dynamic Customer Add-ons VAT
+      let dynamicCustomerAddons = invoiceData.addons?.customer?.dynamicAddons;
+      if (dynamicCustomerAddons && !Array.isArray(dynamicCustomerAddons) && typeof dynamicCustomerAddons === 'object') {
+        dynamicCustomerAddons = Object.values(dynamicCustomerAddons);
+      }
+      if (Array.isArray(dynamicCustomerAddons)) {
+        dynamicCustomerAddons.forEach((addon: any) => {
+          if (addon.applyVat) {
+            totalVAT += addon.vatAmount || 0;
+          }
+        });
+      }
+      
+      // Finance Add-ons VAT (only for Finance Company invoices, exclude for trade sales)
+      if (invoiceData.saleType !== 'Trade' && invoiceData.invoiceTo === 'Finance Company') {
+        if (invoiceData.addons?.finance?.addon1?.applyVat) {
+          totalVAT += invoiceData.addons.finance.addon1.vatAmount || 0;
+        }
+        if (invoiceData.addons?.finance?.addon2?.applyVat) {
+          totalVAT += invoiceData.addons.finance.addon2.vatAmount || 0;
+        }
+        
+        // Dynamic Finance Add-ons VAT
+        let dynamicFinanceAddons = invoiceData.addons?.finance?.dynamicAddons;
+        if (dynamicFinanceAddons && !Array.isArray(dynamicFinanceAddons) && typeof dynamicFinanceAddons === 'object') {
+          dynamicFinanceAddons = Object.values(dynamicFinanceAddons);
+        }
+        if (Array.isArray(dynamicFinanceAddons)) {
+          dynamicFinanceAddons.forEach((addon: any) => {
+            if (addon.applyVat) {
+              totalVAT += addon.vatAmount || 0;
+            }
+          });
+        }
+      }
+      
+      return totalVAT;
     },
 
     // Calculate remaining balance
@@ -1766,7 +1870,16 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                  )}
                </Text>
                <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
-                 {formatCurrency(invoiceData.pricing.salePricePostDiscount)}
+                 {formatCurrency(
+                   invoiceData.pricing.applyVatToSalePrice 
+                     ? (invoiceData.pricing.salePriceIncludingVat || invoiceData.pricing.salePricePostDiscount)
+                     : invoiceData.pricing.salePricePostDiscount
+                 )}
+                 {invoiceData.pricing.applyVatToSalePrice && (
+                   <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                     {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.salePriceVatAmount || 0)})
+                   </Text>
+                 )}
                </Text>
             </View>
             
@@ -1792,7 +1905,16 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                    )}
                  </Text>
                  <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                   {formatCurrency(invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)}
+                   {formatCurrency(
+                     invoiceData.pricing.applyVatToWarranty
+                       ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                       : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                   )}
+                   {invoiceData.pricing.applyVatToWarranty && (
+                     <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                       {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.warrantyVatAmount || 0)})
+                     </Text>
+                   )}
                  </Text>
               </View>
             )}
@@ -1817,9 +1939,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateEnhancedWarrantyDiscount(invoiceData)
                    )}
                  </Text>
-                 <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                   {formatCurrency(invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)}
-                 </Text>
+                <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                  {formatCurrency(
+                    invoiceData.pricing.applyVatToEnhancedWarranty
+                      ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                      : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                  )}
+                  {invoiceData.pricing.applyVatToEnhancedWarranty && (
+                    <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                      {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0)})
+                    </Text>
+                  )}
+                </Text>
               </View>
             )}
             
@@ -1844,9 +1975,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon1)
                        )}
                      </Text>
-                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                       {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonEffectiveCost(invoiceData.addons.customer.addon1))}
-              </Text>
+                    <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                      {formatCurrency(
+                        invoiceData.addons.customer.addon1.applyVat
+                          ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
+                          : (invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
+                      )}
+                      {invoiceData.addons.customer.addon1.applyVat && (
+                        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                          {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0)})
+                        </Text>
+                      )}
+            </Text>
             </View>
                  )}
                  {invoiceData.addons.customer.addon2 && (invoiceData.addons.customer.addon2?.cost || 0) > 0 && (
@@ -1867,9 +2007,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon2)
                        )}
                      </Text>
-                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                       {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonEffectiveCost(invoiceData.addons.customer.addon2))}
-                     </Text>
+                    <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                      {formatCurrency(
+                        invoiceData.addons.customer.addon2.applyVat
+                          ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
+                          : (invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
+                      )}
+                      {invoiceData.addons.customer.addon2.applyVat && (
+                        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                          {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0)})
+                        </Text>
+                      )}
+                    </Text>
           </View>
                  )}
                  {(() => {
@@ -1901,12 +2050,21 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(addon)
                        )}
                      </Text>
-                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                       {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonEffectiveCost(addon))}
-                     </Text>
-                   </View>
-                   ));
-                 })()}
+                    <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                      {formatCurrency(
+                        addon.applyVat
+                          ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                          : (addon.postDiscountCost ?? addon.cost ?? 0)
+                      )}
+                      {addon.applyVat && (
+                        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                          {'\n'}(inc. VAT: {formatCurrency(addon.vatAmount || 0)})
+                        </Text>
+                      )}
+                    </Text>
+                  </View>
+                  ));
+                })()}
                </>
              )}
               
@@ -1935,20 +2093,29 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
-                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                         {formatCurrency(invoiceData.addons.finance.addon1?.postDiscountCost ?? invoiceData.addons.finance.addon1?.cost ?? 0)}
-                       </Text>
-                     </View>
-                     <View style={{ 
-                       flexDirection: 'row', 
-                       paddingTop: 1,
-                       paddingBottom: 2,
-                       borderBottom: '1px solid #ccc'
-                     }}>
-                       <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
-                         To be covered by Finance/included in Cash Price
-                       </Text>
-                     </View>
+                      <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                        {formatCurrency(
+                          invoiceData.addons.finance.addon1.applyVat
+                            ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
+                            : (invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
+                        )}
+                        {invoiceData.addons.finance.addon1.applyVat && (
+                          <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                            {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0)})
+                          </Text>
+                        )}
+                      </Text>
+                    </View>
+                    <View style={{ 
+                      flexDirection: 'row', 
+                      paddingTop: 1,
+                      paddingBottom: 2,
+                      borderBottom: '1px solid #ccc'
+                    }}>
+                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
+                        To be covered by Finance/included in Cash Price
+                      </Text>
+                    </View>
                    </>
                   )}
                   {invoiceData.addons.finance.addon2 && (invoiceData.addons.finance.addon2?.cost || 0) > 0 && (
@@ -1973,20 +2140,29 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
-                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                         {formatCurrency(invoiceData.addons.finance.addon2?.postDiscountCost || invoiceData.addons.finance.addon2?.cost || 0)}
-                       </Text>
-                     </View>
-                     <View style={{ 
-                       flexDirection: 'row', 
-                       paddingTop: 1,
-                       paddingBottom: 2,
-                       borderBottom: '1px solid #ccc'
-                     }}>
-                       <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
-                         To be covered by Finance/included in Cash Price
-                       </Text>
-                     </View>
+                      <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                        {formatCurrency(
+                          invoiceData.addons.finance.addon2.applyVat
+                            ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
+                            : (invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
+                        )}
+                        {invoiceData.addons.finance.addon2.applyVat && (
+                          <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                            {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0)})
+                          </Text>
+                        )}
+                      </Text>
+                    </View>
+                    <View style={{ 
+                      flexDirection: 'row', 
+                      paddingTop: 1,
+                      paddingBottom: 2,
+                      borderBottom: '1px solid #ccc'
+                    }}>
+                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
+                        To be covered by Finance/included in Cash Price
+                      </Text>
+                    </View>
                    </>
                   )}
                  {(() => {
@@ -2021,23 +2197,32 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
-                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                         {formatCurrency(addon.postDiscountCost || addon.cost || 0)}
-                       </Text>
-                     </View>
-                     <View style={{ 
-                       flexDirection: 'row', 
-                       paddingTop: 1,
-                       paddingBottom: 2,
-                       borderBottom: '1px solid #ccc'
-                     }}>
-                       <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
-                         To be covered by Finance/included in Cash Price
-                       </Text>
-                     </View>
-                   </React.Fragment>
-                   ));
-                  })()}
+                      <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                        {formatCurrency(
+                          addon.applyVat
+                            ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                            : (addon.postDiscountCost ?? addon.cost ?? 0)
+                        )}
+                        {addon.applyVat && (
+                          <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                            {'\n'}(inc. VAT: {formatCurrency(addon.vatAmount || 0)})
+                          </Text>
+                        )}
+                      </Text>
+                    </View>
+                    <View style={{ 
+                      flexDirection: 'row', 
+                      paddingTop: 1,
+                      paddingBottom: 2,
+                      borderBottom: '1px solid #ccc'
+                    }}>
+                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
+                        To be covered by Finance/included in Cash Price
+                      </Text>
+                    </View>
+                  </React.Fragment>
+                  ));
+                 })()}
                </>
              )}
              
@@ -2060,9 +2245,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateDeliveryDiscount(invoiceData)
                    )}
                  </Text>
-                 <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
-                   {formatCurrency(invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)}
-                 </Text>
+                <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                  {formatCurrency(
+                    invoiceData.pricing.applyVatToDelivery
+                      ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
+                      : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
+                  )}
+                  {invoiceData.pricing.applyVatToDelivery && (
+                    <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
+                      {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.deliveryVatAmount || 0)})
+                    </Text>
+                  )}
+                </Text>
                     </View>
                   )}
             
@@ -2275,10 +2469,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               <View style={{ marginLeft: 0 }}>
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
-                    VAT ({GLOBAL_CALCULATION_CONFIG.vat.rate * 100}%):
+                    VAT (20%):
                   </Text>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
-                    {formatCurrency(GLOBAL_CALCULATION_CONFIG.vat.calculate(GLOBAL_CALCULATION_CONFIG.calculations.calculateSubtotal(invoiceData)))}
+                    {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData))}
                   </Text>
                 </View>
                 

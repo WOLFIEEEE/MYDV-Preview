@@ -130,21 +130,37 @@ export interface ComprehensiveInvoiceData {
     discountOnSalePrice?: number;         // {Discount on Sale Price:64/51}
     salePricePostDiscount: number;        // {Sale Price Post-Discount:68}
     voluntaryContribution?: number;     // Voluntary contribution to sale price
+    // VAT for Sale Price
+    applyVatToSalePrice?: boolean;        // Whether to apply VAT to sale price
+    salePriceVatAmount?: number;          // VAT amount for sale price (20%)
+    salePriceIncludingVat?: number;       // Sale price including VAT
     
     // Warranty
     warrantyPrice?: number;               // {Warranty Price:45}
     discountOnWarranty?: number;          // {Discount On Warranty:55}
     warrantyPricePostDiscount?: number;   // {Warranty Price Post Discount:70}
+    // VAT for Warranty
+    applyVatToWarranty?: boolean;         // Whether to apply VAT to warranty
+    warrantyVatAmount?: number;           // VAT amount for warranty (20%)
+    warrantyIncludingVat?: number;        // Warranty price including VAT
     
     // Enhanced/Upgraded Warranty
     enhancedWarrantyPrice?: number;       // Enhanced warranty price
     discountOnEnhancedWarranty?: number;  // Discount on enhanced warranty
     enhancedWarrantyPricePostDiscount?: number; // Enhanced warranty price after discount
+    // VAT for Enhanced Warranty
+    applyVatToEnhancedWarranty?: boolean; // Whether to apply VAT to enhanced warranty
+    enhancedWarrantyVatAmount?: number;   // VAT amount for enhanced warranty (20%)
+    enhancedWarrantyIncludingVat?: number; // Enhanced warranty including VAT
     
     // Delivery
     deliveryCost?: number;                // {Delivery Cost:35}
     discountOnDelivery?: number;          // Discount on delivery cost
     deliveryCostPostDiscount?: number;    // Delivery cost after discount
+    // VAT for Delivery
+    applyVatToDelivery?: boolean;         // Whether to apply VAT to delivery
+    deliveryVatAmount?: number;           // VAT amount for delivery (20%)
+    deliveryIncludingVat?: number;        // Delivery cost including VAT
     
     // Deposits
     compulsorySaleDepositFinance?: number;  // {Compulsory Sale Deposit (Finance):59}
@@ -246,18 +262,27 @@ export interface ComprehensiveInvoiceData {
         cost: number;                     // {Finance Add-on 1 Cost:49}
         discount?: number;
         postDiscountCost?: number;        // Calculated: cost - discount
+        applyVat?: boolean;               // Whether to apply VAT to this addon
+        vatAmount?: number;               // VAT amount (20%)
+        costIncludingVat?: number;        // Cost including VAT
       };
       addon2?: {
         name: string;                     // {Finance add-on 2:198}
         cost: number;                     // {Finance Add-on 2 Cost:50}
         discount?: number;
         postDiscountCost?: number;        // Calculated: cost - discount
+        applyVat?: boolean;               // Whether to apply VAT to this addon
+        vatAmount?: number;               // VAT amount (20%)
+        costIncludingVat?: number;        // Cost including VAT
       };
       dynamicAddons?: Array<{             // Dynamic finance addons
         name: string;
         cost: number;
         discount?: number;
         postDiscountCost?: number;        // Calculated: cost - discount
+        applyVat?: boolean;               // Whether to apply VAT to this addon
+        vatAmount?: number;               // VAT amount (20%)
+        costIncludingVat?: number;        // Cost including VAT
       }>;
     };
     customer: {
@@ -267,18 +292,27 @@ export interface ComprehensiveInvoiceData {
         cost: number;                     // {Customer Add-on 1 Cost:55}
         discount?: number;
         postDiscountCost?: number;        // Calculated: cost - discount
+        applyVat?: boolean;               // Whether to apply VAT to this addon
+        vatAmount?: number;               // VAT amount (20%)
+        costIncludingVat?: number;        // Cost including VAT
       };
       addon2?: {
         name: string;                     // {Customer add-on 2:203}
         cost: number;                     // {Customer Add-on 2 Cost:56}
         discount?: number;
         postDiscountCost?: number;        // Calculated: cost - discount
+        applyVat?: boolean;               // Whether to apply VAT to this addon
+        vatAmount?: number;               // VAT amount (20%)
+        costIncludingVat?: number;        // Cost including VAT
       };
       dynamicAddons?: Array<{             // Dynamic customer addons
         name: string;
         cost: number;
         discount?: number;
         postDiscountCost?: number;        // Calculated: cost - discount
+        applyVat?: boolean;               // Whether to apply VAT to this addon
+        vatAmount?: number;               // VAT amount (20%)
+        costIncludingVat?: number;        // Cost including VAT
       }>;
     };
   };

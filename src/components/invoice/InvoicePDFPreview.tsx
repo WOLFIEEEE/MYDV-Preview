@@ -19,16 +19,33 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Local calculation functions to match PDF
   const calculateSubtotal = (invoiceData: ComprehensiveInvoiceData): number => {
-    const vehiclePrice = invoiceData.pricing.salePricePostDiscount || 0;
+    // Use VAT-inclusive prices when VAT is applied, otherwise use post-discount prices
+    const vehiclePrice = invoiceData.pricing.applyVatToSalePrice 
+      ? (invoiceData.pricing.salePriceIncludingVat || invoiceData.pricing.salePricePostDiscount || 0)
+      : (invoiceData.pricing.salePricePostDiscount || 0);
     
     // For trade sales, exclude warranty and finance add-ons
-    const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
-    const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
-    const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0;
+    const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+      invoiceData.pricing.applyVatToWarranty
+        ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+        : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+    );
+    const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
+      invoiceData.pricing.applyVatToEnhancedWarranty
+        ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+        : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+    );
+    const deliveryPrice = invoiceData.pricing.applyVatToDelivery
+      ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
+      : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0);
     
-    // Customer addons
-    const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
-    const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
+    // Customer addons - use VAT-inclusive prices when VAT is applied
+    const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
+      ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
+      : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
+    const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
+      ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
+      : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
     const customerDynamicAddonsCost = (() => {
       let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
       // Convert object format back to array if needed
@@ -36,14 +53,26 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         dynamicAddons = Object.values(dynamicAddons);
       }
       return Array.isArray(dynamicAddons) 
-        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number }) => 
-            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
+        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number; applyVat?: boolean; costIncludingVat?: number }) => {
+            const addonCost = addon.applyVat 
+              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+              : (addon.postDiscountCost ?? addon.cost ?? 0);
+            return sum + addonCost;
+          }, 0)
         : 0;
     })();
 
-    // Finance addons - exclude for trade sales and only include for Finance Company invoices
-    const financeAddon1Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
-    const financeAddon2Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
+    // Finance addons - exclude for trade sales and only include for Finance Company invoices, use VAT-inclusive when applicable
+    const financeAddon1Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+      invoiceData.addons?.finance?.addon1?.applyVat
+        ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
+        : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
+    );
+    const financeAddon2Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
+      invoiceData.addons?.finance?.addon2?.applyVat
+        ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
+        : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
+    );
     const financeDynamicAddonsCost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (() => {
       let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
       // Convert object format back to array if needed
@@ -51,8 +80,12 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         dynamicAddons = Object.values(dynamicAddons);
       }
       return Array.isArray(dynamicAddons) 
-        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number }) => 
-            sum + (addon.postDiscountCost ?? addon.cost ?? 0), 0)
+        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number; applyVat?: boolean; costIncludingVat?: number }) => {
+            const addonCost = addon.applyVat 
+              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+              : (addon.postDiscountCost ?? addon.cost ?? 0);
+            return sum + addonCost;
+          }, 0)
         : 0;
     })();
 
@@ -66,8 +99,75 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
            financeAddon1Cost + financeAddon2Cost + financeDynamicAddonsCost ;
   };
 
-  const calculateVAT = (amount: number): number => {
-    return amount * 0; // 0% VAT for used cars
+  const calculateVAT = (invoiceData: ComprehensiveInvoiceData): number => {
+    // Calculate total VAT from all items where VAT is applied
+    let totalVAT = 0;
+    
+    // Sale Price VAT
+    if (invoiceData.pricing.applyVatToSalePrice) {
+      totalVAT += invoiceData.pricing.salePriceVatAmount || 0;
+    }
+    
+    // Warranty VAT (exclude for trade sales)
+    if (invoiceData.saleType !== 'Trade' && invoiceData.pricing.applyVatToWarranty) {
+      totalVAT += invoiceData.pricing.warrantyVatAmount || 0;
+    }
+    
+    // Enhanced Warranty VAT (exclude for trade sales)
+    if (invoiceData.saleType !== 'Trade' && invoiceData.pricing.applyVatToEnhancedWarranty) {
+      totalVAT += invoiceData.pricing.enhancedWarrantyVatAmount || 0;
+    }
+    
+    // Delivery VAT
+    if (invoiceData.pricing.applyVatToDelivery) {
+      totalVAT += invoiceData.pricing.deliveryVatAmount || 0;
+    }
+    
+    // Customer Add-ons VAT
+    if (invoiceData.addons?.customer?.addon1?.applyVat) {
+      totalVAT += invoiceData.addons.customer.addon1.vatAmount || 0;
+    }
+    if (invoiceData.addons?.customer?.addon2?.applyVat) {
+      totalVAT += invoiceData.addons.customer.addon2.vatAmount || 0;
+    }
+    
+    // Dynamic Customer Add-ons VAT
+    let dynamicCustomerAddons = invoiceData.addons?.customer?.dynamicAddons;
+    if (dynamicCustomerAddons && !Array.isArray(dynamicCustomerAddons) && typeof dynamicCustomerAddons === 'object') {
+      dynamicCustomerAddons = Object.values(dynamicCustomerAddons);
+    }
+    if (Array.isArray(dynamicCustomerAddons)) {
+      dynamicCustomerAddons.forEach((addon: any) => {
+        if (addon.applyVat) {
+          totalVAT += addon.vatAmount || 0;
+        }
+      });
+    }
+    
+    // Finance Add-ons VAT (only for Finance Company invoices, exclude for trade sales)
+    if (invoiceData.saleType !== 'Trade' && invoiceData.invoiceTo === 'Finance Company') {
+      if (invoiceData.addons?.finance?.addon1?.applyVat) {
+        totalVAT += invoiceData.addons.finance.addon1.vatAmount || 0;
+      }
+      if (invoiceData.addons?.finance?.addon2?.applyVat) {
+        totalVAT += invoiceData.addons.finance.addon2.vatAmount || 0;
+      }
+      
+      // Dynamic Finance Add-ons VAT
+      let dynamicFinanceAddons = invoiceData.addons?.finance?.dynamicAddons;
+      if (dynamicFinanceAddons && !Array.isArray(dynamicFinanceAddons) && typeof dynamicFinanceAddons === 'object') {
+        dynamicFinanceAddons = Object.values(dynamicFinanceAddons);
+      }
+      if (Array.isArray(dynamicFinanceAddons)) {
+        dynamicFinanceAddons.forEach((addon: any) => {
+          if (addon.applyVat) {
+            totalVAT += addon.vatAmount || 0;
+          }
+        });
+      }
+    }
+    
+    return totalVAT;
   };
 
   const calculateRemainingBalance = (invoiceData: ComprehensiveInvoiceData): number => {
@@ -382,7 +482,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
             {invoiceData.pricing.discountOnSalePrice ? formatCurrency(invoiceData.pricing.discountOnSalePrice) : '-'}
           </div>
           <div style={{ fontSize: '7px', flex: '1', textAlign: 'right' }}>
-            {formatCurrency(invoiceData.pricing.salePricePostDiscount)}
+            {formatCurrency(
+              invoiceData.pricing.applyVatToSalePrice 
+                ? (invoiceData.pricing.salePriceIncludingVat || invoiceData.pricing.salePricePostDiscount)
+                : invoiceData.pricing.salePricePostDiscount
+            )}
+            {invoiceData.pricing.applyVatToSalePrice && (
+              <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                (inc. VAT: {formatCurrency(invoiceData.pricing.salePriceVatAmount || 0)})
+              </span>
+            )}
           </div>
         </div>
         
@@ -411,7 +520,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
               {invoiceData.pricing.discountOnWarranty ? formatCurrency(invoiceData.pricing.discountOnWarranty) : '-'}
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-              {formatCurrency(invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)}
+              {formatCurrency(
+                invoiceData.pricing.applyVatToWarranty
+                  ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+                  : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
+              )}
+              {invoiceData.pricing.applyVatToWarranty && (
+                <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                  (inc. VAT: {formatCurrency(invoiceData.pricing.warrantyVatAmount || 0)})
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -438,7 +556,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
               {invoiceData.pricing.discountOnEnhancedWarranty ? formatCurrency(invoiceData.pricing.discountOnEnhancedWarranty) : '-'}
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-              {formatCurrency(invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)}
+              {formatCurrency(
+                invoiceData.pricing.applyVatToEnhancedWarranty
+                  ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+                  : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
+              )}
+              {invoiceData.pricing.applyVatToEnhancedWarranty && (
+                <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                  (inc. VAT: {formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0)})
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -464,7 +591,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   {invoiceData.addons.customer.addon1.discount ? formatCurrency(invoiceData.addons.customer.addon1.discount) : '-'}
                 </div>
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-                  {formatCurrency(invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)}
+                  {formatCurrency(
+                    invoiceData.addons.customer.addon1.applyVat
+                      ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
+                      : (invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
+                  )}
+                  {invoiceData.addons.customer.addon1.applyVat && (
+                    <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                      (inc. VAT: {formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0)})
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -486,7 +622,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   {invoiceData.addons.customer.addon2.discount ? formatCurrency(invoiceData.addons.customer.addon2.discount) : '-'}
                 </div>
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-                  {formatCurrency(invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)}
+                  {formatCurrency(
+                    invoiceData.addons.customer.addon2.applyVat
+                      ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
+                      : (invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
+                  )}
+                  {invoiceData.addons.customer.addon2.applyVat && (
+                    <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                      (inc. VAT: {formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0)})
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -515,7 +660,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                   {addon.discount ? formatCurrency(addon.discount) : '-'}
                 </div>
                 <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-                  {formatCurrency(addon.postDiscountCost ?? addon.cost ?? 0)}
+                  {formatCurrency(
+                    addon.applyVat
+                      ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                      : (addon.postDiscountCost ?? addon.cost ?? 0)
+                  )}
+                  {addon.applyVat && (
+                    <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                      (inc. VAT: {formatCurrency(addon.vatAmount || 0)})
+                    </span>
+                  )}
                 </div>
               </div>
               ));
@@ -544,7 +698,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                     {invoiceData.addons.finance.addon1.discount ? formatCurrency(invoiceData.addons.finance.addon1.discount) : '-'}
                   </div>
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-                    {formatCurrency(invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)}
+                    {formatCurrency(
+                      invoiceData.addons.finance.addon1.applyVat
+                        ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
+                        : (invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
+                    )}
+                    {invoiceData.addons.finance.addon1.applyVat && (
+                      <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                        (inc. VAT: {formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0)})
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ 
@@ -577,7 +740,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                     {invoiceData.addons.finance.addon2.discount ? formatCurrency(invoiceData.addons.finance.addon2.discount) : '-'}
                   </div>
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-                    {formatCurrency(invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)}
+                    {formatCurrency(
+                      invoiceData.addons.finance.addon2.applyVat
+                        ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
+                        : (invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
+                    )}
+                    {invoiceData.addons.finance.addon2.applyVat && (
+                      <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                        (inc. VAT: {formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0)})
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ 
@@ -617,7 +789,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                     {addon.discount ? formatCurrency(addon.discount) : '-'}
                   </div>
                   <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-                    {formatCurrency(addon.postDiscountCost ?? addon.cost ?? 0)}
+                    {formatCurrency(
+                      addon.applyVat
+                        ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
+                        : (addon.postDiscountCost ?? addon.cost ?? 0)
+                    )}
+                    {addon.applyVat && (
+                      <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                        (inc. VAT: {formatCurrency(addon.vatAmount || 0)})
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ 
@@ -655,7 +836,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
               {(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) > 0 ? formatCurrency(invoiceData.delivery?.discount ?? invoiceData.pricing?.discountOnDelivery ?? 0) : '-'}
             </div>
             <div style={{ fontSize: '7px', flex: '1', textAlign: 'right', fontWeight: 'bold' }}>
-              {formatCurrency(invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? 0)}
+              {formatCurrency(
+                invoiceData.pricing.applyVatToDelivery
+                  ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? 0)
+                  : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCost ?? invoiceData.delivery?.cost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? 0)
+              )}
+              {invoiceData.pricing.applyVatToDelivery && (
+                <span style={{ fontSize: '6px', fontStyle: 'italic', color: '#666', marginLeft: '2px' }}>
+                  (inc. VAT: {formatCurrency(invoiceData.pricing.deliveryVatAmount || 0)})
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -866,10 +1056,10 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
           <div style={{ marginLeft: '0' }}>
             <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
-                VAT (0%):
+                VAT (20%):
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
-                {formatCurrency(calculateVAT(calculateSubtotal(invoiceData)))}
+                {formatCurrency(calculateVAT(invoiceData))}
               </div>
             </div>
             
