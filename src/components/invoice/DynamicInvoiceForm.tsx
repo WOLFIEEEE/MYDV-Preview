@@ -3057,38 +3057,33 @@ export default function DynamicInvoiceForm({
                         {/* Static Add-ons */}
                         <div className="space-y-6">
                           <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                            <h5 className="font-medium mb-3">Finance Add-on 1</h5>
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="font-medium">Finance Add-on 1</h5>
+                              {hasVATApplied() && (
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    checked={invoiceData.addons.finance.addon1?.applyVat || false}
+                                    onCheckedChange={(checked) => updateNestedData('addons.finance.addon1.applyVat', checked)}
+                                  />
+                                  <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    Apply VAT (20%)
+                                  </Label>
+                                </div>
+                              )}
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <FormInput
                                 label="Name"
                                 value={invoiceData.addons.finance.addon1?.name || ''}
                                 onChange={(value) => updateNestedData('addons.finance.addon1.name', value)}
                               />
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <Label className={`font-semibold flex items-center ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                                    <PoundSterling className="h-4 w-4 mr-2" />
-                                    Cost
-                                  </Label>
-                                  {hasVATApplied() && (
-                                    <div className="flex items-center space-x-2">
-                                      <Switch
-                                        checked={invoiceData.addons.finance.addon1?.applyVat || false}
-                                        onCheckedChange={(checked) => updateNestedData('addons.finance.addon1.applyVat', checked)}
-                                      />
-                                      <Label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        VAT
-                                      </Label>
-                                    </div>
-                                  )}
-                                </div>
-                                <Input
-                                  value={invoiceData.addons.finance.addon1?.cost || 0}
-                                  onChange={(e) => updateNestedData('addons.finance.addon1.cost', parseFloat(e.target.value) || 0)}
-                                  type="number"
-                                  className={`w-full ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200'}`}
-                                />
-                              </div>
+                              <FormInput
+                                label="Cost"
+                                value={invoiceData.addons.finance.addon1?.cost || 0}
+                                onChange={(value) => updateNestedData('addons.finance.addon1.cost', parseFloat(value) || 0)}
+                                type="number"
+                                icon={PoundSterling}
+                              />
                               <FormInput
                                 label="Discount"
                                 value={invoiceData.addons.finance.addon1?.discount || 0}
