@@ -3189,15 +3189,37 @@ export default function DynamicInvoiceForm({
                                           if (invoiceData.addons.finance.addon2) count++;
                                           return count + index + 1;
                                         })()}</h5>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => removeFinanceAddon(index)}
-                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                        >
-                                          <Minus className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex items-center gap-2">
+                                          {hasVATApplied() && (
+                                            <div className="flex items-center space-x-2">
+                                              <Switch
+                                                checked={addon.applyVat || false}
+                                                onCheckedChange={(checked) => {
+                                                  let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
+                                                  if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                                    dynamicAddons = Object.values(dynamicAddons);
+                                                  }
+                                                  const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                                  const newAddons = [...currentAddons];
+                                                  newAddons[index] = { ...newAddons[index], applyVat: checked };
+                                                  updateNestedData('addons.finance.dynamicAddons', newAddons);
+                                                }}
+                                              />
+                                              <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                                Apply VAT (20%)
+                                              </Label>
+                                            </div>
+                                          )}
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => removeFinanceAddon(index)}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                          >
+                                            <Minus className="h-4 w-4" />
+                                          </Button>
+                                        </div>
                                       </div>
                                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                         <FormInput
@@ -3258,48 +3280,6 @@ export default function DynamicInvoiceForm({
                                           icon={PoundSterling}
                                           disabled
                                         />
-                                      </div>
-                                      
-                                      {/* VAT Option for Dynamic Finance Add-on */}
-                                      <div className={`mt-3 p-3 border rounded-lg ${isDarkMode ? 'bg-slate-800/20 border-slate-700' : 'bg-blue-50/30 border-blue-200'}`}>
-                                        <div className="flex items-center space-x-2 mb-2">
-                                          <Switch
-                                            checked={addon.applyVat || false}
-                                            onCheckedChange={(checked) => {
-                                              let dynamicAddons = invoiceData.addons.finance.dynamicAddons;
-                                              if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                                dynamicAddons = Object.values(dynamicAddons);
-                                              }
-                                              const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                              const newAddons = [...currentAddons];
-                                              newAddons[index] = { ...newAddons[index], applyVat: checked };
-                                              updateNestedData('addons.finance.dynamicAddons', newAddons);
-                                            }}
-                                          />
-                                          <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                                            Apply VAT (20%)
-                                          </Label>
-                                        </div>
-                                        {addon.applyVat && (
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 hidden">
-                                            <FormInput
-                                              label="VAT Amount"
-                                              value={addon.vatAmount || 0}
-                                              onChange={() => {}}
-                                              type="number"
-                                              icon={PoundSterling}
-                                              disabled
-                                            />
-                                            <FormInput
-                                              label="Cost Including VAT"
-                                              value={addon.costIncludingVat || 0}
-                                              onChange={() => {}}
-                                              type="number"
-                                              icon={PoundSterling}
-                                              disabled
-                                            />
-                                          </div>
-                                        )}
                                       </div>
                                     </div>
                                   )) : null;
@@ -3489,15 +3469,37 @@ export default function DynamicInvoiceForm({
                                         if (invoiceData.addons.customer.addon2) count++;
                                         return count + index + 1;
                                       })()}</h5>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => removeCustomerAddon(index)}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
+                                      <div className="flex items-center gap-2">
+                                        {hasVATApplied() && (
+                                          <div className="flex items-center space-x-2">
+                                            <Switch
+                                              checked={addon.applyVat || false}
+                                              onCheckedChange={(checked) => {
+                                                let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
+                                                if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
+                                                  dynamicAddons = Object.values(dynamicAddons);
+                                                }
+                                                const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
+                                                const newAddons = [...currentAddons];
+                                                newAddons[index] = { ...newAddons[index], applyVat: checked };
+                                                updateNestedData('addons.customer.dynamicAddons', newAddons);
+                                              }}
+                                            />
+                                            <Label className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                              Apply VAT (20%)
+                                            </Label>
+                                          </div>
+                                        )}
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => removeCustomerAddon(index)}
+                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        >
+                                          <Minus className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                       <FormInput
@@ -3558,48 +3560,6 @@ export default function DynamicInvoiceForm({
                                         icon={PoundSterling}
                                         disabled
                                       />
-                                    </div>
-                                    
-                                    {/* VAT Option for Dynamic Customer Add-on */}
-                                    <div className={`mt-3 p-3 border rounded-lg ${isDarkMode ? 'bg-slate-800/20 border-slate-700' : 'bg-blue-50/30 border-blue-200'}`}>
-                                      <div className="flex items-center space-x-2 mb-2">
-                                        <Switch
-                                          checked={addon.applyVat || false}
-                                          onCheckedChange={(checked) => {
-                                            let dynamicAddons = invoiceData.addons.customer.dynamicAddons;
-                                            if (dynamicAddons && !Array.isArray(dynamicAddons) && typeof dynamicAddons === 'object') {
-                                              dynamicAddons = Object.values(dynamicAddons);
-                                            }
-                                            const currentAddons = Array.isArray(dynamicAddons) ? dynamicAddons : [];
-                                            const newAddons = [...currentAddons];
-                                            newAddons[index] = { ...newAddons[index], applyVat: checked };
-                                            updateNestedData('addons.customer.dynamicAddons', newAddons);
-                                          }}
-                                        />
-                                        <Label className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
-                                          Apply VAT (20%)
-                                        </Label>
-                                      </div>
-                                      {addon.applyVat && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                                          <FormInput
-                                            label="VAT Amount"
-                                            value={addon.vatAmount || 0}
-                                            onChange={() => {}}
-                                            type="number"
-                                            icon={PoundSterling}
-                                            disabled
-                                          />
-                                          <FormInput
-                                            label="Cost Including VAT"
-                                            value={addon.costIncludingVat || 0}
-                                            onChange={() => {}}
-                                            type="number"
-                                            icon={PoundSterling}
-                                            disabled
-                                          />
-                                        </div>
-                                      )}
                                     </div>
                                   </div>
                                 )) : null;
