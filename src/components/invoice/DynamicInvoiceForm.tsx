@@ -1850,8 +1850,8 @@ export default function DynamicInvoiceForm({
                   />
                 </div>
 
-                {/* VAT Option for Sale Price */}
-                <div className={`p-4 border rounded-lg ${isDarkMode ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
+                {/* VAT Option for Sale Price - Hidden, automatically applied when vatScheme=VAT */}
+                <div className={`p-4 border rounded-lg hidden ${isDarkMode ? 'bg-slate-800/30 border-slate-700' : 'bg-blue-50/50 border-blue-200'}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
                       <Switch

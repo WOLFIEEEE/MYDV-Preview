@@ -1682,10 +1682,16 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   {invoiceData.companyInfo.address.postCode}
                 </Text>
                   {invoiceData.companyInfo.vatNumber && (
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
+                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                     VAT No: {invoiceData.companyInfo.vatNumber}
                   </Text>
                 )}
+                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+                  VAT INVOICE
+                </Text>
+                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
+                  VAT: MARGIN SCHEME
+                </Text>
                 <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                   {invoiceData.companyInfo.contact.phone}
                 </Text>
@@ -2424,6 +2430,15 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   </Text>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                     {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData))}
+                  </Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', marginBottom: 2 }}>
+                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', flex: 1 }}>
+                    TOTAL INC VAT:
+                  </Text>
+                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateSubtotal(invoiceData) + GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData))}
                   </Text>
                 </View>
                 

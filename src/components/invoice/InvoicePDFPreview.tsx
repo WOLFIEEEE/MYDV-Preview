@@ -299,10 +299,16 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 {invoiceData.companyInfo.address.postCode}
               </div>
               {invoiceData.companyInfo.vatNumber && (
-                <div style={{ fontSize: '7px', color: '#000', marginBottom: '6px' }}>
+                <div style={{ fontSize: '7px', color: '#000', marginBottom: '1px' }}>
                   VAT No: {invoiceData.companyInfo.vatNumber}
                 </div>
               )}
+              <div style={{ fontSize: '7px', fontWeight: 'bold', color: '#000', marginBottom: '6px' }}>
+                VAT INVOICE
+              </div>
+              <div style={{ fontSize: '7px', color: '#000', marginBottom: '6px' }}>
+                VAT: MARGIN SCHEME
+              </div>
               <div style={{ fontSize: '7px', color: '#000', marginBottom: '1px' }}>
                 {invoiceData.companyInfo.contact.phone}
               </div>
@@ -1012,6 +1018,15 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
               </div>
               <div style={{ fontSize: '7px', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
                 {formatCurrency(calculateVAT(invoiceData))}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', marginBottom: '2px' }}>
+              <div style={{ fontSize: '7px', fontWeight: 'bold', textAlign: 'right', flex: '1' }}>
+                TOTAL INC VAT:
+              </div>
+              <div style={{ fontSize: '7px', fontWeight: 'bold', textAlign: 'right', marginLeft: '10px', flex: '1' }}>
+                {formatCurrency(calculateSubtotal(invoiceData) + calculateVAT(invoiceData))}
               </div>
             </div>
             
