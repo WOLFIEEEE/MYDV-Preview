@@ -7,7 +7,7 @@ import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { FileText, Package, AlertCircle, CheckCircle, DollarSign, Calendar, Building2, Send } from 'lucide-react';
+import { FileText, Package, AlertCircle, CheckCircle, DollarSign, Calendar, Building2, Send, Receipt } from 'lucide-react';
 import { PREDEFINED_FINANCE_COMPANIES, CUSTOM_FINANCE_COMPANY_ID, getFinanceCompanyById } from '@/lib/financeCompanies';
 import LicensePlate from '@/components/ui/license-plate';
 
@@ -20,6 +20,7 @@ interface GenerateInvoiceFormProps {
 export interface FormData {
   // Step 1: Vehicle & Sale Information
   saleType: string
+  vatScheme: string
   invoiceNumber: string
   invoiceTo: string
   vehicleRegistration: string
@@ -224,6 +225,7 @@ export interface FormData {
 const initialFormData: FormData = {
   // Initialize all fields with empty values
   saleType: '',
+  vatScheme: 'Margin',
   invoiceNumber: '',
   invoiceTo: '',
   vehicleRegistration: '',
@@ -765,6 +767,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         stockId: stockId,
         source: 'form',
         saleType: formData.saleType,
+        vatScheme: formData.vatScheme || 'Margin',
         invoiceTo: formData.invoiceTo || 'Customer'
       });
 
@@ -910,6 +913,28 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
               )}
               <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Defines invoice logic and available options
+              </p>
+            </div>
+
+            {/* VAT Scheme */}
+            <div className="space-y-2">
+              <label className={`${labelClass} flex items-center gap-2`}>
+                <Receipt className="h-4 w-4" />
+                VAT Scheme
+                <span className={`text-xs px-2 py-1 rounded ${
+                  isDarkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'
+                }`}>Optional</span>
+              </label>
+              <select
+                value={formData.vatScheme || 'Margin'}
+                onChange={(e) => handleInputChange('vatScheme', e.target.value)}
+                className={inputBaseClass}
+              >
+                <option value="Margin">Margin</option>
+                <option value="VAT">VAT</option>
+              </select>
+              <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Select Margin for no VAT, or VAT to apply 20% VAT to sales price
               </p>
             </div>
 

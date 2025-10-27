@@ -1814,6 +1814,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>RATE</Text>
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'center' }}>QTY</Text>
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>DISCOUNT</Text>
+               <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>VAT</Text>
                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>TOTAL</Text>
              </View>
             
@@ -1840,15 +1841,13 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                  )}
                </Text>
                <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                 {invoiceData.pricing.applyVatToSalePrice ? formatCurrency(invoiceData.pricing.salePriceVatAmount || 0) : '-'}
+               </Text>
+               <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
                  {formatCurrency(
                    invoiceData.pricing.applyVatToSalePrice 
                      ? (invoiceData.pricing.salePriceIncludingVat || invoiceData.pricing.salePricePostDiscount)
                      : invoiceData.pricing.salePricePostDiscount
-                 )}
-                 {invoiceData.pricing.applyVatToSalePrice && (
-                   <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                     {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.salePriceVatAmount || 0)})
-                   </Text>
                  )}
                </Text>
             </View>
@@ -1874,16 +1873,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateWarrantyDiscount(invoiceData)
                    )}
                  </Text>
+                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                   {invoiceData.pricing.applyVatToWarranty ? formatCurrency(invoiceData.pricing.warrantyVatAmount || 0) : '-'}
+                 </Text>
                  <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                    {formatCurrency(
                      invoiceData.pricing.applyVatToWarranty
                        ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
                        : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
-                   )}
-                   {invoiceData.pricing.applyVatToWarranty && (
-                     <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                       {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.warrantyVatAmount || 0)})
-                     </Text>
                    )}
                  </Text>
               </View>
@@ -1909,16 +1906,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateEnhancedWarrantyDiscount(invoiceData)
                    )}
                  </Text>
+                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                   {invoiceData.pricing.applyVatToEnhancedWarranty ? formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0) : '-'}
+                 </Text>
                 <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                   {formatCurrency(
                     invoiceData.pricing.applyVatToEnhancedWarranty
                       ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
                       : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
-                  )}
-                  {invoiceData.pricing.applyVatToEnhancedWarranty && (
-                    <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                      {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0)})
-                    </Text>
                   )}
                 </Text>
               </View>
@@ -1945,16 +1940,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon1)
                        )}
                      </Text>
+                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       {invoiceData.addons.customer.addon1.applyVat ? formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0) : '-'}
+                     </Text>
                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                       {formatCurrency(
                         invoiceData.addons.customer.addon1.applyVat
                           ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
                           : (invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
-                      )}
-                      {invoiceData.addons.customer.addon1.applyVat && (
-                        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                          {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0)})
-                        </Text>
                       )}
             </Text>
             </View>
@@ -1977,16 +1970,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon2)
                        )}
                      </Text>
+                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       {invoiceData.addons.customer.addon2.applyVat ? formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0) : '-'}
+                     </Text>
                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                       {formatCurrency(
                         invoiceData.addons.customer.addon2.applyVat
                           ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
                           : (invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
-                      )}
-                      {invoiceData.addons.customer.addon2.applyVat && (
-                        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                          {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0)})
-                        </Text>
                       )}
                     </Text>
           </View>
@@ -2020,16 +2011,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(addon)
                        )}
                      </Text>
+                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
+                     </Text>
                     <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                       {formatCurrency(
                         addon.applyVat
                           ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
                           : (addon.postDiscountCost ?? addon.cost ?? 0)
-                      )}
-                      {addon.applyVat && (
-                        <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                          {'\n'}(inc. VAT: {formatCurrency(addon.vatAmount || 0)})
-                        </Text>
                       )}
                     </Text>
                   </View>
@@ -2063,16 +2052,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
+                      <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                        {invoiceData.addons.finance.addon1.applyVat ? formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0) : '-'}
+                      </Text>
                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                         {formatCurrency(
                           invoiceData.addons.finance.addon1.applyVat
                             ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
                             : (invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
-                        )}
-                        {invoiceData.addons.finance.addon1.applyVat && (
-                          <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                            {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0)})
-                          </Text>
                         )}
                       </Text>
                     </View>
@@ -2110,16 +2097,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
+                      <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                        {invoiceData.addons.finance.addon2.applyVat ? formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0) : '-'}
+                      </Text>
                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                         {formatCurrency(
                           invoiceData.addons.finance.addon2.applyVat
                             ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
                             : (invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
-                        )}
-                        {invoiceData.addons.finance.addon2.applyVat && (
-                          <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                            {'\n'}(inc. VAT: {formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0)})
-                          </Text>
                         )}
                       </Text>
                     </View>
@@ -2167,16 +2152,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                              : '-'
                          }
                        </Text>
+                      <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                        {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
+                      </Text>
                       <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                         {formatCurrency(
                           addon.applyVat
                             ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
                             : (addon.postDiscountCost ?? addon.cost ?? 0)
-                        )}
-                        {addon.applyVat && (
-                          <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                            {'\n'}(inc. VAT: {formatCurrency(addon.vatAmount || 0)})
-                          </Text>
                         )}
                       </Text>
                     </View>
@@ -2215,16 +2198,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateDeliveryDiscount(invoiceData)
                    )}
                  </Text>
+                <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                  {invoiceData.pricing.applyVatToDelivery ? formatCurrency(invoiceData.pricing.deliveryVatAmount || 0) : '-'}
+                </Text>
                 <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
                   {formatCurrency(
                     invoiceData.pricing.applyVatToDelivery
                       ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
                       : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
-                  )}
-                  {invoiceData.pricing.applyVatToDelivery && (
-                    <Text style={{ fontSize: 6, fontStyle: 'italic', color: '#666' }}>
-                      {'\n'}(inc. VAT: {formatCurrency(invoiceData.pricing.deliveryVatAmount || 0)})
-                    </Text>
                   )}
                 </Text>
                     </View>

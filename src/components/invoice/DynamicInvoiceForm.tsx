@@ -1865,7 +1865,7 @@ export default function DynamicInvoiceForm({
                   </div>
                   
                   {invoiceData.pricing.applyVatToSalePrice && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
                       <FormInput
                         label="VAT Amount"
                         value={invoiceData.pricing.salePriceVatAmount || 0}
@@ -2751,7 +2751,7 @@ export default function DynamicInvoiceForm({
                       </div>
                       
                       {invoiceData.pricing.applyVatToDelivery && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
                           <FormInput
                             label="VAT Amount"
                             value={invoiceData.pricing.deliveryVatAmount || 0}
@@ -2889,7 +2889,7 @@ export default function DynamicInvoiceForm({
                         </div>
                         
                         {invoiceData.pricing.applyVatToWarranty && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
                             <FormInput
                               label="VAT Amount"
                               value={invoiceData.pricing.warrantyVatAmount || 0}
@@ -3030,7 +3030,7 @@ export default function DynamicInvoiceForm({
                           </div>
                           
                           {invoiceData.pricing.applyVatToEnhancedWarranty && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 hidden">
                               <FormInput
                                 label="VAT Amount"
                                 value={invoiceData.pricing.enhancedWarrantyVatAmount || 0}
@@ -3141,7 +3141,7 @@ export default function DynamicInvoiceForm({
                                 </Label>
                               </div>
                               {invoiceData.addons.finance.addon1?.applyVat && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 hidden">
                                   <FormInput
                                     label="VAT Amount"
                                     value={invoiceData.addons.finance.addon1?.vatAmount || 0}
@@ -3334,7 +3334,7 @@ export default function DynamicInvoiceForm({
                                           </Label>
                                         </div>
                                         {addon.applyVat && (
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 hidden">
                                             <FormInput
                                               label="VAT Amount"
                                               value={addon.vatAmount || 0}
@@ -3427,7 +3427,7 @@ export default function DynamicInvoiceForm({
                               <Label>Apply VAT (20%)</Label>
                             </div>
                             {invoiceData.addons.customer.addon1?.applyVat && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8 hidden">
                                 <FormInput
                                   label="VAT Amount"
                                   value={invoiceData.addons.customer.addon1?.vatAmount || 0}
@@ -3494,7 +3494,7 @@ export default function DynamicInvoiceForm({
                                 <Label>Apply VAT (20%)</Label>
                               </div>
                               {invoiceData.addons.customer.addon2?.applyVat && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-8 hidden">
                                   <FormInput
                                     label="VAT Amount"
                                     value={invoiceData.addons.customer.addon2?.vatAmount || 0}

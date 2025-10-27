@@ -283,12 +283,19 @@ const fetchCustomTerms = async (dealerId: string) => {
 };
 
 // Enhanced function to convert form data and fetch database data
-const convertFormDataToInvoiceDataWithDB = async (formData: InvoiceFormData): Promise<ComprehensiveInvoiceData> => {
+const convertFormDataToInvoiceDataWithDB = async (formData: InvoiceFormData, vatScheme?: string): Promise<ComprehensiveInvoiceData> => {
   console.log('🔄 Converting form data to invoice format with database data...');
   console.log('🔍 Input formData for conversion:', formData);
+  console.log('🔍 VAT Scheme:', vatScheme);
   
   // First get the basic form data conversion
   const basicInvoiceData = convertFormDataToInvoiceData(formData);
+  
+  // Apply VAT scheme settings if provided
+  if (vatScheme === 'VAT') {
+    console.log('🔵 Applying VAT scheme - enabling VAT on sale price');
+    basicInvoiceData.pricing.applyVatToSalePrice = true;
+  }
   
   // Fetch database data
   console.log('🏢 Fetching company settings and terms from database...');
@@ -914,9 +921,10 @@ function DynamicInvoiceEditorContent() {
       const debugId = urlParams.get('debug');
       const tempId = urlParams.get('tempId');
       const saleType = urlParams.get('saleType');
+      const vatScheme = urlParams.get('vatScheme');
       const invoiceTo = urlParams.get('invoiceTo');
       
-      console.log(`🔍 [EDITOR] URL Parameters:`, { source, debugId, saleId, stockId, tempId, invoiceId, saleType, invoiceTo });
+      console.log(`🔍 [EDITOR] URL Parameters:`, { source, debugId, saleId, stockId, tempId, invoiceId, saleType, vatScheme, invoiceTo });
       
       // PRIORITY 1: Load saved invoice if invoiceId is provided
       if (invoiceId) {
@@ -1026,7 +1034,7 @@ function DynamicInvoiceEditorContent() {
               
               // Convert form data to ComprehensiveInvoiceData format and fetch database data
               console.log(`🔄 [EDITOR] Converting server data and fetching database info...`);
-              const invoiceData = await convertFormDataToInvoiceDataWithDB(formData);
+              const invoiceData = await convertFormDataToInvoiceDataWithDB(formData, vatScheme || undefined);
               
               console.log(`✅ [EDITOR] SERVER DATA CONVERSION COMPLETE:`, {
                 saleType: invoiceData.saleType,
@@ -1308,7 +1316,7 @@ function DynamicInvoiceEditorContent() {
           financeAddonsArray: formData.financeAddonsArray
         });
         
-        const invoiceData = await convertFormDataToInvoiceDataWithDB(formData);
+        const invoiceData = await convertFormDataToInvoiceDataWithDB(formData, vatScheme || undefined);
         
         // DEBUG: Log converted addon data
         console.log('🔍 [EDITOR] CONVERTED ADDON DATA:', {
@@ -1627,7 +1635,7 @@ function DynamicInvoiceEditorContent() {
           
           // Convert form data to ComprehensiveInvoiceData format and fetch database data
           console.log('🔄 [EDITOR] Converting vehicle finder data and fetching database info...');
-          const invoiceData = await convertFormDataToInvoiceDataWithDB(formData);
+          const invoiceData = await convertFormDataToInvoiceDataWithDB(formData, vatScheme || undefined);
           
           console.log('✅ [EDITOR] VEHICLE FINDER DATA CONVERSION COMPLETE:', {
             saleType: invoiceData.saleType,
