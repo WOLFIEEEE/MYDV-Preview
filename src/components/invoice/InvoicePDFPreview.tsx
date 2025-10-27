@@ -19,33 +19,18 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
 
   // Local calculation functions to match PDF
   const calculateSubtotal = (invoiceData: ComprehensiveInvoiceData): number => {
-    // Use VAT-inclusive prices when VAT is applied, otherwise use post-discount prices
-    const vehiclePrice = invoiceData.pricing.applyVatToSalePrice 
-      ? (invoiceData.pricing.salePriceIncludingVat || invoiceData.pricing.salePricePostDiscount || 0)
-      : (invoiceData.pricing.salePricePostDiscount || 0);
+    // Always use post-discount prices (excluding VAT) for subtotal
+    const vehiclePrice = invoiceData.pricing.salePricePostDiscount || 0;
     
     // For trade sales, exclude warranty and finance add-ons
-    const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
-      invoiceData.pricing.applyVatToWarranty
-        ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
-        : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
-    );
-    const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (
-      invoiceData.pricing.applyVatToEnhancedWarranty
-        ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
-        : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
-    );
-    const deliveryPrice = invoiceData.pricing.applyVatToDelivery
-      ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
-      : (invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0);
+    // Always use post-discount prices (excluding VAT) for subtotal
+    const warrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0);
+    const enhancedWarrantyPrice = invoiceData.saleType === 'Trade' ? 0 : (invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0);
+    const deliveryPrice = invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0;
     
-    // Customer addons - use VAT-inclusive prices when VAT is applied
-    const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.applyVat
-      ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
-      : (invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0);
-    const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.applyVat
-      ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
-      : (invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0);
+    // Customer addons - use post-discount prices only (no VAT)
+    const customerAddon1Cost = invoiceData.addons?.customer?.addon1?.postDiscountCost ?? invoiceData.addons?.customer?.addon1?.cost ?? 0;
+    const customerAddon2Cost = invoiceData.addons?.customer?.addon2?.postDiscountCost ?? invoiceData.addons?.customer?.addon2?.cost ?? 0;
     const customerDynamicAddonsCost = (() => {
       let dynamicAddons = invoiceData.addons?.customer?.dynamicAddons;
       // Convert object format back to array if needed
@@ -53,26 +38,15 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         dynamicAddons = Object.values(dynamicAddons);
       }
       return Array.isArray(dynamicAddons) 
-        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number; applyVat?: boolean; costIncludingVat?: number }) => {
-            const addonCost = addon.applyVat 
-              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
-              : (addon.postDiscountCost ?? addon.cost ?? 0);
-            return sum + addonCost;
+        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number }) => {
+            return sum + (addon.postDiscountCost ?? addon.cost ?? 0);
           }, 0)
         : 0;
     })();
 
-    // Finance addons - exclude for trade sales and only include for Finance Company invoices, use VAT-inclusive when applicable
-    const financeAddon1Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
-      invoiceData.addons?.finance?.addon1?.applyVat
-        ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
-        : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0)
-    );
-    const financeAddon2Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (
-      invoiceData.addons?.finance?.addon2?.applyVat
-        ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
-        : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0)
-    );
+    // Finance addons - exclude for trade sales and only include for Finance Company invoices, use post-discount prices only
+    const financeAddon1Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon1?.postDiscountCost ?? invoiceData.addons?.finance?.addon1?.cost ?? 0);
+    const financeAddon2Cost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (invoiceData.addons?.finance?.addon2?.postDiscountCost ?? invoiceData.addons?.finance?.addon2?.cost ?? 0);
     const financeDynamicAddonsCost = (invoiceData.saleType === 'Trade' || invoiceData.invoiceTo !== 'Finance Company') ? 0 : (() => {
       let dynamicAddons = invoiceData.addons?.finance?.dynamicAddons;
       // Convert object format back to array if needed
@@ -80,11 +54,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
         dynamicAddons = Object.values(dynamicAddons);
       }
       return Array.isArray(dynamicAddons) 
-        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number; applyVat?: boolean; costIncludingVat?: number }) => {
-            const addonCost = addon.applyVat 
-              ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
-              : (addon.postDiscountCost ?? addon.cost ?? 0);
-            return sum + addonCost;
+        ? dynamicAddons.reduce((sum: number, addon: { postDiscountCost?: number; cost?: number }) => {
+            return sum + (addon.postDiscountCost ?? addon.cost ?? 0);
           }, 0)
         : 0;
     })();
