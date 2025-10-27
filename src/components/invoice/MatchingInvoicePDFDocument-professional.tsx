@@ -2466,6 +2466,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   </Text>
                 </View>
                 
+                {hasVATApplied(invoiceData) && (
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', flex: 1 }}>
                     TOTAL INC VAT:
@@ -2473,7 +2474,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                     {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateSubtotal(invoiceData) + GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData))}
                   </Text>
-                </View>
+                </View>)}
                 
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                   <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>

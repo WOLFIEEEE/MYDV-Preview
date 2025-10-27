@@ -225,7 +225,7 @@ export interface FormData {
 const initialFormData: FormData = {
   // Initialize all fields with empty values
   saleType: '',
-  vatScheme: 'Margin',
+  vatScheme: '',
   invoiceNumber: '',
   invoiceTo: '',
   vehicleRegistration: '',
@@ -409,7 +409,6 @@ export default function GenerateInvoiceForm({ stockData, saleDetailsData }: Gene
 
   const isFinanceInvoice = formData.invoiceTo === 'Finance Company';
   const isCustomerInvoice = formData.invoiceTo === 'Customer';
-  const isCommercialSale = formData.saleType === 'Commercial';
   const isTradeSale = formData.saleType === 'Trade';
 
   // Fetch trade terms from database when it's a trade sale
@@ -679,7 +678,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
   // Handle sale type changes - set default invoiceTo for non-Retail sales
   // useEffect(() => {
   //   if (formData.saleType && formData.saleType !== 'Retail') {
-  //     // For Trade and Commercial sales, default to Customer
+  //     // For Trade sales, default to Customer
   //     if (formData.invoiceTo !== 'Customer') {
   //       handleInputChange('invoiceTo', 'Customer');
   //     }
@@ -734,11 +733,16 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
     setIsSubmitting(true);
 
     try {
-      // Only check saleType and invoiceTo (for Retail sales)
+      // Check saleType, vatScheme, and invoiceTo (for Retail sales)
       const newErrors: Record<string, string> = {};
 
       if (!formData.saleType || formData.saleType === '-') {
         newErrors.saleType = 'Sale type is required';
+      }
+
+      // VAT Scheme is required
+      if (!formData.vatScheme || formData.vatScheme === '') {
+        newErrors.vatScheme = 'VAT scheme is required';
       }
 
       // Invoice To is only required for Retail sales
@@ -767,7 +771,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         stockId: stockId,
         source: 'form',
         saleType: formData.saleType,
-        vatScheme: formData.vatScheme || 'Margin',
+        vatScheme: formData.vatScheme,
         invoiceTo: formData.invoiceTo || 'Customer'
       });
 
@@ -903,7 +907,6 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                 <option value="-">-</option>
                 <option value="Retail">Retail</option>
                 <option value="Trade">Trade</option>
-                <option value="Commercial">Commercial</option>
               </select>
               {errors.saleType && (
                 <p className="text-red-500 text-xs flex items-center gap-1">
@@ -922,17 +925,24 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                 <Receipt className="h-4 w-4" />
                 VAT Scheme
                 <span className={`text-xs px-2 py-1 rounded ${
-                  isDarkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'
-                }`}>Optional</span>
+                  isDarkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'
+                }`}>Required</span>
               </label>
               <select
-                value={formData.vatScheme || 'Margin'}
+                value={formData.vatScheme}
                 onChange={(e) => handleInputChange('vatScheme', e.target.value)}
-                className={inputBaseClass}
+                className={`${inputBaseClass} ${errors.vatScheme ? 'border-red-500' : ''}`}
               >
+                <option value="">Select VAT Scheme</option>
                 <option value="Margin">Margin</option>
                 <option value="VAT">VAT</option>
               </select>
+              {errors.vatScheme && (
+                <p className="text-red-500 text-xs flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.vatScheme}
+                </p>
+              )}
               <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Select Margin for no VAT, or VAT to apply 20% VAT to sales price
               </p>

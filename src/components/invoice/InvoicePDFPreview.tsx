@@ -1053,6 +1053,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 {formatCurrency(calculateVAT(invoiceData))}
               </div>
             </div>
+
+            {hasVATApplied(invoiceData) && (
             
             <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ fontSize: '7px', fontWeight: 'bold', textAlign: 'right', flex: '1' }}>
@@ -1062,6 +1064,7 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 {formatCurrency(calculateSubtotal(invoiceData) + calculateVAT(invoiceData))}
               </div>
             </div>
+            )}
             
             <div style={{ display: 'flex', marginBottom: '2px' }}>
               <div style={{ fontSize: '7px', textAlign: 'right', flex: '1' }}>
