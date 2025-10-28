@@ -1156,10 +1156,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   <span className="font-medium">{vehicle.engineSize}L</span>
                 </div>
               )}
-              {vehicle.colour && (
+              {(vehicle.colour || (vehicle as any).standard?.colour) && (
                 <div className="flex justify-between py-1 border-b border-gray-200 dark:border-gray-700">
                   <span className="text-gray-500 dark:text-white">Colour</span>
-                  <span className="font-medium">{vehicle.colour}</span>
+                  <span className="font-medium">{vehicle.colour || (vehicle as any).standard?.colour}</span>
                 </div>
               )}
               {vehicle.previousOwners !== undefined && (

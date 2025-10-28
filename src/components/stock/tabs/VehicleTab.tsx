@@ -18,7 +18,7 @@ export default function VehicleTab({ stockData }: VehicleTabProps) {
     { label: 'Model', value: vehicle.model },
     { label: 'Derivative', value: vehicle.derivative },
     { label: 'Year of Manufacture', value: vehicle.yearOfManufacture },
-    { label: 'Colour', value: vehicle.colour },
+    { label: 'Colour', value: vehicle.colour || (vehicle as any).standard?.colour },
     { label: 'Body Type', value: vehicle.bodyType },
     { label: 'Fuel Type', value: vehicle.fuelType },
     { label: 'Doors', value: vehicle.doors },

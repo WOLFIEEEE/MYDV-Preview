@@ -284,10 +284,15 @@ function generateVehiclesCsv(vehiclesData: VehicleData[], selectedDealerInfo: De
       vehicle.model,
       vehicle.derivative || '',
       vehicle.bodyType || '',
-      (vehicleData as { colour?: string }).colour || '',
+      (vehicleData as { colour?: string; standard?: { colour?: string } }).colour || 
+      (vehicleData as { colour?: string; standard?: { colour?: string } }).standard?.colour || '',
       vehicle.odometerReadingMiles || 0,
       (vehicleData as { doors?: string; numberOfDoors?: string }).doors || (vehicleData as { doors?: string; numberOfDoors?: string }).numberOfDoors || '',
-      (vehicleData as { engineSize?: string }).engineSize || '',
+      (() => {
+        // Extract engine size in CC format from vehicleData (same as AA export)
+        const engineCapacityCC = (vehicleData as { engineCapacityCC?: number }).engineCapacityCC;
+        return engineCapacityCC ? `${engineCapacityCC}cc` : '';
+      })(),
       vehicle.fuelType || '',
       (vehicleData as { transmissionType?: string }).transmissionType || '',
       (vehicleData as { insuranceGroup?: string }).insuranceGroup || '',
@@ -467,7 +472,8 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[], selectedDealerInfo:
       feedId,
       (index + 1).toString(), // vehicleid: Sequential number starting from 1
       (vehicle.registration || '').toUpperCase().replace(/\s/g, ''), // registration: uppercase, no spaces
-      (vehicleData as { colour?: string }).colour || '',
+      (vehicleData as { colour?: string; standard?: { colour?: string } }).colour || 
+      (vehicleData as { colour?: string; standard?: { colour?: string } }).standard?.colour || '',
       vehicle.fuelType || '',
       vehicle.yearOfManufacture || '',
       vehicle.odometerReadingMiles || 0,
