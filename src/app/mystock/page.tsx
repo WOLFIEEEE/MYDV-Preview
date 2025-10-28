@@ -3102,7 +3102,7 @@ function MyStockContent() {
                                     {apiItem.vehicle?.yearOfManufacture || apiItem.yearOfManufacture || 'N/A'}
                                   </td>
                                   <td className={`px-2 py-1 text-xs align-middle border-r ${isDarkMode ? 'text-slate-300 border-slate-700/20' : 'text-slate-700 border-slate-200/30'}`}>
-                                    {apiItem.vehicle?.colour || apiItem.colour || 'N/A'}
+                                    {apiItem.vehicle?.colour || apiItem.colour || (apiItem.vehicle as any)?.standard?.colour || 'N/A'}
                                   </td>
                                   <td className={`px-2 py-1 text-xs align-middle border-r ${isDarkMode ? 'text-slate-300 border-slate-700/20' : 'text-slate-700 border-slate-200/30'}`}>
                                     {apiItem.vehicle?.style || apiItem.style || 'N/A'}
