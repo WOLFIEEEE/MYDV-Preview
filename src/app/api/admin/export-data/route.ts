@@ -288,7 +288,11 @@ function generateVehiclesCsv(vehiclesData: VehicleData[], selectedDealerInfo: De
       (vehicleData as { colour?: string; standard?: { colour?: string } }).standard?.colour || '',
       vehicle.odometerReadingMiles || 0,
       (vehicleData as { doors?: string; numberOfDoors?: string }).doors || (vehicleData as { doors?: string; numberOfDoors?: string }).numberOfDoors || '',
-      (vehicleData as { engineSize?: string }).engineSize || '',
+      (() => {
+        // Extract engine size in CC format from vehicleData (same as AA export)
+        const engineCapacityCC = (vehicleData as { engineCapacityCC?: number }).engineCapacityCC;
+        return engineCapacityCC ? `${engineCapacityCC}cc` : '';
+      })(),
       vehicle.fuelType || '',
       (vehicleData as { transmissionType?: string }).transmissionType || '',
       (vehicleData as { insuranceGroup?: string }).insuranceGroup || '',
