@@ -189,7 +189,7 @@ function generateDealersCsv(vehiclesData: VehicleData[], selectedDealerInfo: Dea
 }
 
 // Generate Vehicles.csv content
-function generateVehiclesCsv(vehiclesData: VehicleData[]): string {
+function generateVehiclesCsv(vehiclesData: VehicleData[], selectedDealerInfo: DealerInfo | null = null): string {
   const headers = [
     'VehicleId',
     'DealerId', 
@@ -219,7 +219,7 @@ function generateVehiclesCsv(vehiclesData: VehicleData[]): string {
     'Price Includes VAT'
   ];
 
-  const rows = vehiclesData.map(vehicle => {
+  const rows = vehiclesData.map((vehicle, index) => {
     // Extract data from JSONB fields - same structure as mystock page
     const vehicleData = vehicle.vehicleData || {};
     const advertsData = vehicle.advertsData || {};
@@ -257,8 +257,8 @@ function generateVehiclesCsv(vehiclesData: VehicleData[]): string {
     const vatQualifying = retailAdverts.vatStatus === 'vat_qualifying' ? 'Y' : 'N';
     const priceIncludesVat = retailAdverts.vatable === 'true' ? 'Y' : 'N';
     
-    // Extract vehicle URL from adverts
-    const vehicleUrl = (advertsData as { vehicleUrl?: string }).vehicleUrl || '';
+    // Generate vehicle URL using same approach as AA export (deep link)
+    const vehicleUrl = generateDeepLinkUrl(vehicle, selectedDealerInfo);
     
     // Price extraction - same logic as mystock page
     const extractPrice = (priceObj: number | { amountGBP?: number } | null | undefined): number | null => {
@@ -277,7 +277,7 @@ function generateVehiclesCsv(vehiclesData: VehicleData[]): string {
                        0;
     
     return [
-      vehicle.stockId.slice(-6), // VehicleId: Last 6 digits of stockId
+      (index + 1).toString(), // VehicleId: Sequential number starting from 1 (same as AA export)
       vehicle.advertiserId, // DealerId: Use advertiserId
       '', // CapId: Empty as not available
       vehicle.make,
@@ -656,7 +656,7 @@ export async function POST(request: NextRequest) {
         const vehiclesCsv = generateAACarsStockCsv(vehiclesData as unknown as VehicleData[], selectedDealerInfo as unknown as DealerInfo);
         zip.file('aacars.csv', vehiclesCsv);
       } else {
-        const vehiclesCsv = generateVehiclesCsv(vehiclesData as unknown as VehicleData[]);
+        const vehiclesCsv = generateVehiclesCsv(vehiclesData as unknown as VehicleData[], selectedDealerInfo as unknown as DealerInfo);
         zip.file('Vehicles.csv', vehiclesCsv);
       }
     }
