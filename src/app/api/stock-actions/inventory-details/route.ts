@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
-import { inventoryDetails, dealers, fundTransactions, fundSources, teamMembers } from '@/db/schema';
+import { inventoryDetails, dealers, fundTransactions, fundSources, teamMembers, stockCache } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getDealerIdForUser } from '@/lib/dealerHelper';
+import { updateStockCacheVatScheme } from '@/lib/stockActionsDb';
 
 // Helper function to create or update fund transaction
 async function handleFundTransaction(
@@ -115,7 +116,8 @@ export async function POST(request: NextRequest) {
       purchaseFrom,
       fundingAmount,
       fundingSourceId,
-      businessAmount
+      businessAmount,
+      vatScheme
     } = body;
 
     if (!stockId) {
@@ -191,6 +193,16 @@ export async function POST(request: NextRequest) {
       // Just log the error and continue
     }
 
+    if (vatScheme !== undefined) {
+      try {
+        await updateStockCacheVatScheme(stockId, dealerId, vatScheme)
+        console.log(`✅ VAT scheme updated separately for stock ${stockId}`)
+      } catch (vatError) {
+        console.error('❌ Failed to update VAT scheme in stockCache:', vatError)
+        // Don't fail the entire request if VAT update fails, just log it
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Inventory details saved successfully',
@@ -231,7 +243,7 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    const dealerId = dealerIdResult.dealerId!;
+    const dealerId = dealerIdResult.dealerId!; 
 
     const { searchParams } = new URL(request.url);
     const stockId = searchParams.get('stockId');
@@ -245,6 +257,7 @@ export async function GET(request: NextRequest) {
 
     console.log('📖 Fetching inventory details for stockId:', stockId);
 
+    // Fetch inventory details
     const result = await db
       .select()
       .from(inventoryDetails)
@@ -254,11 +267,40 @@ export async function GET(request: NextRequest) {
       ))
       .limit(1);
 
+    // Fetch VAT scheme from stockCache
+    let vatScheme = null;
+    try {
+      const stockCacheResult = await db
+        .select({
+          advertsData: stockCache.advertsData
+        })
+        .from(stockCache)
+        .where(and(
+          eq(stockCache.stockId, stockId),
+          eq(stockCache.dealerId, dealerId)
+        ))
+        .limit(1);
+
+      if (stockCacheResult.length > 0 && stockCacheResult[0].advertsData) {
+        const advertsData = stockCacheResult[0].advertsData;
+        // Handle both string and object types for advertsData
+        const parsedAdvertsData = typeof advertsData === 'string' 
+          ? JSON.parse(advertsData) 
+          : advertsData;
+        vatScheme = parsedAdvertsData?.vatScheme || null;
+        console.log('📖 Retrieved VAT scheme:', vatScheme);
+      }
+    } catch (vatError) {
+      console.warn('⚠️ Failed to fetch VAT scheme from stockCache:', vatError);
+      // Don't fail the request if VAT scheme fetch fails
+    }
+
     if (result.length === 0) {
       return NextResponse.json({
         success: true,
         message: 'No inventory details found',
-        data: null
+        data: null,
+        vatScheme: vatScheme // Include VAT scheme even if no inventory details found
       });
     }
 
@@ -266,7 +308,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: result[0]
+      data: {
+        ...result[0],
+        vatScheme: vatScheme // Include VAT scheme with inventory details
+      }
     });
 
   } catch (error) {

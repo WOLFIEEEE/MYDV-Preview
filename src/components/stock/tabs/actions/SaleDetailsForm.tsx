@@ -298,19 +298,13 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     { value: 'third_party', label: 'Third Party Warranty' }
   ];
 
-  const vatSchemeOptions = [
-    { value: null, label: 'No VAT', description: 'No VAT information' },
-    { value: 'includes', label: 'Includes VAT', description: 'Price includes VAT' },
-    { value: 'excludes', label: 'Excludes VAT', description: 'Price excludes VAT' }
-  ];
-
   // Helper function to get VAT qualification status
   const getVatQualificationStatus = (vatScheme: string | null): string => {
     if (!vatScheme || vatScheme === null) return 'Non-Qualifying';
     return 'Qualifying';
   };
 
-  const handleInputChange = (field: string, value: string | boolean | null) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => {
       const newData = {
         ...prev,
@@ -424,7 +418,6 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         bulbs: formData.bulbs || false,
         additionalText: formData.additionalText || null,
         completionDate: formData.completionDate || null,
-        vatScheme: formData.vatScheme || null
       };
 
       console.log('📝 Saving sale details:', apiData);
@@ -589,19 +582,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                 }`}>
                   <Sparkles className="h-4 w-4 mr-2" />
                   Complete vehicle sale information
-                  <span className={`ml-3 px-2 py-1 rounded-full text-xs font-medium ${
-                    getVatQualificationStatus(formData.vatScheme) === 'Qualifying'
-                      ? isDarkMode 
-                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                        : 'bg-green-100 text-green-700 border border-green-200'
-                      : isDarkMode
-                        ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                        : 'bg-gray-100 text-gray-600 border border-gray-200'
-                  }`}>
-                    VAT: {getVatQualificationStatus(formData.vatScheme)}
-                  </span>
                 </p>
               </div>
+              
             </div>
             
             {/* Sale Value Display */}
@@ -715,34 +698,6 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               }`}>
                 <AlertCircle className="h-3 w-3 mr-1" />
                 These fields are automatically populated and cannot be modified
-              </div>
-            </div>
-
-            {/* VAT Scheme Selection */}
-            <div className="mb-6">
-              <label className={labelClass}>
-                <PoundSterling className="inline h-4 w-4 mr-2" />
-                VAT Scheme
-              </label>
-              <select
-                value={formData.vatScheme || ''}
-                onChange={(e) => handleInputChange('vatScheme', e.target.value || null)}
-                onFocus={() => setFocusedField('vatScheme')}
-                onBlur={() => setFocusedField(null)}
-                className={`${inputBaseClass} ${
-                  focusedField === 'vatScheme' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
-                }`}
-              >
-                {vatSchemeOptions.map((option) => (
-                  <option key={option.value || 'null'} value={option.value || ''}>
-                    {option.label} - {option.description}
-                  </option>
-                ))}
-              </select>
-              <div className={`mt-1 text-xs ${
-                isDarkMode ? 'text-white' : 'text-slate-500'
-              }`}>
-                Select how VAT is handled for this vehicle's sale price
               </div>
             </div>
 

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const dealerId = dealerIdResult.dealerId!
 
     const body = await request.json()
-    const { stockId, vatScheme, ...formData } = body
+    const { stockId, ...formData } = body
 
     if (!stockId) {
       return NextResponse.json({ error: 'Stock ID is required' }, { status: 400 })
@@ -109,17 +109,6 @@ export async function POST(request: NextRequest) {
         saleDate: new Date(), // Default saleDate for new records
         ...finalProcessedData
       })
-    }
-
-    // Handle VAT scheme update separately in stockCache
-    if (vatScheme !== undefined) {
-      try {
-        await updateStockCacheVatScheme(stockId, dealerId, vatScheme)
-        console.log(`✅ VAT scheme updated separately for stock ${stockId}`)
-      } catch (vatError) {
-        console.error('❌ Failed to update VAT scheme in stockCache:', vatError)
-        // Don't fail the entire request if VAT update fails, just log it
-      }
     }
 
     return NextResponse.json({ success: true, data: result }, { status: 200 })
