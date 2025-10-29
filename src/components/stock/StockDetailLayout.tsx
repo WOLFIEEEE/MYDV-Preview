@@ -117,7 +117,7 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
       case "features":
         return <FeaturesTab stockData={stockData} />;
       case "adverts":
-        return <AdvertsTab stockData={stockData} />;
+        return <AdvertsTab stockData={stockData} stockId={stockId} />;
       case "advertiser":
         return <AdvertiserTab stockData={stockData} />;
       case "history":

@@ -7,9 +7,10 @@ import DataGrid from "../shared/DataGrid";
 
 interface VehicleTabProps {
   stockData: any;
+  insideComponent?: boolean;
 }
 
-export default function VehicleTab({ stockData }: VehicleTabProps) {
+export default function VehicleTab({ stockData, insideComponent=false }: VehicleTabProps) {
   const vehicle = stockData.vehicle || {};
 
   const basicInfoItems = [
@@ -124,7 +125,7 @@ export default function VehicleTab({ stockData }: VehicleTabProps) {
   ];
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-8 h-full">
+    <div className={`${insideComponent ? '' : 'px-4 sm:px-6 lg:px-8 py-8'} h-full`}>
       {/* Section Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">

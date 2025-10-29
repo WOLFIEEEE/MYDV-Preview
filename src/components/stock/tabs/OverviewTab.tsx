@@ -13,6 +13,8 @@ import ProgressiveLoader from "@/components/shared/ProgressiveLoader";
 import AddCostsForm from "./actions/AddCostsForm";
 import SaleDetailsForm from "./actions/SaleDetailsForm";
 import { useRouter } from "next/navigation";
+import VehicleTab from "./VehicleTab";
+import LicensePlate from "@/components/ui/license-plate";
 
 
 interface RecentInvoice {
@@ -293,7 +295,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     // Create temporary storage for the invoice ID
     const tempId = `invoice_${recentInvoice.id}_${Date.now()}`;
     sessionStorage.setItem(tempId, recentInvoice.id);
-    
+
     // Navigate to dynamic editor with the temp ID
     router.push(`/dynamic-invoice-editor?tempId=${tempId}&invoiceId=${recentInvoice.id}`);
   };
@@ -344,33 +346,33 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
       priceIndicatorRating
     });
   }
-  
+
   // Extract descriptions from retailAdverts - show both when available
   const getVehicleDescription = () => {
     const description1 = adverts.retailAdverts?.description;
     const description2 = adverts.retailAdverts?.description2;
-    
+
     const descriptions = [];
-    
+
     // Add both descriptions if they exist and are different
     if (description1 && description1.trim()) {
       descriptions.push(description1.trim());
     }
-    
+
     if (description2 && description2.trim() && description2.trim() !== description1?.trim()) {
       descriptions.push(description2.trim());
     }
-    
+
     // If we have actual descriptions, use them
     if (descriptions.length > 0) {
       return descriptions.join('\n\n'); // Separate multiple descriptions with double line break
     }
-    
+
     return 'No description available for this vehicle.';
   };
-  
+
   const vehicleDescription = getVehicleDescription();
-  
+
 
   // Extract key highlights from the highlights array
   const keyHighlights = highlights.map((highlight: any) => ({
@@ -441,71 +443,144 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
 
   const vehicleTitle = `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'Vehicle';
 
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 h-full">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         {/* Left Container - Main Image & Details */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Vehicle Title Section with Edit Button */}
+          {/* Vehicle Header Section - Replicating Autotrader layout */}
           <div className="mb-6">
-            <div className="flex justify-between items-start mb-2">
-              <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {vehicleTitle}
-              </h1>
-              {/* Edit Stock Button - Positioned at top right */}
-              {stockId && (
-                <Link href={`/mystock/edit/${stockId}`}>
-                  <Button variant="outline" size="sm">
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Edit Stock
-                  </Button>
-                </Link>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-4">
-              {vehicle.registration && (
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDarkMode ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-700'
-                  }`}>
-                  {vehicle.registration}
-                </span>
-              )}
-              {vehicle.yearOfManufacture && (
-                <span className="flex items-center text-gray-500">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  {vehicle.yearOfManufacture}
-                </span>
-              )}
-              {vehicle.odometerReadingMiles && (
-                <span className="flex items-center text-gray-500">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  {formatMileage(vehicle.odometerReadingMiles)}
-                </span>
-              )}
-              {currentPrice && (
-                <span className={`text-2xl font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                  {formatPrice(currentPrice)}
-                </span>
-              )}
+            <div className="flex gap-4">
+              {/* Left side - Vehicle Image */}
+              <div className="flex-shrink-0">
+                <div className="w-32 h-24 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                  <img
+                    src={mainImage}
+                    alt={vehicleTitle}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder-car.png';
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Middle - Vehicle Info */}
+              <div className="flex-1 space-y-2">
+                {/* Make Model - Large */}
+                <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {vehicle.make?.toUpperCase()} {vehicle.model?.toUpperCase()}
+                </h1>
+
+                {/* Derivative - Medium */}
+                {vehicle.derivative && (
+                  <p className={`text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {vehicle.derivative}
+                  </p>
+                )}
+
+                {/* Compact Stats Line */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  {vehicle.yearOfManufacture && (
+                    <span>Car</span>
+                  )}
+                  {vehicle.yearOfManufacture && (
+                    <span>{vehicle.yearOfManufacture}</span>
+                  )}
+                  {vehicle.registration && (
+                    <span>({vehicle.registration.length})</span>
+                  )}
+                  {vehicle.odometerReadingMiles && (
+                    <span>{formatMileage(vehicle.odometerReadingMiles)}</span>
+                  )}
+                  {(vehicle.fuelType || vehicle.fuel) && (
+                    <span>{vehicle.fuelType || vehicle.fuel}</span>
+                  )}
+                  {(vehicle.transmission || vehicle.gearbox) && (
+                    <span>{vehicle.transmission || vehicle.gearbox}</span>
+                  )}
+                  {(vehicle.colour || (vehicle as any).standard?.colour) && (
+                    <span>{vehicle.colour || (vehicle as any).standard?.colour}</span>
+                  )}
+                  {vehicle.doors && (
+                    <span>{vehicle.doors} Owners</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Right side - License Plate, Stock ID, Price */}
+              <div className="flex-shrink-0 text-right space-y-3">
+                {/* License Plate */}
+                {vehicle.registration && (
+                  <div className="flex justify-end">
+                    <LicensePlate
+                      registration={vehicle.registration}
+                      size="md"
+                    />
+                  </div>
+                )}
+
+                {/* Sale Price */}
+                {currentPrice && (
+                  <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {formatPrice(currentPrice)}
+                  </div>
+                )}
+
+                {/* Stock ID */}
+                {stockId && (
+                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Stock ID #{stockId.slice(-8)}
+                  </div>
+                )}
+
+                {/* Price Rating */}
+                {priceIndicatorRating && priceIndicatorRating !== 'NOANALYSIS' && (
+                  <div className="flex justify-end">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getPriceIndicatorColor(priceIndicatorRating)}`}>
+                      {priceIndicatorRating === 'GREAT' ? 'Good price' : priceIndicatorRating}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Main Image */}
-          <div className={`rounded-lg overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'
-            } shadow-sm`}>
-            <div className="aspect-video bg-gray-100 dark:bg-gray-800">
-              <img
-                src={mainImage}
-                alt={vehicleTitle}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-car.png';
-                }}
-              />
+          {/* <div className="w-full flex gap-4 items-start">
+            <div className="flex-1">
+              <div className="aspect-[16/12] bg-gray-100 dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+                <img
+                  src={mainImage}
+                  alt={vehicleTitle}
+                  className="w-full h-full object-fill"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/placeholder-car.png';
+                  }}
+                />
+              </div>
             </div>
-          </div>
 
+            <div className="flex-[2] space-y-6">
+              <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+                <h3 className="text-xl font-semibold mb-4 flex items-center">
+                  <Zap className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+                  Vehicle Description
+                </h3>
+                <div className={`leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
+                  {vehicleDescription.split('\n\n').map((paragraph, index) => (
+                    <p key={index} className={index > 0 ? 'mt-4' : ''}>
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          </div> */}
 
 
           {/* Description */}
@@ -555,10 +630,25 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
               </div>
             </div>
           )}
+
+          <VehicleTab stockData={stockData} insideComponent={true} />
         </div>
 
         {/* Right Container - Detailed Information */}
         <div className="space-y-3">
+          <div className="w-full">
+            {/* Edit Stock Button */}
+            {stockId && (
+              <div className="flex justify-end">
+                <Link href={`/mystock/edit/${stockId}`}>
+                  <Button variant="outline" size="sm">
+                    <Edit3 className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
 
           {/* Price Analysis */}
           <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
@@ -1514,8 +1604,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   setAddSalesDialogOpen(false);
                 }}
                 className={`p-2 rounded-lg transition-colors ${isDarkMode
-                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
-                    : 'hover:bg-indigo-100/50 text-slate-500 hover:text-slate-700'
+                  ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                  : 'hover:bg-indigo-100/50 text-slate-500 hover:text-slate-700'
                   }`}
               >
                 <X className="h-5 w-5" />
@@ -1557,8 +1647,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   setEditSalesDialogOpen(false);
                 }}
                 className={`p-2 rounded-lg transition-colors ${isDarkMode
-                    ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
-                    : 'hover:bg-indigo-100/50 text-slate-500 hover:text-slate-700'
+                  ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white'
+                  : 'hover:bg-indigo-100/50 text-slate-500 hover:text-slate-700'
                   }`}
               >
                 <X className="h-5 w-5" />
