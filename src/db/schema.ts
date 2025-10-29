@@ -792,6 +792,9 @@ export const saleDetails = pgTable('sale_details', {
   totalFinanceAddOn: decimal('total_finance_add_on', { precision: 10, scale: 2 }),
   totalCustomerAddOn: decimal('total_customer_add_on', { precision: 10, scale: 2 }),
   
+  // VAT Information
+  vatScheme: varchar('vat_scheme', { length: 20 }).default('no_vat'), // VAT scheme: no_vat, includes, excludes
+  
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -1046,6 +1049,9 @@ export const inventoryDetails = pgTable('inventory_details', {
   fundingAmount: decimal('funding_amount', { precision: 10, scale: 2 }), // Amount funded from external source
   fundingSourceId: uuid('funding_source_id'), // Reference to fund source
   businessAmount: decimal('business_amount', { precision: 10, scale: 2 }), // Calculated: costOfPurchase - fundingAmount
+  
+  // VAT Information
+  vatScheme: varchar('vat_scheme', { length: 20 }).default('no_vat'), // VAT scheme: no_vat, includes, excludes
   
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),

@@ -14,13 +14,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { invoiceData, stockId } = body;
+    const { invoiceData, stockId, vatStatus } = body;
 
     if (!invoiceData || !stockId) {
       return NextResponse.json({ 
         success: false, 
         error: 'Missing required fields' 
       }, { status: 400 });
+    }
+    
+    // Store VAT status in invoice data if provided (from URL params or form)
+    // This ensures VAT status changes from GenerateInvoiceForm are preserved
+    if (vatStatus && (vatStatus === 'no_vat' || vatStatus === 'includes' || vatStatus === 'excludes')) {
+      // Add vatScheme to invoice data metadata/additionalData for sync service to extract
+      invoiceData.vatScheme = vatStatus;
+      // Also store in metadata for backwards compatibility
+      if (!invoiceData.metadata) {
+        invoiceData.metadata = {};
+      }
+      invoiceData.metadata.vatScheme = vatStatus;
+      console.log('💰 [SAVE API] Storing VAT scheme in invoice data:', vatStatus);
     }
 
     // Get dealer ID using helper function (supports team member credential delegation)

@@ -3,8 +3,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import { 
   createSaleDetails, 
   getSaleDetailsByStockId, 
-  updateSaleDetails,
-  updateStockCacheVatScheme
+  updateSaleDetails
 } from '@/lib/stockActionsDb'
 import { autoCreateCustomerFromSaleDetails } from '@/lib/customerAutoCreate'
 import { getDealerIdForUser } from '@/lib/dealerHelper'
@@ -70,7 +69,9 @@ export async function POST(request: NextRequest) {
       depositAmount: parseNumericField(formData.depositAmount),
       requiredAmount: parseNumericField(formData.requiredAmount),
       partExAmount: parseNumericField(formData.partExAmount),
-      cardAmount: parseNumericField(formData.cardAmount)
+      cardAmount: parseNumericField(formData.cardAmount),
+      // VAT scheme handling
+      vatScheme: formData.vatScheme || 'no_vat'
     }
 
     // Remove undefined values to prevent overwriting existing data with undefined

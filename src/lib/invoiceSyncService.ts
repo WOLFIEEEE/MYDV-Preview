@@ -267,6 +267,52 @@ export class InvoiceSyncService {
   }
 
   /**
+   * Extract VAT scheme from invoice data
+   * Checks multiple possible locations where VAT status might be stored
+   */
+  private extractVatScheme(): string | undefined {
+    const invoice = this.invoiceData;
+    
+    // Check for explicit vatScheme field (from URL params stored in metadata/additionalData)
+    const invoiceDataAny = invoice as any;
+    if (invoiceDataAny.vatScheme) {
+      return invoiceDataAny.vatScheme;
+    }
+    
+    // Check metadata if it exists
+    if (invoiceDataAny.metadata?.vatScheme) {
+      return invoiceDataAny.metadata.vatScheme;
+    }
+    
+    // Check additionalData if it exists
+    if (invoiceDataAny.additionalData?.vatStatus) {
+      const vatStatus = invoiceDataAny.additionalData.vatStatus;
+      // Normalize vatStatus to vatScheme format (no_vat, includes, excludes)
+      if (vatStatus === 'no_vat' || vatStatus === 'includes' || vatStatus === 'excludes') {
+        return vatStatus;
+      }
+    }
+    
+    // Derive from VAT application flags in pricing
+    if (invoice.pricing?.applyVatToSalePrice) {
+      // If VAT is applied, check if price includes or excludes VAT
+      if (invoice.pricing.salePriceIncludingVat && invoice.pricing.salePrice) {
+        // If includingVat exists and matches salePrice, it's includes
+        if (Math.abs(invoice.pricing.salePriceIncludingVat - invoice.pricing.salePrice) < 0.01) {
+          return 'includes';
+        } else {
+          return 'excludes';
+        }
+      }
+      // Default to excludes if VAT is applied but not explicitly includes
+      return 'excludes';
+    }
+    
+    // No VAT applied
+    return 'no_vat';
+  }
+
+  /**
    * Prepare sales details data from invoice data
    */
   private prepareSalesDetailsData(customerId?: string): Record<string, any> {
@@ -274,6 +320,10 @@ export class InvoiceSyncService {
     
     // Aggregate multiple payments
     const paymentTotals = this.aggregatePayments();
+    
+    // Extract VAT scheme from invoice data
+    const vatScheme = this.extractVatScheme();
+    console.log('💰 [SYNC] Extracted VAT scheme from invoice:', vatScheme);
 
     const saleDetailsData: Record<string, any> = {
       // Link to customer if available
@@ -287,6 +337,9 @@ export class InvoiceSyncService {
       monthOfSale: invoice.sale?.monthOfSale,
       quarterOfSale: invoice.sale?.quarterOfSale,
       salePrice: (invoice.pricing?.salePricePostDiscount !== undefined ? invoice.pricing.salePricePostDiscount : (invoice.pricing?.salePrice ?? 0)).toString(),
+      
+      // VAT Scheme - sync from invoice data
+      vatScheme: vatScheme || 'no_vat',
       
       // Customer information (from invoice customer data)
       firstName: invoice.customer?.firstName,

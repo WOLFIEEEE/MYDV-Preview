@@ -3,6 +3,11 @@ import { currentUser } from '@clerk/nextjs/server';
 import { createErrorResponse, createInternalErrorResponse, ErrorType, parseAutoTraderError } from '@/lib/errorHandler';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { StockCacheService } from '@/lib/stockCacheService';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
+import { syncVatSchemeToSalesDetails } from '@/lib/stockActionsDb';
+import { db } from '@/lib/db';
+import { inventoryDetails } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
 // Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 interface AdvertsUpdateRequest {
@@ -397,6 +402,57 @@ export async function PATCH(
 
       const errorResponse = await parseAutoTraderError(autoTraderResponse, autoTraderUrl);
       return NextResponse.json(createErrorResponse(errorResponse), { status: errorResponse.httpStatus });
+    }
+
+    // Sync VAT status from listing details to purchase information
+    try {
+      const vatStatusUpdated = requestBody.adverts?.forecourtPriceVatStatus || requestBody.adverts?.retailAdverts?.vatStatus;
+      if (vatStatusUpdated) {
+        console.log('🔄 Syncing VAT status from listing details to purchase information...');
+        
+        // Get dealer ID for the user
+        const dealerIdResult = await getDealerIdForUser(user);
+        if (dealerIdResult.success && dealerIdResult.dealerId) {
+          // Normalize VAT status to our internal format
+          let normalizedVatScheme: string;
+          switch (vatStatusUpdated.toLowerCase()) {
+            case 'no vat':
+              normalizedVatScheme = 'no_vat';
+              break;
+            case 'inc vat':
+              normalizedVatScheme = 'includes';
+              break;
+            case 'ex vat':
+              normalizedVatScheme = 'excludes';
+              break;
+            default:
+              normalizedVatScheme = 'no_vat';
+          }
+          
+          // Update VAT scheme in inventory_details table
+          await db
+            .update(inventoryDetails)
+            .set({ 
+              vatScheme: normalizedVatScheme,
+              updatedAt: new Date()
+            })
+            .where(and(
+              eq(inventoryDetails.stockId, stockId),
+              eq(inventoryDetails.dealerId, dealerIdResult.dealerId)
+            ));
+            
+          console.log(`✅ VAT scheme synced to purchase information: '${normalizedVatScheme}' for stockId: ${stockId}`);
+          
+          // Also sync VAT scheme to sales details if they exist
+          await syncVatSchemeToSalesDetails(stockId, dealerIdResult.dealerId, normalizedVatScheme);
+          console.log(`✅ VAT scheme synced to sales details: '${normalizedVatScheme}' for stockId: ${stockId}`);
+        } else {
+          console.warn('⚠️ Could not get dealer ID for VAT sync:', dealerIdResult.error);
+        }
+      }
+    } catch (vatSyncError) {
+      console.warn('⚠️ Failed to sync VAT scheme to purchase information:', vatSyncError);
+      // Don't fail the request if VAT sync fails
     }
 
     // Update cache if successful

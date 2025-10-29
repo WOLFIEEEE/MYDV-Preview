@@ -1615,7 +1615,10 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 USER MANUAL:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.userManual === 'Present' || invoiceData.checklist?.userManual === 'Digital Copy Available' ? 'YES' : 'NO'}
+                {invoiceData.checklist?.userManual === 'Present' || 
+                 invoiceData.checklist?.userManual === 'Digital Copy Available' || 
+                 invoiceData.checklist?.userManual === 'Yes' || 
+                 invoiceData.checklist?.userManual === 'Digital' ? 'YES' : 'NO'}
               </div>
             </div>
             
@@ -1624,7 +1627,8 @@ export default function InvoicePDFPreview({ invoiceData, className = '' }: Invoi
                 WHEEL LOCKING NUT:
               </div>
               <div style={{ flex: '1', textAlign: 'left', fontSize: '7px' }}>
-                {invoiceData.checklist?.wheelLockingNut === 'Present' ? 'YES' : 'NO'}
+                {invoiceData.checklist?.wheelLockingNut === 'Present' || 
+                 invoiceData.checklist?.wheelLockingNut === 'Yes' ? 'YES' : 'NO'}
               </div>
             </div>
             

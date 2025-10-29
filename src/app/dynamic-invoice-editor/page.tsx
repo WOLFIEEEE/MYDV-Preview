@@ -927,8 +927,12 @@ function DynamicInvoiceEditorContent() {
       const saleType = urlParams.get('saleType');
       const vatScheme = urlParams.get('vatScheme');
       const invoiceTo = urlParams.get('invoiceTo');
+      const salePrice = urlParams.get('salePrice');
+      const netSalePrice = urlParams.get('netSalePrice');
+      const grossSalePrice = urlParams.get('grossSalePrice');
+      const vatStatus = urlParams.get('vatStatus');
       
-      console.log(`🔍 [EDITOR] URL Parameters:`, { source, debugId, saleId, stockId, tempId, invoiceId, saleType, vatScheme, invoiceTo });
+      console.log(`🔍 [EDITOR] URL Parameters:`, { source, debugId, saleId, stockId, tempId, invoiceId, saleType, vatScheme, invoiceTo, salePrice, netSalePrice, grossSalePrice, vatStatus });
       
       // PRIORITY 1: Load saved invoice if invoiceId is provided
       if (invoiceId) {
@@ -1040,13 +1044,41 @@ function DynamicInvoiceEditorContent() {
               console.log(`🔄 [EDITOR] Converting server data and fetching database info...`);
               const invoiceData = await convertFormDataToInvoiceDataWithDB(formData, vatScheme || undefined);
               
+              // Apply URL parameters for pricing - prioritize netSalePrice if available
+              if (netSalePrice) {
+                const netPrice = parseFloat(netSalePrice);
+                if (!isNaN(netPrice)) {
+                  console.log(`💰 [EDITOR] Applying netSalePrice from URL to temp storage invoice data: £${netPrice.toFixed(2)}`);
+                  invoiceData.pricing.salePrice = netPrice;
+                  invoiceData.pricing.salePricePostDiscount = netPrice;
+                  // Update invoice items if they exist
+                  if (invoiceData.items && invoiceData.items.length > 0) {
+                    invoiceData.items[0].unitPrice = netPrice;
+                    invoiceData.items[0].total = netPrice - (invoiceData.items[0].discount || 0);
+                  }
+                }
+              } else if (salePrice) {
+                const price = parseFloat(salePrice);
+                if (!isNaN(price)) {
+                  console.log(`💰 [EDITOR] Applying salePrice from URL to temp storage invoice data: £${price.toFixed(2)}`);
+                  invoiceData.pricing.salePrice = price;
+                  invoiceData.pricing.salePricePostDiscount = price;
+                  // Update invoice items if they exist
+                  if (invoiceData.items && invoiceData.items.length > 0) {
+                    invoiceData.items[0].unitPrice = price;
+                    invoiceData.items[0].total = price - (invoiceData.items[0].discount || 0);
+                  }
+                }
+              }
+              
               console.log(`✅ [EDITOR] SERVER DATA CONVERSION COMPLETE:`, {
                 saleType: invoiceData.saleType,
                 invoiceType: invoiceData.invoiceType,
                 customerName: `${invoiceData.customer.firstName} ${invoiceData.customer.lastName}`,
                 vehicleReg: invoiceData.vehicle.registration,
                 companyName: invoiceData.companyInfo.name,
-                hasTerms: !!(invoiceData.terms.basicTerms || invoiceData.terms.checklistTerms)
+                hasTerms: !!(invoiceData.terms.basicTerms || invoiceData.terms.checklistTerms),
+                salePrice: invoiceData.pricing.salePrice
               });
               
               setInvoiceData(invoiceData);
@@ -1321,6 +1353,33 @@ function DynamicInvoiceEditorContent() {
         });
         
         const invoiceData = await convertFormDataToInvoiceDataWithDB(formData, vatScheme || undefined);
+        
+        // Apply URL parameters for pricing - prioritize netSalePrice if available
+        if (netSalePrice) {
+          const netPrice = parseFloat(netSalePrice);
+          if (!isNaN(netPrice)) {
+            console.log(`💰 [EDITOR] Applying netSalePrice from URL to invoice data: £${netPrice.toFixed(2)}`);
+            invoiceData.pricing.salePrice = netPrice;
+            invoiceData.pricing.salePricePostDiscount = netPrice;
+            // Update invoice items if they exist
+            if (invoiceData.items && invoiceData.items.length > 0) {
+              invoiceData.items[0].unitPrice = netPrice;
+              invoiceData.items[0].total = netPrice - (invoiceData.items[0].discount || 0);
+            }
+          }
+        } else if (salePrice) {
+          const price = parseFloat(salePrice);
+          if (!isNaN(price)) {
+            console.log(`💰 [EDITOR] Applying salePrice from URL to invoice data: £${price.toFixed(2)}`);
+            invoiceData.pricing.salePrice = price;
+            invoiceData.pricing.salePricePostDiscount = price;
+            // Update invoice items if they exist
+            if (invoiceData.items && invoiceData.items.length > 0) {
+              invoiceData.items[0].unitPrice = price;
+              invoiceData.items[0].total = price - (invoiceData.items[0].discount || 0);
+            }
+          }
+        }
         
         // DEBUG: Log converted addon data
         console.log('🔍 [EDITOR] CONVERTED ADDON DATA:', {
@@ -1641,6 +1700,33 @@ function DynamicInvoiceEditorContent() {
           console.log('🔄 [EDITOR] Converting vehicle finder data and fetching database info...');
           const invoiceData = await convertFormDataToInvoiceDataWithDB(formData, vatScheme || undefined);
           
+          // Apply URL parameters for pricing - prioritize netSalePrice if available
+          if (netSalePrice) {
+            const netPrice = parseFloat(netSalePrice);
+            if (!isNaN(netPrice)) {
+              console.log(`💰 [EDITOR] Applying netSalePrice from URL to vehicle finder invoice data: £${netPrice.toFixed(2)}`);
+              invoiceData.pricing.salePrice = netPrice;
+              invoiceData.pricing.salePricePostDiscount = netPrice;
+              // Update invoice items if they exist
+              if (invoiceData.items && invoiceData.items.length > 0) {
+                invoiceData.items[0].unitPrice = netPrice;
+                invoiceData.items[0].total = netPrice - (invoiceData.items[0].discount || 0);
+              }
+            }
+          } else if (salePrice) {
+            const price = parseFloat(salePrice);
+            if (!isNaN(price)) {
+              console.log(`💰 [EDITOR] Applying salePrice from URL to vehicle finder invoice data: £${price.toFixed(2)}`);
+              invoiceData.pricing.salePrice = price;
+              invoiceData.pricing.salePricePostDiscount = price;
+              // Update invoice items if they exist
+              if (invoiceData.items && invoiceData.items.length > 0) {
+                invoiceData.items[0].unitPrice = price;
+                invoiceData.items[0].total = price - (invoiceData.items[0].discount || 0);
+              }
+            }
+          }
+          
           console.log('✅ [EDITOR] VEHICLE FINDER DATA CONVERSION COMPLETE:', {
             saleType: invoiceData.saleType,
             invoiceType: invoiceData.invoiceType,
@@ -1648,7 +1734,8 @@ function DynamicInvoiceEditorContent() {
             vehicleMake: invoiceData.vehicle.make,
             vehicleModel: invoiceData.vehicle.model,
             companyName: invoiceData.companyInfo.name,
-            hasTerms: !!(invoiceData.terms.basicTerms || invoiceData.terms.checklistTerms)
+            hasTerms: !!(invoiceData.terms.basicTerms || invoiceData.terms.checklistTerms),
+            salePrice: invoiceData.pricing.salePrice
           });
           
           setInvoiceData(invoiceData);
@@ -1688,9 +1775,9 @@ function DynamicInvoiceEditorContent() {
           termsDataRaw: result.data.terms
         });
         
-        // Apply URL parameters for saleType, invoiceTo, and vatScheme if provided
-        if (saleType || invoiceTo || vatScheme) {
-          console.log(`🔧 [EDITOR] Applying URL parameters: saleType=${saleType}, invoiceTo=${invoiceTo}, vatScheme=${vatScheme}`);
+        // Apply URL parameters for saleType, invoiceTo, vatScheme, and pricing if provided
+        if (saleType || invoiceTo || vatScheme || netSalePrice || salePrice || grossSalePrice || vatStatus) {
+          console.log(`🔧 [EDITOR] Applying URL parameters: saleType=${saleType}, invoiceTo=${invoiceTo}, vatScheme=${vatScheme}, netSalePrice=${netSalePrice}, salePrice=${salePrice}`);
           
           const updatedData = { ...result.data };
           
@@ -1709,7 +1796,43 @@ function DynamicInvoiceEditorContent() {
             updatedData.pricing.applyVatToSalePrice = true;
           }
           
-          console.log(`✅ [EDITOR] URL parameters applied: saleType=${updatedData.saleType}, invoiceTo=${updatedData.invoiceTo}, applyVatToSalePrice=${updatedData.pricing.applyVatToSalePrice}`);
+          // Apply sale price from URL parameters - prioritize netSalePrice if available
+          if (netSalePrice) {
+            const netPrice = parseFloat(netSalePrice);
+            if (!isNaN(netPrice)) {
+              console.log(`💰 [EDITOR] Using netSalePrice from URL: £${netPrice.toFixed(2)}`);
+              updatedData.pricing.salePrice = netPrice;
+              updatedData.pricing.salePricePostDiscount = netPrice;
+              // Update invoice items if they exist
+              if (updatedData.items && updatedData.items.length > 0) {
+                updatedData.items[0].unitPrice = netPrice;
+                updatedData.items[0].total = netPrice - (updatedData.items[0].discount || 0);
+              }
+            }
+          } else if (salePrice) {
+            const price = parseFloat(salePrice);
+            if (!isNaN(price)) {
+              console.log(`💰 [EDITOR] Using salePrice from URL: £${price.toFixed(2)}`);
+              updatedData.pricing.salePrice = price;
+              updatedData.pricing.salePricePostDiscount = price;
+              // Update invoice items if they exist
+              if (updatedData.items && updatedData.items.length > 0) {
+                updatedData.items[0].unitPrice = price;
+                updatedData.items[0].total = price - (updatedData.items[0].discount || 0);
+              }
+            }
+          }
+          
+          // Apply gross sale price if provided (for reference)
+          if (grossSalePrice) {
+            const grossPrice = parseFloat(grossSalePrice);
+            if (!isNaN(grossPrice)) {
+              console.log(`💰 [EDITOR] Gross sale price from URL: £${grossPrice.toFixed(2)}`);
+              // Store in notes or additional fields if needed
+            }
+          }
+          
+          console.log(`✅ [EDITOR] URL parameters applied: saleType=${updatedData.saleType}, invoiceTo=${updatedData.invoiceTo}, applyVatToSalePrice=${updatedData.pricing.applyVatToSalePrice}, salePrice=${updatedData.pricing.salePrice}`);
           setInvoiceData(updatedData);
         } else {
           setInvoiceData(result.data);
@@ -1763,6 +1886,18 @@ function DynamicInvoiceEditorContent() {
     // For vehicle finder invoices, use a placeholder stockId since they don't have real stock entries
     const effectiveStockId = stockId || `vehicle-finder-${invoiceData.vehicle.registration}-${Date.now()}`;
     
+    // Extract VAT status from URL params if available (from GenerateInvoiceForm)
+    let vatStatusForSync: string | undefined;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      vatStatusForSync = urlParams.get('vatStatus') || undefined;
+      if (vatStatusForSync) {
+        console.log('💰 [SAVE] Extracted VAT status from URL for sync:', vatStatusForSync);
+      }
+    } catch (e) {
+      console.warn('⚠️ [SAVE] Could not extract VAT status from URL:', e);
+    }
+    
     try {
       const response = await fetch('/api/invoices/save', {
         method: 'POST',
@@ -1772,6 +1907,7 @@ function DynamicInvoiceEditorContent() {
         body: JSON.stringify({
           stockId: effectiveStockId,
           invoiceData,
+          vatStatus: vatStatusForSync, // Pass VAT status for syncing to sales details
         }),
       });
 

@@ -37,7 +37,7 @@ export async function createSaleDetails(data: NewSaleDetails): Promise<SaleDetai
   return result
 }
 
-export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails & { advertsData: any } | null> {
+export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails & { advertsData: unknown } | null> {
   const [result] = await db
     .select({
       id: saleDetails.id,
@@ -101,6 +101,7 @@ export async function getSaleDetailsByStockId(stockId: string, dealerId: string)
       notes: saleDetails.notes,
       totalFinanceAddOn: saleDetails.totalFinanceAddOn,
       totalCustomerAddOn: saleDetails.totalCustomerAddOn,
+      vatScheme: saleDetails.vatScheme,
       createdAt: saleDetails.createdAt,
       updatedAt: saleDetails.updatedAt,
       advertsData: stockCache.advertsData,
@@ -338,10 +339,10 @@ export async function updateStockCacheVatScheme(stockId: string, dealerId: strin
     }
 
     // Parse the current advertsData or create empty object
-    let currentAdvertsData: any = {}
+    let currentAdvertsData: Record<string, unknown> = {}
     try {
       currentAdvertsData = currentRecord.advertsData ? 
-        (typeof currentRecord.advertsData === 'string' ? JSON.parse(currentRecord.advertsData) : currentRecord.advertsData) 
+        (typeof currentRecord.advertsData === 'string' ? JSON.parse(currentRecord.advertsData) as Record<string, unknown> : currentRecord.advertsData as Record<string, unknown>) 
         : {}
     } catch (parseError) {
       console.warn('Failed to parse advertsData, creating new object:', parseError)
@@ -366,6 +367,30 @@ export async function updateStockCacheVatScheme(stockId: string, dealerId: strin
     console.log(`✅ Updated VAT scheme to '${vatScheme}' for stockId: ${stockId}`)
   } catch (error) {
     console.error('❌ Error updating stockCache VAT scheme:', error)
+    throw error
+  }
+}
+
+// Sync VAT scheme from adverts data to sales details
+export async function syncVatSchemeToSalesDetails(stockId: string, dealerId: string, vatScheme: string | null): Promise<void> {
+  try {
+    // Normalize VAT scheme value
+    const normalizedVatScheme = vatScheme || 'no_vat'
+    
+    // Check if sales details exist for this stock
+    const existingSaleDetails = await getSaleDetailsByStockId(stockId, dealerId)
+    
+    if (existingSaleDetails) {
+      // Update existing sales details with new VAT scheme
+      await updateSaleDetails(stockId, dealerId, {
+        vatScheme: normalizedVatScheme
+      })
+      console.log(`✅ Synced VAT scheme '${normalizedVatScheme}' to existing sales details for stockId: ${stockId}`)
+    } else {
+      console.log(`ℹ️ No existing sales details found for stockId: ${stockId}, VAT scheme will be applied when sales details are created`)
+    }
+  } catch (error) {
+    console.error('❌ Error syncing VAT scheme to sales details:', error)
     throw error
   }
 }
@@ -424,12 +449,12 @@ export function calculateReturnCostsTotal(returnData: Partial<NewReturnCosts>): 
     : []
   
   // Calculate totals
-  const totalVatableCosts = vatableCosts.reduce((sum: number, cost: any) => {
-    return sum + (parseFloat(cost.price) || 0)
+  const totalVatableCosts = vatableCosts.reduce((sum: number, cost: { price?: string | number }) => {
+    return sum + (parseFloat(String(cost.price || 0)) || 0)
   }, 0)
   
-  const totalNonVatableCosts = nonVatableCosts.reduce((sum: number, cost: any) => {
-    return sum + (parseFloat(cost.price) || 0)
+  const totalNonVatableCosts = nonVatableCosts.reduce((sum: number, cost: { price?: string | number }) => {
+    return sum + (parseFloat(String(cost.price || 0)) || 0)
   }, 0)
   
   const totalReturnAmount = totalVatableCosts + totalNonVatableCosts

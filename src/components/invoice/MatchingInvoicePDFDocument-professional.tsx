@@ -3067,7 +3067,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   CAMBELT/CHAIN CONFIRMATION:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.cambeltChainConfirmation ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.cambeltChainConfirmation === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
               
@@ -3103,7 +3103,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   USER MANUAL:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.userManual ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.userManual === 'Present' || 
+                   invoiceData.checklist?.userManual === 'Digital Copy Available' || 
+                   invoiceData.checklist?.userManual === 'Yes' || 
+                   invoiceData.checklist?.userManual === 'Digital' ? 'YES' : 'NO'}
                 </Text>
               </View>
               
@@ -3112,7 +3115,8 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   WHEEL LOCKING NUT:
                 </Text>
                 <Text style={[styles.checklistItem, { flex: 1, textAlign: 'left', fontSize: 8 }]}>
-                  {invoiceData.checklist?.wheelLockingNut ? 'YES' : 'NO'}
+                  {invoiceData.checklist?.wheelLockingNut === 'Present' || 
+                   invoiceData.checklist?.wheelLockingNut === 'Yes' ? 'YES' : 'NO'}
                 </Text>
               </View>
               

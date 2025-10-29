@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
       fundingAmount: fundingAmount ? fundingAmount.toString() : null,
       fundingSourceId: fundingSourceId || null,
       businessAmount: businessAmount ? businessAmount.toString() : null,
+      vatScheme: vatScheme || 'no_vat', // Store VAT scheme in inventory details
       updatedAt: new Date()
     };
 
@@ -193,15 +194,6 @@ export async function POST(request: NextRequest) {
       // Just log the error and continue
     }
 
-    if (vatScheme !== undefined) {
-      try {
-        await updateStockCacheVatScheme(stockId, dealerId, vatScheme)
-        console.log(`✅ VAT scheme updated separately for stock ${stockId}`)
-      } catch (vatError) {
-        console.error('❌ Failed to update VAT scheme in stockCache:', vatError)
-        // Don't fail the entire request if VAT update fails, just log it
-      }
-    }
 
     return NextResponse.json({
       success: true,
@@ -310,7 +302,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         ...result[0],
-        vatScheme: vatScheme // Include VAT scheme with inventory details
+        vatScheme: result[0].vatScheme || vatScheme || 'no_vat' // Prioritize inventory details VAT scheme, fallback to stockCache
       }
     });
 

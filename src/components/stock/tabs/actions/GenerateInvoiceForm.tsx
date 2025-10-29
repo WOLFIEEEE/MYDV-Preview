@@ -7,7 +7,7 @@ import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { FileText, Package, AlertCircle, CheckCircle, DollarSign, Calendar, Building2, Send, Receipt } from 'lucide-react';
+import { FileText, Package, AlertCircle, CheckCircle, DollarSign, Calendar, Building2, Send, Receipt, PoundSterling, Calculator } from 'lucide-react';
 import { PREDEFINED_FINANCE_COMPANIES, CUSTOM_FINANCE_COMPANY_ID, getFinanceCompanyById } from '@/lib/financeCompanies';
 import LicensePlate from '@/components/ui/license-plate';
 
@@ -675,6 +675,50 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
     }
   };
 
+  // Editable sale price and VAT status (initialized from sale details)
+  const [editableSalePrice, setEditableSalePrice] = useState<number>(() => {
+    return saleDetailsData?.salePrice ? parseFloat(saleDetailsData.salePrice.toString()) : 0;
+  });
+  const [editableVatStatus, setEditableVatStatus] = useState<string>(() => {
+    return saleDetailsData?.vatScheme || 'no_vat';
+  });
+
+  // Update editable values when saleDetailsData changes
+  useEffect(() => {
+    if (saleDetailsData?.salePrice) {
+      setEditableSalePrice(parseFloat(saleDetailsData.salePrice.toString()));
+    }
+    if (saleDetailsData?.vatScheme) {
+      setEditableVatStatus(saleDetailsData.vatScheme);
+    }
+  }, [saleDetailsData]);
+
+  // VAT calculation functions using editable values
+  const calculateGrossSalePrice = () => {
+    if (!editableVatStatus || editableVatStatus === 'no_vat' || editableVatStatus === 'includes') {
+      return editableSalePrice;
+    } else if (editableVatStatus === 'excludes') {
+      return editableSalePrice * 1.2; // Add 20% VAT
+    }
+    return editableSalePrice;
+  };
+
+  const calculateNetSalePrice = () => {
+    if (!editableVatStatus || editableVatStatus === 'no_vat' || editableVatStatus === 'excludes') {
+      return editableSalePrice;
+    } else if (editableVatStatus === 'includes') {
+      return (editableSalePrice / 6) * 5; // Remove 20% VAT
+    }
+    return editableSalePrice;
+  };
+
+  const formatVatStatus = (vatScheme: string | null): string => {
+    if (!vatScheme || vatScheme === 'no_vat') return 'No VAT';
+    if (vatScheme === 'includes') return 'Inc VAT';
+    if (vatScheme === 'excludes') return 'Ex VAT';
+    return 'No VAT';
+  };
+
   // Handle sale type changes - set default invoiceTo for non-Retail sales
   // useEffect(() => {
   //   if (formData.saleType && formData.saleType !== 'Retail') {
@@ -766,13 +810,21 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
         stockData?.stockId ||
         formData.vehicleRegistration;
 
+      // Calculate gross and net sale prices
+      const grossSalePrice = calculateGrossSalePrice();
+      const netSalePrice = calculateNetSalePrice();
+
       // Redirect to dynamic invoice editor with URL parameters
       const params = new URLSearchParams({
         stockId: stockId,
         source: 'form',
         saleType: formData.saleType,
         vatScheme: formData.vatScheme,
-        invoiceTo: formData.invoiceTo || 'Customer'
+        invoiceTo: formData.invoiceTo || 'Customer',
+        salePrice: editableSalePrice.toString(),
+        vatStatus: editableVatStatus,
+        grossSalePrice: grossSalePrice.toFixed(2),
+        netSalePrice: netSalePrice.toFixed(2)
       });
 
       router.push(`/dynamic-invoice-editor?${params.toString()}`);
@@ -980,6 +1032,117 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
             )}
 
           </div>
+
+          {/* Sale Price and VAT Status */}
+          <div className="space-y-4 pt-6 border-t border-slate-200/20">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Sale Price */}
+                <div className="space-y-2">
+                  <label className={`${labelClass} flex items-center gap-2`}>
+                    <PoundSterling className="h-4 w-4" />
+                    Sale Price
+                  </label>
+                  <div className="relative">
+                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-slate-500'
+                    }`}>
+                      £
+                    </div>
+                    <input
+                      type="number"
+                      value={editableSalePrice || ''}
+                      onChange={(e) => setEditableSalePrice(parseFloat(e.target.value) || 0)}
+                      step="0.01"
+                      min="0"
+                      className={`${inputBaseClass} pl-8`}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {saleDetailsData ? 'Editable from sale details' : 'Enter sale price'}
+                  </p>
+                </div>
+
+                {/* VAT Status */}
+                <div className="space-y-2">
+                  <label className={`${labelClass} flex items-center gap-2`}>
+                    <CheckCircle className="h-4 w-4" />
+                    VAT Status
+                  </label>
+                  <select
+                    value={editableVatStatus}
+                    onChange={(e) => setEditableVatStatus(e.target.value)}
+                    className={inputBaseClass}
+                  >
+                    <option value="no_vat">No VAT</option>
+                    <option value="includes">Inc VAT</option>
+                    <option value="excludes">Ex VAT</option>
+                  </select>
+                  <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {saleDetailsData ? 'Editable from sale details' : 'Select VAT status'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Gross and Net Sale Price Calculations */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className={`${labelClass} text-sm flex items-center gap-2`}>
+                    <Calculator className="h-4 w-4" />
+                    Gross Sale Price (£)
+                  </label>
+                  <div className="relative group">
+                    <input
+                      type="text"
+                      value={calculateGrossSalePrice().toFixed(2)}
+                      readOnly
+                      className={`${inputBaseClass} pl-10 pr-12 ${isDarkMode
+                        ? 'bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-blue-600/40 text-blue-300'
+                        : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300/60 text-blue-700'
+                        } cursor-not-allowed ring-1 ${isDarkMode ? 'ring-blue-500/20' : 'ring-blue-200/50'
+                        }`}
+                      placeholder="0.00"
+                    />
+                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                      }`}>
+                      £
+                    </div>
+                    <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                      }`}>
+                      <Calculator className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`${labelClass} text-sm flex items-center gap-2`}>
+                    <Calculator className="h-4 w-4" />
+                    Net Sale Price (£)
+                  </label>
+                  <div className="relative group">
+                    <input
+                      type="text"
+                      value={calculateNetSalePrice().toFixed(2)}
+                      readOnly
+                      className={`${inputBaseClass} pl-10 pr-12 ${isDarkMode
+                        ? 'bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-blue-600/40 text-blue-300'
+                        : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300/60 text-blue-700'
+                        } cursor-not-allowed ring-1 ${isDarkMode ? 'ring-blue-500/20' : 'ring-blue-200/50'
+                        }`}
+                      placeholder="0.00"
+                    />
+                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                      }`}>
+                      £
+                    </div>
+                    <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                      }`}>
+                      <Calculator className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
           {/* Terms of Service - Trade Sale */}
           {isTradeSale && (

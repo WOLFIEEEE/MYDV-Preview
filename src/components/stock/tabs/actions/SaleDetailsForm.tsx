@@ -18,12 +18,9 @@ import {
   Phone,
   Mail,
   MapPin,
-  CreditCard,
-  Shield,
   Truck,
   AlertTriangle,
   Sparkles,
-  Building,
   Calculator,
   AlertCircle,
   Download
@@ -123,7 +120,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     // Stock identification fields
     stockReference: stockData?.metadata?.stockId || '',
     registration: stockData?.vehicle?.registration || '',
-    vatScheme: null as string | null, // VAT scheme from advertsData
+    vatScheme: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
     saleDate: new Date().toISOString().split('T')[0],
     monthOfSale: getMonthFromDate(new Date().toISOString().split('T')[0]),
     quarterOfSale: getQuarterFromDate(new Date().toISOString().split('T')[0]),
@@ -210,7 +207,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
             setFormData({
               stockReference: data.stockReference || stockData?.metadata?.stockId || '',
               registration: data.registration || stockData?.vehicle?.registration || '',
-              vatScheme: data.advertsData?.vatScheme || null, // Load VAT scheme from advertsData
+              vatScheme: data.vatScheme || (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // Prioritize sales details VAT scheme
               saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               monthOfSale: data.monthOfSale || getMonthFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
               quarterOfSale: data.quarterOfSale || getQuarterFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
@@ -282,15 +279,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     };
 
     loadSaleDetailsData();
-  }, [stockData?.metadata?.stockId]);
-
-  const paymentMethods = [
-    { value: 'cash', label: 'Cash Payment', icon: PoundSterling },
-    { value: 'finance', label: 'Finance', icon: CreditCard },
-    { value: 'bank_transfer', label: 'Bank Transfer', icon: Building },
-    { value: 'card', label: 'Card Payment', icon: CreditCard },
-    { value: 'mixed', label: 'Mixed Payment', icon: Calculator }
-  ];
+  }, [stockData]);
 
   const warrantyTypes = [
     { value: 'none', label: 'Non Selected' },
@@ -298,9 +287,29 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     { value: 'third_party', label: 'Third Party Warranty' }
   ];
 
-  // Helper function to get VAT qualification status
+  // VAT calculation functions
+  const calculateGrossSalePrice = () => {
+    const salePrice = parseFloat(formData.salePrice) || 0;
+    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'includes') {
+      return salePrice;
+    } else if (formData.vatScheme === 'excludes') {
+      return salePrice * 1.2; // Add 20% VAT
+    }
+    return salePrice;
+  };
+
+  const calculateNetSalePrice = () => {
+    const salePrice = parseFloat(formData.salePrice) || 0;
+    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'excludes') {
+      return salePrice;
+    } else if (formData.vatScheme === 'includes') {
+      return (salePrice / 6) * 5; // Remove 20% VAT (divide by 1.2)
+    }
+    return salePrice;
+  };
+
   const getVatQualificationStatus = (vatScheme: string | null): string => {
-    if (!vatScheme || vatScheme === null) return 'Non-Qualifying';
+    if (!vatScheme || vatScheme === 'no_vat') return 'Non-Qualifying';
     return 'Qualifying';
   };
 
@@ -356,6 +365,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         stockId: formData.stockReference,
         stockReference: formData.stockReference,
         registration: formData.registration,
+        vatScheme: formData.vatScheme || 'no_vat', // Include VAT scheme
         saleDate: formData.saleDate || new Date().toISOString().split('T')[0], // Send as string
         monthOfSale: formData.monthOfSale,
         quarterOfSale: formData.quarterOfSale,
@@ -435,6 +445,30 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
       if (result.success) {
         console.log('✅ Sale details saved successfully:', result.data);
         alert('Sale details saved successfully!');
+        
+        // Reload sale details to get updated VAT scheme
+        try {
+          const reloadResponse = await fetch(`/api/stock-actions/sale-details?stockId=${formData.stockReference}`);
+          if (reloadResponse.ok) {
+            const reloadResult = await reloadResponse.json();
+            if (reloadResult.success && reloadResult.data) {
+              const data = reloadResult.data;
+              // Update form data with reloaded values, especially VAT scheme
+              setFormData(prev => ({
+                ...prev,
+                vatScheme: data.vatScheme || prev.vatScheme || 'no_vat',
+                salePrice: data.salePrice || prev.salePrice,
+                // Update other fields that might have changed
+                saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : prev.saleDate,
+                monthOfSale: data.monthOfSale || prev.monthOfSale,
+                quarterOfSale: data.quarterOfSale || prev.quarterOfSale,
+              }));
+              console.log('✅ Form data reloaded with updated VAT scheme:', data.vatScheme);
+            }
+          }
+        } catch (reloadError) {
+          console.error('⚠️ Error reloading sale details after save:', reloadError);
+        }
         
         // Invalidate inventory cache to reflect updated sale status
         queryClient.invalidateQueries({ queryKey: inventoryQueryKeys.all });
@@ -587,21 +621,49 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               
             </div>
             
-            {/* Sale Value Display */}
-            {totalSaleValue > 0 && (
-              <div className="text-right">
-                <div className={`text-sm font-medium ${
-                  isDarkMode ? 'text-white' : 'text-slate-700'
-                }`}>
-                  Subtotal
+            <div className="flex items-center space-x-4">
+              {/* VAT Qualification Status */}
+              <div className={`px-4 py-3 rounded-lg border ${
+                isDarkMode 
+                  ? 'bg-slate-800/30 border-slate-700/30' 
+                  : 'bg-slate-100/50 border-slate-200/50'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    'bg-gray-500'
+                  }`} />
+                  <span className="font-medium text-sm">
+                    VAT Status: {getVatQualificationStatus(formData.vatScheme)}
+                  </span>
                 </div>
-                <div className={`text-2xl font-bold ${
-                  isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                <div className={`text-xs mt-0.5 opacity-75 ${
+                  isDarkMode ? 'text-white' : 'text-slate-600'
                 }`}>
-                  £{totalSaleValue.toFixed(2)}
+                  {formData.vatScheme ? 
+                    formData.vatScheme === 'includes' ? 'Price includes VAT' : 
+                    formData.vatScheme === 'excludes' ? 'Price excludes VAT' : 
+                    'No VAT applicable'
+                    : 'No VAT applicable'
+                  }
                 </div>
               </div>
-            )}
+
+              {/* Sale Value Display */}
+              {totalSaleValue > 0 && (
+                <div className="text-right">
+                  <div className={`text-sm font-medium ${
+                    isDarkMode ? 'text-white' : 'text-slate-700'
+                  }`}>
+                    Subtotal
+                  </div>
+                  <div className={`text-2xl font-bold ${
+                    isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                  }`}>
+                    £{totalSaleValue.toFixed(2)}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -649,9 +711,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               </p>
             </div>
 
-            {/* Stock ID and Registration Combined Field */}
+            {/* Stock ID, Registration and VAT Status Combined Field */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Stock ID */}
                 <div className="group">
                   <label className={labelClass}>
@@ -692,12 +754,35 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     </div>
                   </div>
                 </div>
+
+                {/* VAT Status (Editable) */}
+                <div className="group">
+                  <label className={labelClass}>
+                    <PoundSterling className="inline h-4 w-4 mr-2" />
+                    VAT Status
+                  </label>
+                  <select
+                    value={formData.vatScheme || 'no_vat'}
+                    onChange={(e) => handleInputChange('vatScheme', e.target.value)}
+                    onFocus={() => setFocusedField('vatScheme')}
+                    onBlur={() => setFocusedField(null)}
+                    className={`${inputBaseClass} ${
+                      focusedField === 'vatScheme' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                    }`}
+                  >
+                    <option value="no_vat">No VAT</option>
+                    <option value="includes">Inc VAT</option>
+                    <option value="excludes">Ex VAT</option>
+                  </select>
+                </div>
               </div>
-              <div className={`mt-2 text-xs flex items-center ${
+              <div className={`mt-2 text-xs ${
                 isDarkMode ? 'text-white' : 'text-slate-500'
               }`}>
-                <AlertCircle className="h-3 w-3 mr-1" />
-                These fields are automatically populated and cannot be modified
+                <div className="flex items-center">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Stock ID and Registration are automatically populated and cannot be modified
+                </div>
               </div>
             </div>
 
@@ -794,7 +879,68 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                   />
                 </div>
               </div>
+            </div>
 
+            {/* Gross and Net Sale Price Calculations */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+               <div>
+                 <label className={`${labelClass} text-sm`}>
+                   <Calculator className="inline h-4 w-4 mr-2" />
+                   Gross Sale Price (£)
+                 </label>
+                 <div className="relative group">
+                   <input
+                     type="text"
+                     value={calculateGrossSalePrice().toFixed(2)}
+                     readOnly
+                     className={`${inputBaseClass} pl-10 pr-12 ${isDarkMode
+                       ? 'bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-blue-600/40 text-blue-300'
+                       : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300/60 text-blue-700'
+                       } cursor-not-allowed ring-1 ${isDarkMode ? 'ring-blue-500/20' : 'ring-blue-200/50'
+                       }`}
+                     placeholder="0.00"
+                   />
+                   <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                     }`}>
+                     £
+                   </div>
+                   <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                     }`}>
+                     <Calculator className="h-3 w-3" />
+                   </div>
+                 </div>
+               </div>
+
+               <div>
+                 <label className={`${labelClass} text-sm`}>
+                   <Calculator className="inline h-4 w-4 mr-2" />
+                   Net Sale Price (£)
+                 </label>
+                 <div className="relative group">
+                   <input
+                     type="text"
+                     value={calculateNetSalePrice().toFixed(2)}
+                     readOnly
+                     className={`${inputBaseClass} pl-10 pr-12 ${isDarkMode
+                       ? 'bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-blue-600/40 text-blue-300'
+                       : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300/60 text-blue-700'
+                       } cursor-not-allowed ring-1 ${isDarkMode ? 'ring-blue-500/20' : 'ring-blue-200/50'
+                       }`}
+                     placeholder="0.00"
+                   />
+                   <div className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                     }`}>
+                     £
+                   </div>
+                   <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                     }`}>
+                     <Calculator className="h-3 w-3" />
+                   </div>
+                 </div>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* <div>
                 <label className={labelClass}>
                   <Shield className="inline h-4 w-4 mr-2" />

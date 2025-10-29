@@ -99,6 +99,13 @@
       "when": 1761503451768,
       "tag": "0013_black_mongoose",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1761746212693,
+      "tag": "0014_add_vat_scheme_to_sale_details",
+      "breakpoints": true
     }
   ]
 }
