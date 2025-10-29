@@ -485,25 +485,40 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 {/* Compact Stats Line */}
                 <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
                   {vehicle.yearOfManufacture && (
-                    <span>Car</span>
+                    <>
+                      <span>Car</span>
+                      <span>|</span>
+                    </>
                   )}
                   {vehicle.yearOfManufacture && (
-                    <span>{vehicle.yearOfManufacture}</span>
-                  )}
-                  {vehicle.registration && (
-                    <span>({vehicle.registration.length})</span>
+                    <>
+                      <span>{vehicle.yearOfManufacture}</span>
+                      <span>|</span>
+                    </>
                   )}
                   {vehicle.odometerReadingMiles && (
-                    <span>{formatMileage(vehicle.odometerReadingMiles)}</span>
+                    <>
+                      <span>{formatMileage(vehicle.odometerReadingMiles)}</span>
+                      <span>|</span>
+                    </>
                   )}
                   {(vehicle.fuelType || vehicle.fuel) && (
-                    <span>{vehicle.fuelType || vehicle.fuel}</span>
+                    <>
+                      <span>{vehicle.fuelType || vehicle.fuel}</span>
+                      <span>|</span>
+                    </>
                   )}
                   {(vehicle.transmission || vehicle.gearbox) && (
-                    <span>{vehicle.transmission || vehicle.gearbox}</span>
+                    <>
+                      <span>{vehicle.transmission || vehicle.gearbox}</span>
+                      <span>|</span>
+                    </>
                   )}
                   {(vehicle.colour || (vehicle as any).standard?.colour) && (
-                    <span>{vehicle.colour || (vehicle as any).standard?.colour}</span>
+                    <>
+                      <span>{vehicle.colour || (vehicle as any).standard?.colour}</span>
+                      <span>|</span>
+                    </>
                   )}
                   {vehicle.doors && (
                     <span>{vehicle.doors} Owners</span>
@@ -513,36 +528,15 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
 
               {/* Right side - License Plate, Stock ID, Price */}
               <div className="flex-shrink-0 text-right space-y-3">
-                {/* License Plate */}
-                {vehicle.registration && (
-                  <div className="flex justify-end">
-                    <LicensePlate
-                      registration={vehicle.registration}
-                      size="md"
-                    />
-                  </div>
-                )}
-
-                {/* Sale Price */}
-                {currentPrice && (
-                  <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {formatPrice(currentPrice)}
-                  </div>
-                )}
-
-                {/* Stock ID */}
+                {/* Edit Stock Button */}
                 {stockId && (
-                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Stock ID #{stockId.slice(-8)}
-                  </div>
-                )}
-
-                {/* Price Rating */}
-                {priceIndicatorRating && priceIndicatorRating !== 'NOANALYSIS' && (
                   <div className="flex justify-end">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getPriceIndicatorColor(priceIndicatorRating)}`}>
-                      {priceIndicatorRating === 'GREAT' ? 'Good price' : priceIndicatorRating}
-                    </span>
+                    <Link href={`/mystock/edit/${stockId}`}>
+                      <Button variant="outline" size="sm">
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -636,29 +630,26 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
 
         {/* Right Container - Detailed Information */}
         <div className="space-y-3">
-          <div className="w-full">
-            {/* Edit Stock Button */}
-            {stockId && (
-              <div className="flex justify-end">
-                <Link href={`/mystock/edit/${stockId}`}>
-                  <Button variant="outline" size="sm">
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-
           {/* Price Analysis */}
           <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm border-2`}>
-            <h3 className="text-sm font-semibold mb-2 flex items-center">
-              <PoundSterling className="h-4 w-4 mr-1 text-green-600 dark:text-green-400" />
-              Price Analysis
-            </h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-semibold mb-2 flex items-center">
+                <PoundSterling className="h-4 w-4 mr-1 text-green-600 dark:text-green-400" />
+                Price Analysis
+              </h3>
+              {/* License Plate */}
+              {vehicle.registration && (
+                <div className="flex justify-end">
+                  <LicensePlate
+                    registration={vehicle.registration}
+                    size="md"
+                  />
+                </div>
+              )}
+            </div>
             {currentPrice && (
               <div className="mb-2">
-                <div className="text-xl font-bold text-green-600 dark:text-green-400 mb-1">
+                <div className="text-xl font-bold mb-1">
                   {formatPrice(currentPrice)}
                 </div>
                 <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs ${getPriceIndicatorColor(priceIndicatorRating)}`}>
