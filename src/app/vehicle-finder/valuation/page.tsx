@@ -96,6 +96,7 @@ function ValuationContent() {
   } | null>(null);
   const [advertData, setAdvertData] = useState<{
     forecourtPrice?: string;
+    forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
   } | null>(null);
@@ -688,7 +689,7 @@ function ValuationContent() {
               Pricing & Description
             </h3>
             <AdvertData
-              defaultExpanded={false}
+              defaultExpanded={true}
               onDataChange={setAdvertData}
               initialData={advertData || undefined}
             />

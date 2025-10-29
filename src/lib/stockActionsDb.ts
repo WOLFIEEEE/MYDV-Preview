@@ -23,7 +23,8 @@ import {
   type Invoice,
   type VehicleCosts,
   type InventoryDetails,
-  type VehicleChecklist
+  type VehicleChecklist,
+  stockCache
 } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 
@@ -36,10 +37,76 @@ export async function createSaleDetails(data: NewSaleDetails): Promise<SaleDetai
   return result
 }
 
-export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails | null> {
+export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails & { advertsData: any } | null> {
   const [result] = await db
-    .select()
+    .select({
+      id: saleDetails.id,
+      stockId: saleDetails.stockId,
+      dealerId: saleDetails.dealerId,
+      customerId: saleDetails.customerId,
+      businessId: saleDetails.businessId,
+      registration: saleDetails.registration,
+      saleDate: saleDetails.saleDate,
+      monthOfSale: saleDetails.monthOfSale,
+      quarterOfSale: saleDetails.quarterOfSale,
+      salePrice: saleDetails.salePrice,
+      firstName: saleDetails.firstName,
+      lastName: saleDetails.lastName,
+      emailAddress: saleDetails.emailAddress,
+      contactNumber: saleDetails.contactNumber,
+      addressFirstLine: saleDetails.addressFirstLine,
+      addressPostCode: saleDetails.addressPostCode,
+      paymentMethod: saleDetails.paymentMethod,
+      cashAmount: saleDetails.cashAmount,
+      bacsAmount: saleDetails.bacsAmount,
+      financeAmount: saleDetails.financeAmount,
+      depositAmount: saleDetails.depositAmount,
+      depositDate: saleDetails.depositDate,
+      partExAmount: saleDetails.partExAmount,
+      cardAmount: saleDetails.cardAmount,
+      requiredAmount: saleDetails.requiredAmount,
+      warrantyType: saleDetails.warrantyType,
+      deliveryType: saleDetails.deliveryType,
+      deliveryPrice: saleDetails.deliveryPrice,
+      deliveryDate: saleDetails.deliveryDate,
+      deliveryAddress: saleDetails.deliveryAddress,
+      documentationComplete: saleDetails.documentationComplete,
+      keyHandedOver: saleDetails.keyHandedOver,
+      customerSatisfied: saleDetails.customerSatisfied,
+      vulnerabilityMarker: saleDetails.vulnerabilityMarker,
+      depositPaid: saleDetails.depositPaid,
+      vehiclePurchased: saleDetails.vehiclePurchased,
+      enquiry: saleDetails.enquiry,
+      gdprConsent: saleDetails.gdprConsent,
+      salesMarketingConsent: saleDetails.salesMarketingConsent,
+      requiresAdditionalSupport: saleDetails.requiresAdditionalSupport,
+      wheelNuts: saleDetails.wheelNuts,
+      tyrePressures: saleDetails.tyrePressures,
+      tyreSensors: saleDetails.tyreSensors,
+      oilLevel: saleDetails.oilLevel,
+      coolantLevel: saleDetails.coolantLevel,
+      screenWash: saleDetails.screenWash,
+      lockingNutGloveBox: saleDetails.lockingNutGloveBox,
+      bookPackGloveBox: saleDetails.bookPackGloveBox,
+      inflationKit: saleDetails.inflationKit,
+      keyBatteries: saleDetails.keyBatteries,
+      batteryTest: saleDetails.batteryTest,
+      testDriver: saleDetails.testDriver,
+      adequateDriveAwayFuel: saleDetails.adequateDriveAwayFuel,
+      washerJets: saleDetails.washerJets,
+      wipers: saleDetails.wipers,
+      bulbs: saleDetails.bulbs,
+      additionalText: saleDetails.additionalText,
+      completionDate: saleDetails.completionDate,
+      notes: saleDetails.notes,
+      totalFinanceAddOn: saleDetails.totalFinanceAddOn,
+      totalCustomerAddOn: saleDetails.totalCustomerAddOn,
+      createdAt: saleDetails.createdAt,
+      updatedAt: saleDetails.updatedAt,
+      advertsData: stockCache.advertsData,
+    })
     .from(saleDetails)
+    .leftJoin(stockCache, eq(saleDetails.stockId, stockCache.stockId))
     .where(and(eq(saleDetails.stockId, stockId), eq(saleDetails.dealerId, dealerId)))
     .limit(1)
   return result || null
@@ -251,6 +318,57 @@ export async function updateVehicleChecklist(stockId: string, dealerId: string, 
 // ================================
 // UTILITY FUNCTIONS
 // ================================
+
+// Update VAT scheme in stockCache advertsData
+export async function updateStockCacheVatScheme(stockId: string, dealerId: string, vatScheme: string | null): Promise<void> {
+  try {
+    // First, get the current stockCache record
+    const [currentRecord] = await db
+      .select({
+        id: stockCache.id,
+        advertsData: stockCache.advertsData
+      })
+      .from(stockCache)
+      .where(and(eq(stockCache.stockId, stockId), eq(stockCache.dealerId, dealerId)))
+      .limit(1)
+
+    if (!currentRecord) {
+      console.warn(`No stockCache record found for stockId: ${stockId}, dealerId: ${dealerId}`)
+      return
+    }
+
+    // Parse the current advertsData or create empty object
+    let currentAdvertsData: any = {}
+    try {
+      currentAdvertsData = currentRecord.advertsData ? 
+        (typeof currentRecord.advertsData === 'string' ? JSON.parse(currentRecord.advertsData) : currentRecord.advertsData) 
+        : {}
+    } catch (parseError) {
+      console.warn('Failed to parse advertsData, creating new object:', parseError)
+      currentAdvertsData = {}
+    }
+
+    // Update the VAT scheme in the advertsData
+    const updatedAdvertsData = {
+      ...currentAdvertsData,
+      vatScheme: vatScheme
+    }
+
+    // Update the stockCache record with the modified advertsData
+    await db
+      .update(stockCache)
+      .set({ 
+        advertsData: updatedAdvertsData,
+        updatedAt: new Date()
+      })
+      .where(eq(stockCache.id, currentRecord.id))
+
+    console.log(`✅ Updated VAT scheme to '${vatScheme}' for stockId: ${stockId}`)
+  } catch (error) {
+    console.error('❌ Error updating stockCache VAT scheme:', error)
+    throw error
+  }
+}
 
 // Calculate completion percentage for checklist
 export function calculateChecklistCompletion(checklistData: Partial<NewVehicleChecklist>): number {

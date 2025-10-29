@@ -13,7 +13,6 @@ interface AdvertsUpdateRequest {
     suppliedPrice?: {
       amountGBP?: number;
     };
-    vatable?: string; // 'Yes' or 'No'
     forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     reservationStatus?: string;
@@ -195,55 +194,44 @@ export async function PATCH(
           advertsChanges.forecourtPrice = { amountGBP: newListing };
         }
 
-        // Handle VAT status and supplied price calculations
-        const vatable = adverts.vatable === 'Yes';
-
-        if (isCar) {
-          // For cars, calculate supplied price
+        // Handle supplied price for cars - use client-provided value
+        if (isCar && adverts.suppliedPrice?.amountGBP !== undefined) {
+          const newSupplied = parseFloat(String(adverts.suppliedPrice.amountGBP));
           const origSupplied = parseFloat(String(originalRetailAdverts.suppliedPrice?.amountGBP || 0));
-          const postedSupplied = adverts.suppliedPrice?.amountGBP;
           
-          const listingChanged = newListing !== origListing;
-          const shouldRecalc = listingChanged || 
-                              postedSupplied === null || 
-                              postedSupplied === undefined || 
-                              parseFloat(String(postedSupplied)) < 75;
-
-          let newSupplied: number;
-          if (shouldRecalc) {
-            // Recalculate from forecourt price
-            newSupplied = vatable ? Math.round(newListing * 1.20 * 100) / 100 : newListing;
-          } else {
-            // Use user-provided value
-            newSupplied = parseFloat(String(postedSupplied));
-          }
-
-          // Enforce API minimum and check for change
+          // Only update if value changed and meets API minimum
           if (newSupplied >= 75 && newSupplied !== origSupplied) {
             retailAdvertsChanges.suppliedPrice = { amountGBP: newSupplied };
           }
-        } else {
-          // For non-cars, handle VAT status
-          const newStatus = vatable ? 'Inc VAT' : 'Ex VAT';
-          const origForecourtVat = originalAdvertsData.forecourtPriceVatStatus;
-          const origRetailVat = originalRetailAdverts.vatStatus;
+        }
+      }
 
-          if (newStatus !== origForecourtVat) {
-            advertsChanges.forecourtPriceVatStatus = newStatus;
-          }
+      // Handle VAT status changes
+      if (adverts.forecourtPriceVatStatus !== undefined) {
+        const newVatStatus = adverts.forecourtPriceVatStatus;
+        const origForecourtVat = originalAdvertsData.forecourtPriceVatStatus;
 
-          if (newStatus !== origRetailVat) {
-            retailAdvertsChanges.vatStatus = newStatus;
-          }
+        if (newVatStatus !== origForecourtVat) {
+          advertsChanges.forecourtPriceVatStatus = newVatStatus;
         }
       }
 
       // Process attention grabber
       if (adverts.attentionGrabber !== undefined) {
         const newValue = String(adverts.attentionGrabber).trim();
-        const origValue = originalRetailAdverts.attentionGrabber || '';
+        const origValue = originalAdvertsData.attentionGrabber || originalRetailAdverts.attentionGrabber || '';
         if (newValue !== origValue) {
+          advertsChanges.attentionGrabber = newValue;
           retailAdvertsChanges.attentionGrabber = newValue;
+        }
+      }
+
+      // Process reservation status
+      if (adverts.reservationStatus !== undefined) {
+        const newValue = String(adverts.reservationStatus).trim();
+        const origValue = originalAdvertsData.reservationStatus || '';
+        if (newValue !== origValue) {
+          advertsChanges.reservationStatus = newValue;
         }
       }
 
@@ -266,6 +254,15 @@ export async function PATCH(
           const origValue = originalRetailAdverts.description2 || '';
           if (newValue !== origValue) {
             retailAdvertsChanges.description2 = newValue;
+          }
+        }
+
+        // VAT Status
+        if (retailAdverts.vatStatus !== undefined) {
+          const newValue = retailAdverts.vatStatus;
+          const origValue = originalRetailAdverts.vatStatus;
+          if (newValue !== origValue) {
+            retailAdvertsChanges.vatStatus = newValue;
           }
         }
 

@@ -125,6 +125,7 @@ export default function VehicleFinder() {
   } | null>(null);
   const [advertData, setAdvertData] = useState<{
     forecourtPrice?: string;
+    forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
   } | null>(null);
@@ -697,7 +698,7 @@ export default function VehicleFinder() {
                 <div className="transform transition-all duration-500 hover:scale-[1.02]">
                   <AdvertData 
                     onDataChange={setAdvertData}
-                    defaultExpanded={false}
+                    defaultExpanded={true}
                   />
                       </div>
 

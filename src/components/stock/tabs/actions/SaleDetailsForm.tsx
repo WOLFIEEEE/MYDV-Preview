@@ -123,6 +123,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     // Stock identification fields
     stockReference: stockData?.metadata?.stockId || '',
     registration: stockData?.vehicle?.registration || '',
+    vatScheme: null as string | null, // VAT scheme from advertsData
     saleDate: new Date().toISOString().split('T')[0],
     monthOfSale: getMonthFromDate(new Date().toISOString().split('T')[0]),
     quarterOfSale: getQuarterFromDate(new Date().toISOString().split('T')[0]),
@@ -190,7 +191,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         completionDate: ''
   });
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>('basic');
@@ -209,6 +210,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
             setFormData({
               stockReference: data.stockReference || stockData?.metadata?.stockId || '',
               registration: data.registration || stockData?.vehicle?.registration || '',
+              vatScheme: data.advertsData?.vatScheme || null, // Load VAT scheme from advertsData
               saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               monthOfSale: data.monthOfSale || getMonthFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
               quarterOfSale: data.quarterOfSale || getQuarterFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
@@ -295,6 +297,12 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     { value: 'in_house', label: 'In House Warranty' },
     { value: 'third_party', label: 'Third Party Warranty' }
   ];
+
+  // Helper function to get VAT qualification status
+  const getVatQualificationStatus = (vatScheme: string | null): string => {
+    if (!vatScheme || vatScheme === null) return 'Non-Qualifying';
+    return 'Qualifying';
+  };
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => {
@@ -409,7 +417,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         wipers: formData.wipers || false,
         bulbs: formData.bulbs || false,
         additionalText: formData.additionalText || null,
-        completionDate: formData.completionDate || null
+        completionDate: formData.completionDate || null,
       };
 
       console.log('📝 Saving sale details:', apiData);
@@ -576,6 +584,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                   Complete vehicle sale information
                 </p>
               </div>
+              
             </div>
             
             {/* Sale Value Display */}

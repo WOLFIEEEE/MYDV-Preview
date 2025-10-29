@@ -3,7 +3,8 @@ import { currentUser } from '@clerk/nextjs/server'
 import { 
   createSaleDetails, 
   getSaleDetailsByStockId, 
-  updateSaleDetails 
+  updateSaleDetails,
+  updateStockCacheVatScheme
 } from '@/lib/stockActionsDb'
 import { autoCreateCustomerFromSaleDetails } from '@/lib/customerAutoCreate'
 import { getDealerIdForUser } from '@/lib/dealerHelper'

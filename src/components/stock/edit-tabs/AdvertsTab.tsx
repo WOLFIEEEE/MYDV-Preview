@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { updateStockAdverts, getAdvertiserId, showNotification, type AdvertsUpdateData } from "@/lib/stockEditingApi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Save, AlertTriangle } from "lucide-react";
@@ -26,13 +27,14 @@ export default function AdvertsTab({ stockData, stockId, onSave }: AdvertsTabPro
   const [formData, setFormData] = useState({
     lifecycleState: 'FORECOURT',
     forecourtPrice: '',
-    vatable: false,
+    forecourtPriceVatStatus: 'No VAT', // Default to No VAT when not defined
     reservationStatus: '',
     attentionGrabber: '',
     description: '',
     description2: '',
     autotraderAdvert: 'NOT_PUBLISHED',
     advertiserAdvert: 'NOT_PUBLISHED',
+    locatorAdvert: 'NOT_PUBLISHED',
     exportAdvert: 'NOT_PUBLISHED',
     profileAdvert: 'NOT_PUBLISHED',
     displayOptions: {
@@ -59,14 +61,15 @@ export default function AdvertsTab({ stockData, stockId, onSave }: AdvertsTabPro
       setFormData(prev => ({
         ...prev,
         lifecycleState: metadata.lifecycleState || 'FORECOURT',
-        forecourtPrice: price.amountGBP?.toString() || '',
-        vatable: adverts.vatable === 'Yes',
-        reservationStatus: adverts.reservationStatus || '',
+        forecourtPrice: stockData.adverts?.forecourtPrice?.amountGBP?.toString() || '',
+        forecourtPriceVatStatus: stockData.adverts?.forecourtPriceVatStatus || 'No VAT',
+        reservationStatus: stockData.adverts?.reservationStatus || '',
         attentionGrabber: adverts.attentionGrabber || '',
         description: adverts.description || '',
         description2: adverts.description2 || '',
         autotraderAdvert: adverts.autotraderAdvert?.status || 'NOT_PUBLISHED',
         advertiserAdvert: adverts.advertiserAdvert?.status || 'NOT_PUBLISHED',
+        locatorAdvert: adverts.locatorAdvert?.status || 'NOT_PUBLISHED',
         exportAdvert: adverts.exportAdvert?.status || 'NOT_PUBLISHED',
         profileAdvert: adverts.profileAdvert?.status || 'NOT_PUBLISHED',
       }));
@@ -99,64 +102,117 @@ export default function AdvertsTab({ stockData, stockId, onSave }: AdvertsTabPro
     try {
       console.log('Updating adverts:', formData);
       
-      // Prepare the API payload for lifecycle state changes
-      const apiPayload: any = {
+      if (!stockId) {
+        setSaveStatus('error');
+        setSaveMessage('Stock ID is required');
+        return;
+      }
+
+      const advertiserId = getAdvertiserId(stockData);
+      if (!advertiserId) {
+        setSaveStatus('error');
+        setSaveMessage('Advertiser ID is required');
+        return;
+      }
+
+      setSaveStatus('saving');
+      setSaveMessage('Saving advert details...');
+      
+      // Prepare the API payload using the correct structure for adverts endpoint
+      const updateData: AdvertsUpdateData = {
         metadata: {
           lifecycleState: formData.lifecycleState
+        },
+        adverts: {
+          // Main advert fields
+          ...(formData.forecourtPrice && {
+            forecourtPrice: {
+              amountGBP: parseFloat(formData.forecourtPrice)
+            }
+          }),
+          forecourtPriceVatStatus: formData.forecourtPriceVatStatus,
+          attentionGrabber: formData.attentionGrabber,
+          reservationStatus: formData.reservationStatus,
+          
+          retailAdverts: {
+            description: formData.description,
+            description2: formData.description2,
+            ...(formData.forecourtPrice && {
+              suppliedPrice: {
+                amountGBP: parseFloat(formData.forecourtPrice)
+              }
+            }),
+            vatStatus: formData.forecourtPriceVatStatus,
+            attentionGrabber: formData.attentionGrabber,
+            displayOptions: {
+              excludePreviousOwners: formData.displayOptions.excludePreviousOwners,
+              excludeStrapline: formData.displayOptions.excludeStrapline,
+              excludeMot: formData.displayOptions.excludeMot,
+              excludeWarranty: formData.displayOptions.excludeWarranty,
+              excludeInteriorDetails: formData.displayOptions.excludeInteriorDetails,
+              excludeTyreCondition: formData.displayOptions.excludeTyreCondition,
+              excludeBodyCondition: formData.displayOptions.excludeBodyCondition
+            },
+            // Channel statuses - if SOLD or DELETED, force NOT_PUBLISHED, otherwise use form values
+            autotraderAdvert: { 
+              status: (formData.lifecycleState === 'SOLD' || formData.lifecycleState === 'DELETED') 
+                ? 'NOT_PUBLISHED' 
+                : formData.autotraderAdvert 
+            },
+            advertiserAdvert: { 
+              status: (formData.lifecycleState === 'SOLD' || formData.lifecycleState === 'DELETED') 
+                ? 'NOT_PUBLISHED' 
+                : formData.advertiserAdvert 
+            },
+            locatorAdvert: { 
+              status: (formData.lifecycleState === 'SOLD' || formData.lifecycleState === 'DELETED') 
+                ? 'NOT_PUBLISHED' 
+                : formData.locatorAdvert 
+            },
+            exportAdvert: { 
+              status: (formData.lifecycleState === 'SOLD' || formData.lifecycleState === 'DELETED') 
+                ? 'NOT_PUBLISHED' 
+                : formData.exportAdvert 
+            },
+            profileAdvert: { 
+              status: (formData.lifecycleState === 'SOLD' || formData.lifecycleState === 'DELETED') 
+                ? 'NOT_PUBLISHED' 
+                : formData.profileAdvert 
+            }
+          }
         }
       };
 
-      // If marking as SOLD or DELETED, include adverts.retailAdverts with NOT_PUBLISHED status
-      if (formData.lifecycleState === 'SOLD' || formData.lifecycleState === 'DELETED') {
-        apiPayload.adverts = {
-          retailAdverts: {
-            autotraderAdvert: { status: 'NOT_PUBLISHED' },
-            advertiserAdvert: { status: 'NOT_PUBLISHED' },
-            locatorAdvert: { status: 'NOT_PUBLISHED' },
-            exportAdvert: { status: 'NOT_PUBLISHED' },
-            profileAdvert: { status: 'NOT_PUBLISHED' }
-          }
-        };
-
-        // Add soldDate for SOLD items
-        if (formData.lifecycleState === 'SOLD') {
-          const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-          apiPayload.adverts.soldDate = currentDate;
-        }
-      }
-
-      // Get advertiserId from stockData
-      const advertiserId = stockData?.metadata?.advertiserId;
-      if (!advertiserId) {
-        throw new Error('Advertiser ID not found in stock data');
-      }
-
-      console.log('📡 Making API call to update stock lifecycle state:', apiPayload);
-
-      // Call the stock update API
-      const response = await fetch(`/api/stock/${stockId}?advertiserId=${advertiserId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(apiPayload)
+      console.log('📡 Calling updateStockAdverts with payload:', JSON.stringify(updateData, null, 2));
+      console.log('📊 Current stock data for comparison:', {
+        currentLifecycleState: stockData?.metadata?.lifecycleState,
+        currentForecourtPrice: stockData?.adverts?.forecourtPrice?.amountGBP,
+        currentVatStatus: stockData?.adverts?.forecourtPriceVatStatus,
+        currentAttentionGrabber: stockData?.adverts?.retailAdverts?.attentionGrabber,
+        currentDescription: stockData?.adverts?.retailAdverts?.description
       });
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        console.log('✅ Stock updated successfully:', result.data);
+      const result = await updateStockAdverts(stockId, advertiserId, updateData);
+      
+      if (result.success) {
         setSaveStatus('success');
-        setSaveMessage(result.data?.message || 'Listing details updated successfully!');
+        setSaveMessage(result.message || 'Advert details updated successfully!');
+        showNotification(result.message || 'Advert details updated successfully!', 'success');
         
-        // Call onSave callback if provided
         if (onSave) {
           onSave(formData);
         }
       } else {
-        console.error('❌ API Error:', result);
-        setSaveStatus('error');
-        setSaveMessage(result.error?.message || result.message || 'Failed to update listing details');
+        // Handle "No changes detected" as a special case
+        if (result.message === 'No changes detected') {
+          setSaveStatus('success');
+          setSaveMessage('No changes were needed - all values are already up to date!');
+          showNotification('No changes were needed - all values are already up to date!', 'info');
+        } else {
+          setSaveStatus('error');
+          setSaveMessage(result.message || 'Failed to update advert details');
+          showNotification(result.message || 'Failed to update advert details', 'error');
+        }
       }
     } catch (error) {
       console.error('❌ Error updating adverts:', error);
@@ -270,19 +326,24 @@ export default function AdvertsTab({ stockData, stockId, onSave }: AdvertsTabPro
               </div>
               
               <div className="space-y-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.vatable}
-                    onChange={(e) => handleInputChange('vatable', e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                  />
-                  <span className={`text-sm ${
-                    isDarkMode ? 'text-white' : 'text-gray-700'
-                  }`}>
-                    Vatable
-                  </span>
+                <label className={`block text-sm font-medium ${
+                  isDarkMode ? 'text-white' : 'text-gray-700'
+                }`}>
+                  VAT Status
                 </label>
+                <select
+                  value={formData.forecourtPriceVatStatus}
+                  onChange={(e) => handleInputChange('forecourtPriceVatStatus', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                  }`}
+                >
+                  <option value="No VAT">No VAT</option>
+                  <option value="Ex VAT">Ex VAT</option>
+                  <option value="Inc VAT">Inc VAT</option>
+                </select>
               </div>
             </div>
 
