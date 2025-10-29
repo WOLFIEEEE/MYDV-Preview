@@ -39,7 +39,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
     fundingAmount: '',
     fundingSourceId: '',
     businessAmount: '',
-    vatScheme: null
+    vatScheme: stockData?.advertsData?.forecourtPriceVatStatus || stockData?.adverts?.retailAdverts?.vatStatus || null
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +66,7 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
               fundingAmount: data.fundingAmount || '',
               fundingSourceId: data.fundingSourceId || '',
               businessAmount: data.businessAmount || '',
-              vatScheme: data.vatScheme || null
+              vatScheme: stockData?.advertsData?.forecourtPriceVatStatus || stockData?.adverts?.retailAdverts?.vatStatus || null
             });
           } else {
             setFormData(prev => {
