@@ -10,11 +10,13 @@ interface AdvertDataProps {
   defaultExpanded?: boolean;
   onDataChange?: (data: {
     forecourtPrice?: string;
+    forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
   }) => void;
   initialData?: {
     forecourtPrice?: string;
+    forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
   };
@@ -29,6 +31,7 @@ export default function AdvertData({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [formData, setFormData] = useState({
     forecourtPrice: initialData?.forecourtPrice || "",
+    forecourtPriceVatStatus: initialData?.forecourtPriceVatStatus || "No VAT",
     attentionGrabber: initialData?.attentionGrabber || "",
     description: initialData?.description || ""
   });
@@ -117,6 +120,27 @@ export default function AdvertData({
                       : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                   }`}
                 />
+              </div>
+              
+              <div className="max-w-md">
+                <label className={`block text-sm font-medium mb-2 ${
+                  isDarkMode ? 'text-white' : 'text-gray-700'
+                }`}>
+                  VAT Status
+                </label>
+                <select
+                  value={formData.forecourtPriceVatStatus}
+                  onChange={(e) => handleInputChange('forecourtPriceVatStatus', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isDarkMode
+                      ? 'bg-slate-700 border-slate-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="No VAT">No VAT</option>
+                  <option value="Ex VAT">Ex VAT</option>
+                  <option value="Inc VAT">Inc VAT</option>
+                </select>
               </div>
             </div>
 

@@ -59,6 +59,7 @@ interface EnhancedAddToStockButtonProps {
   } | null;
   advertData?: {
     forecourtPrice?: string;
+    forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
   } | null;
@@ -301,6 +302,7 @@ export default function EnhancedAddToStockButton({
         registration: vehicleData.registration,
         mileage: parseInt(vehicleData.mileage.replace(/[^0-9]/g, '') || '0'),
         forecourtPrice: advertData?.forecourtPrice ? parseFloat(advertData.forecourtPrice.replace(/[^0-9.]/g, '')) : undefined,
+        forecourtPriceVatStatus: advertData?.forecourtPriceVatStatus || "No VAT",
         attentionGrabber: advertData?.attentionGrabber || "Available Now",
         description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle with full service history.`,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
@@ -317,6 +319,7 @@ export default function EnhancedAddToStockButton({
         plate: vehicleData.registration,
         colour: vehicleData.color,
         forecourtPrice: advertData?.forecourtPrice ? parseFloat(advertData.forecourtPrice.replace(/[^0-9.]/g, '')) : undefined,
+        forecourtPriceVatStatus: advertData?.forecourtPriceVatStatus || "No VAT",
         attentionGrabber: advertData?.attentionGrabber || "Available Now",
         description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle with full service history.`,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
@@ -330,6 +333,7 @@ export default function EnhancedAddToStockButton({
         registration: vehicleData.registration || 'UNKNOWN',
         mileage: parseInt(vehicleData.mileage.replace(/[^0-9]/g, '') || '0'),
         forecourtPrice: advertData?.forecourtPrice ? parseFloat(advertData.forecourtPrice.replace(/[^0-9.]/g, '')) : undefined,
+        forecourtPriceVatStatus: advertData?.forecourtPriceVatStatus || "No VAT",
         attentionGrabber: advertData?.attentionGrabber || "Available Now",
         description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle.`,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",

@@ -19,6 +19,7 @@ interface VehicleFinderFlow {
   mileage: number;
   // Additional data from vehicle finder
   forecourtPrice?: number;
+  forecourtPriceVatStatus?: string;
   attentionGrabber?: string;
   description?: string;
   lifecycleState?: string;
@@ -50,6 +51,7 @@ interface TaxonomyFlow {
   mileage: number;
   // Additional data from taxonomy search
   forecourtPrice?: number;
+  forecourtPriceVatStatus?: string;
   attentionGrabber?: string;
   description?: string;
     lifecycleState?: string;
@@ -317,11 +319,13 @@ interface AutoTraderStockPayload {
     forecourtPrice?: {
       amountGBP: number;
     };
+    forecourtPriceVatStatus?: string;
     retailAdverts?: {
       priceOnApplication?: boolean;
       suppliedPrice?: {
         amountGBP: number;
       };
+      vatStatus?: string;
       attentionGrabber?: string;
       description?: string;
       autotraderAdvert?: {
@@ -786,11 +790,13 @@ export async function POST(request: NextRequest) {
         forecourtPrice: {
           amountGBP: requestData.forecourtPrice
         },
+        forecourtPriceVatStatus: requestData.forecourtPriceVatStatus || 'No VAT',
         retailAdverts: {
           priceOnApplication: false,
           suppliedPrice: {
             amountGBP: requestData.forecourtPrice
           },
+          vatStatus: requestData.forecourtPriceVatStatus || 'No VAT',
           attentionGrabber: requestData.attentionGrabber || 'Available Now',
           description: requestData.description || `${vehicleData.make} ${vehicleData.model} - Excellent condition`,
           autotraderAdvert: {
