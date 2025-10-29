@@ -256,7 +256,7 @@ function generateVehiclesCsv(vehiclesData: VehicleData[], selectedDealerInfo: De
     const retailAdverts = (advertsData as { retailAdverts?: { vatStatus?: string; vatable?: string; totalPrice?: unknown; suppliedPrice?: unknown } }).retailAdverts || {};
     const vatStatus = retailAdverts.vatStatus ?? advertsData.forecourtPriceVatStatus;
 
-    const vatQualifying = vatStatus === 'No Vat' ? 'N' : 'Y';
+    const vatQualifying = vatStatus === 'Ex VAT' || vatStatus === 'Inc VAT' ? 'N' : 'Y';
     const priceIncludesVat = vatStatus === 'Inc VAT' ? 'Y' : 'N';
     
     // Generate vehicle URL using same approach as AA export (deep link)
