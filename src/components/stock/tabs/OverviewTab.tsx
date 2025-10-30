@@ -17,6 +17,7 @@ import VehicleTab from "./VehicleTab";
 import LicensePlate from "@/components/ui/license-plate";
 import EditListingModal from "../edit-tabs/EditListingModal";
 import OverviewRightCards from "./helper/OverviewRightCards";
+import EditVehicleModal from "../edit-tabs/EditVehicleModal";
 
 
 interface RecentInvoice {
@@ -42,7 +43,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
   const [fixedCostsData, setFixedCostsData] = useState<any>(null);
   const [salesData, setSalesData] = useState<any>(null);
   const [recentInvoice, setRecentInvoice] = useState<any>(null);
-  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState<boolean>(false);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState<boolean>(false);
+  const [isListingModalOpen, setIsListingModalOpen] = useState<boolean>(false);
 
   const [addPurchaseInfoDialogOpen, setAddPurchaseInfoDialogOpen] = useState(false);
   const [editPurchaseInfoDialogOpen, setEditPurchaseInfoDialogOpen] = useState(false);
@@ -365,6 +367,32 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     return new Intl.NumberFormat('en-GB').format(mileage) + ' miles';
   };
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  const getPriceIndicatorColor = (rating: string) => {
+    switch (rating?.toLowerCase()) {
+      case 'great':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'good':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'fair':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'high':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'noanalysis':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white';
+    }
+  };
+
   const vehicleTitle = `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'Vehicle';
 
 
@@ -444,75 +472,125 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                       <span>|</span>
                     </>
                   )}
+                  {vehicle.bodyType && (
+                    <>
+                      <span>{vehicle.bodyType}</span>
+                      <span>|</span>
+                    </>
+                  )}
                   {vehicle.doors && (
-                    <span>{vehicle.doors} Owners</span>
+                    <>
+                      <span>{vehicle.doors} Doors</span>
+                      <span>|</span>
+                    </>
+                  )}
+                  {vehicle.seats && (
+                    <>
+                      <span>{vehicle.seats} Seats</span>
+                      <span>|</span>
+                    </>
+                  )}
+                  {(vehicle as any).previousOwners && (
+                    <span>{(vehicle as any).previousOwners} Owners</span>
                   )}
                 </div>
               </div>
 
-              {/* Right side - License Plate, Stock ID, Price */}
               <div className="flex-shrink-0 text-right space-y-3">
                 {/* Edit Stock Button */}
                 {stockId && (
                   <div className="flex justify-end">
-                    <Link href={`/mystock/edit/${stockId}`}>
-                      <Button variant="outline" size="sm">
+                    {/* <Link href={`/mystock/edit/${stockId}`}> */}
+                      <Button variant="outline" size="sm" onClick={() => setIsVehicleModalOpen(true)}>
                         <Edit3 className="h-4 w-4 mr-2" />
                         Edit
                       </Button>
-                    </Link>
+                    {/* </Link> */}
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* <div className="w-full flex gap-4 items-start">
-            <div className="flex-1">
-              <div className="aspect-[16/12] bg-gray-100 dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                <img
-                  src={mainImage}
-                  alt={vehicleTitle}
-                  className="w-full h-full object-fill"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/placeholder-car.png';
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="flex-[2] space-y-6">
-              <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-                <h3 className="text-xl font-semibold mb-4 flex items-center">
-                  <Zap className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-                  Vehicle Description
-                </h3>
-                <div className={`leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                  {vehicleDescription.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className={index > 0 ? 'mt-4' : ''}>
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          </div> */}
-
-
           {/* Description */}
           <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
-            <h3 className="text-xl font-semibold mb-4 flex items-center">
-              <Zap className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-              Vehicle Description
-            </h3>
-            <div className={`leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold flex items-center">
+                <Zap className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+                Listing Details
+              </h3>
+              <Button variant="outline" size="sm" onClick={() => setIsListingModalOpen(true)}>
+                <Edit3 className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            </div>
+
+            {/* Attention Grabber */}
+            {stockData?.adverts?.retailAdverts?.attentionGrabber && (
+              <div className={`mb-4 p-3 rounded-md border-l-4 border-orange-500 ${
+                isDarkMode ? 'bg-orange-900/20 text-orange-300' : 'bg-orange-50 text-orange-800'
+              }`}>
+                <p className="font-medium text-sm">
+                  {stockData.adverts.retailAdverts.attentionGrabber}
+                </p>
+              </div>
+            )}
+
+            {/* Description Text */}
+            <div className={`leading-relaxed mb-4 ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
               {vehicleDescription.split('\n\n').map((paragraph, index) => (
                 <p key={index} className={index > 0 ? 'mt-4' : ''}>
                   {paragraph}
                 </p>
               ))}
+            </div>
+
+            {/* Price, VAT Status, and Vehicle Status */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              {/* Total Price */}
+              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${
+                isDarkMode 
+                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10' 
+                  : 'bg-gray-100/80 border-gray-200/90 shadow-gray-200/50'
+              }`}>
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Listing Price
+                </label>
+                <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {adverts.retailAdverts?.totalPrice?.amountGBP 
+                    ? `£${Number(adverts.retailAdverts.totalPrice.amountGBP).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                    : 'Not set'
+                  }
+                </div>
+              </div>
+
+              {/* VAT Status */}
+              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${
+                isDarkMode 
+                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10' 
+                  : 'bg-gray-100/80 border-gray-200/90 shadow-gray-200/50'
+              }`}>
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  VAT Status
+                </label>
+                <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {adverts.retailAdverts?.vatStatus || 'Not set'}
+                </div>
+              </div>
+
+              {/* Vehicle Status */}
+              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${
+                isDarkMode 
+                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10' 
+                  : 'bg-gray-100/80 border-gray-200/90 shadow-gray-200/50'
+              }`}>
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Vehicle Status
+                </label>
+                <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {stockData?.metadata?.lifecycleState || 'Not set'}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -581,8 +659,19 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
       </div>
 
       <EditListingModal
-        isOpen={isDescriptionModalOpen}
-        onClose={() => setIsDescriptionModalOpen(false)}
+        isOpen={isListingModalOpen}
+        onClose={() => setIsListingModalOpen(false)}
+        stockData={stockData}
+        stockId={stockId}
+        onSave={() => {
+          // Optionally refresh data or show notification
+          console.log('Listing updated successfully');
+        }}
+      />
+
+      <EditVehicleModal
+        isOpen={isVehicleModalOpen}
+        onClose={() => setIsVehicleModalOpen(false)}
         stockData={stockData}
         stockId={stockId}
         onSave={() => {

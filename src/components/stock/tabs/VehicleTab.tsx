@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Car, Expand, Minimize } from "lucide-react";
 import DataAccordion from "../shared/DataAccordion";
@@ -12,6 +13,7 @@ interface VehicleTabProps {
 
 export default function VehicleTab({ stockData, insideComponent=false }: VehicleTabProps) {
   const vehicle = stockData.vehicle || {};
+  const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined);
 
   const basicInfoItems = [
     { label: 'Registration', value: vehicle.registration || vehicle.plate },
@@ -124,6 +126,20 @@ export default function VehicleTab({ stockData, insideComponent=false }: Vehicle
     },
   ];
 
+  const handleExpandAll = () => {
+    setExpandAll(true);
+  };
+
+  const handleCollapseAll = () => {
+    setExpandAll(false);
+  };
+
+  const handleExpandAllChange = (expanded: boolean) => {
+    // This callback is fired when individual items are toggled
+    // and all items reach a uniform state (all expanded or all collapsed)
+    setExpandAll(expanded);
+  };
+
   return (
     <div className={`${insideComponent ? '' : 'px-4 sm:px-6 lg:px-8 py-8'} h-full`}>
       {/* Section Header */}
@@ -133,11 +149,11 @@ export default function VehicleTab({ stockData, insideComponent=false }: Vehicle
           <h2 className="text-2xl font-bold">Vehicle Details</h2>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExpandAll}>
             <Expand className="h-4 w-4 mr-1" />
             Expand All
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleCollapseAll}>
             <Minimize className="h-4 w-4 mr-1" />
             Collapse All
           </Button>
@@ -145,7 +161,11 @@ export default function VehicleTab({ stockData, insideComponent=false }: Vehicle
       </div>
 
       {/* Data Accordion */}
-      <DataAccordion items={accordionItems} />
+      <DataAccordion 
+        items={accordionItems} 
+        expandAll={expandAll}
+        onExpandAllChange={handleExpandAllChange}
+      />
     </div>
   );
 }
