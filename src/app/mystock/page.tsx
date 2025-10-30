@@ -15,6 +15,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Car, 
   RefreshCw, 
@@ -90,6 +100,7 @@ function MyStockContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showRefreshSkeleton, setShowRefreshSkeleton] = useState(false); // Show skeleton during forced refresh
   const [refreshError, setRefreshError] = useState<string | null>(null); // Track refresh errors
+  const [showRefreshDialog, setShowRefreshDialog] = useState(false); // Show refresh confirmation dialog
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showTestDriveForm, setShowTestDriveForm] = useState(false);
@@ -466,7 +477,14 @@ function MyStockContent() {
     }).filter(Boolean))].sort();
   };
 
-  const handleRefresh = async () => {
+  // Show refresh confirmation dialog
+  const handleRefresh = () => {
+    setShowRefreshDialog(true);
+  };
+
+  // Actual refresh function after user confirms
+  const performRefresh = async () => {
+    setShowRefreshDialog(false);
     setIsRefreshing(true);
     setShowRefreshSkeleton(true); // Show skeleton loading - hide old data
     setRefreshError(null); // Clear any previous errors
@@ -3704,6 +3722,41 @@ function MyStockContent() {
             </div>
           </div>
         )}
+
+        {/* Refresh Confirmation Dialog */}
+        <AlertDialog open={showRefreshDialog} onOpenChange={setShowRefreshDialog}>
+          <AlertDialogContent className={isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}>
+            <AlertDialogHeader>
+              <AlertDialogTitle className={isDarkMode ? 'text-white' : 'text-slate-900'}>
+                Confirm Stock Refresh
+              </AlertDialogTitle>
+              <AlertDialogDescription className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>
+                <span className="block mb-3">
+                  We directly sync all your changes to your database, so you should always see the latest data. 
+                  If you still can't, we suggest you refresh the overall page once.
+                </span>
+                <span className={`block font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-600'}`}>
+                  ⚠️ If you want to refresh data from AutoTrader, make sure it's been 15 minutes from your last changes.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className={isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-white' : ''}>
+                Abort
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={performRefresh}
+                className={`${
+                  isDarkMode 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                Success (15 min passed)
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </>
   );
