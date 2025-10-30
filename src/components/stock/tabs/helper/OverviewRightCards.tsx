@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import LicensePlate from '@/components/ui/license-plate';
+import AutotraderPriceCard from '@/components/ui/autotrader-price-label';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Calculator, Calendar, ClipboardCheck, Edit3, ExternalLink, FileText, Gauge, Handshake, Plus, PoundSterling, Trash2, TrendingUp, Upload, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -95,23 +96,6 @@ const OverviewRightCards = ({
     });
   };
 
-  const getPriceIndicatorColor = (rating: string) => {
-    switch (rating?.toLowerCase()) {
-      case 'great':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'good':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'fair':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'high':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'noanalysis':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white';
-    }
-  };
-
   // Completion helper functions
   const getCompletionColor = (percentage: number) => {
     if (percentage >= 80) return 'text-green-500';
@@ -167,10 +151,7 @@ const OverviewRightCards = ({
             <div className="text-xl font-bold mb-1">
               {formatPrice(currentPrice)}
             </div>
-            <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs ${getPriceIndicatorColor(priceIndicatorRating)}`}>
-              <PoundSterling className="h-3 w-3 mr-0.5" />
-              {priceIndicatorRating === 'NOANALYSIS' ? 'Not Analysed' : priceIndicatorRating}
-            </div>
+            <AutotraderPriceCard priceIndicatorRating={priceIndicatorRating} />
           </div>
         )}
         <div className="space-y-1 text-xs">
