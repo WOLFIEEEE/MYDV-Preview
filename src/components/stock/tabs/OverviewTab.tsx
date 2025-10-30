@@ -418,6 +418,15 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
 
   const vehicleTitle = `${vehicle.make || ''} ${vehicle.model || ''}`.trim() || 'Vehicle';
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 h-full">
@@ -601,7 +610,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
           </div>
 
           {/* Analytics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             {/* Yesterday Analytics */}
             <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
               <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -645,7 +654,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
                         Retail
                       </div>
                       <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        £{(stockData.valuations.marketAverage.retail.amountGBP / 1000).toFixed(1)}k
+                        {formatPrice(stockData.valuations.marketAverage.retail.amountGBP)}
                       </div>
                     </div>
                   )}
@@ -655,7 +664,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
                         Trade
                       </div>
                       <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        £{(stockData.valuations.marketAverage.trade.amountGBP / 1000).toFixed(1)}k
+                        {formatPrice(stockData.valuations.marketAverage.trade.amountGBP)}
                       </div>
                     </div>
                   )}
@@ -665,7 +674,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
                         Part Ex
                       </div>
                       <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        £{(stockData.valuations.marketAverage.partExchange.amountGBP / 1000).toFixed(1)}k
+                        {formatPrice(stockData.valuations.marketAverage.partExchange.amountGBP)}
                       </div>
                     </div>
                   )}
@@ -686,7 +695,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
                         Retail
                       </div>
                       <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        £{(stockData.valuations.adjusted.retail.amountGBP / 1000).toFixed(1)}k
+                        {formatPrice(stockData.valuations.adjusted.retail.amountGBP)}
                       </div>
                     </div>
                   )}
@@ -696,7 +705,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
                         Trade
                       </div>
                       <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        £{(stockData.valuations.adjusted.trade.amountGBP / 1000).toFixed(1)}k
+                        {formatPrice(stockData.valuations.adjusted.trade.amountGBP)}
                       </div>
                     </div>
                   )}
@@ -706,7 +715,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
                         Part Ex
                       </div>
                       <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        £{(stockData.valuations.adjusted.partExchange.amountGBP / 1000).toFixed(1)}k
+                        {formatPrice(stockData.valuations.adjusted.partExchange.amountGBP)}
                       </div>
                     </div>
                   )}
