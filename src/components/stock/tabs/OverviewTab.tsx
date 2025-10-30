@@ -34,9 +34,10 @@ interface OverviewTabProps {
   stockData: any;
   stockId?: string;
   onOpenDocuments?: () => void;
+  moveToGallery?: () => void;
 }
 
-export default function OverviewTab({ stockData, stockId, onOpenDocuments }: OverviewTabProps) {
+export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveToGallery }: OverviewTabProps) {
   const [dealerId, setDealerId] = useState<string>('');
   const [inventoryDetails, setInventoryDetails] = useState<any>(null);
   const [checklistData, setChecklistData] = useState<any>(null);
@@ -312,6 +313,12 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
     extractPrice(adverts.retailAdverts?.totalPrice) ||
     extractPrice(adverts.retailAdverts?.suppliedPrice);
 
+    const handleGalleryMove = () => {
+      if (moveToGallery) {
+        moveToGallery();
+      }
+    }
+
   const priceIndicatorRating = adverts.retailAdverts?.priceIndicatorRating ||
     stockData.priceIndicatorRating ||
     'NOANALYSIS';
@@ -411,7 +418,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                   <img
                     src={mainImage}
                     alt={vehicleTitle}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={handleGalleryMove}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = '/placeholder-car.png';
@@ -551,6 +559,121 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
             </div>
           </div>
 
+          {/* Analytics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Yesterday Analytics */}
+            <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
+              <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Yesterday Analytics
+              </h4>
+              <div className="space-y-1">
+                <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Search Appearances: <span className="font-semibold">{stockData?.responseMetrics?.yesterday?.searchViews || 0}</span>
+                </div>
+                <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Advert Views: <span className="font-semibold">{stockData?.responseMetrics?.yesterday?.advertViews || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Last Week Analytics */}
+            <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
+              <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                7 Days Analytics
+              </h4>
+              <div className="space-y-1">
+                <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Search Appearances: <span className="font-semibold">{stockData?.responseMetrics?.lastWeek?.searchViews || 0}</span>
+                </div>
+                <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Advert Views: <span className="font-semibold">{stockData?.responseMetrics?.lastWeek?.advertViews || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Market Average Valuations */}
+            {stockData?.valuations?.marketAverage && (
+              <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
+                <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Market Average
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {stockData.valuations.marketAverage.retail?.amountGBP && (
+                    <div className="text-center">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Retail
+                      </div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        £{(stockData.valuations.marketAverage.retail.amountGBP / 1000).toFixed(1)}k
+                      </div>
+                    </div>
+                  )}
+                  {stockData.valuations.marketAverage.trade?.amountGBP && (
+                    <div className="text-center">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Trade
+                      </div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        £{(stockData.valuations.marketAverage.trade.amountGBP / 1000).toFixed(1)}k
+                      </div>
+                    </div>
+                  )}
+                  {stockData.valuations.marketAverage.partExchange?.amountGBP && (
+                    <div className="text-center">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Part Ex
+                      </div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        £{(stockData.valuations.marketAverage.partExchange.amountGBP / 1000).toFixed(1)}k
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Adjusted Valuations */}
+            {stockData?.valuations?.adjusted && (
+              <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
+                <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Adjusted Valuations
+                </h4>
+                <div className="grid grid-cols-3 gap-2">
+                  {stockData.valuations.adjusted.retail?.amountGBP && (
+                    <div className="text-center">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Retail
+                      </div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        £{(stockData.valuations.adjusted.retail.amountGBP / 1000).toFixed(1)}k
+                      </div>
+                    </div>
+                  )}
+                  {stockData.valuations.adjusted.trade?.amountGBP && (
+                    <div className="text-center">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Trade
+                      </div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        £{(stockData.valuations.adjusted.trade.amountGBP / 1000).toFixed(1)}k
+                      </div>
+                    </div>
+                  )}
+                  {stockData.valuations.adjusted.partExchange?.amountGBP && (
+                    <div className="text-center">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Part Ex
+                      </div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        £{(stockData.valuations.adjusted.partExchange.amountGBP / 1000).toFixed(1)}k
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Description */}
           <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
             <div className="flex justify-between items-center mb-4">
@@ -574,6 +697,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 </p>
               </div>
             )}
+
+
 
             {/* Description Text */}
             <div className={`leading-relaxed mb-4 ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
@@ -666,7 +791,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
             </div>
           )}
 
-          <VehicleTab stockData={stockData} insideComponent={true} />
+          {/* <VehicleTab stockData={stockData} insideComponent={true} /> */}
         </div>
 
         {/* Right Container - Detailed Information */}

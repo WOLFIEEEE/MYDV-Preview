@@ -11,6 +11,7 @@ interface MetricsTabProps {
 export default function MetricsTab({ stockData }: MetricsTabProps) {
   const { isDarkMode } = useTheme();
   const responseMetrics = stockData.responseMetrics || {};
+  console.log("🚀 ~ MetricsTab ~ responseMetrics:", responseMetrics)
 
   const metricsItems = [
     { label: 'Performance Score', value: responseMetrics.performanceRating?.score },

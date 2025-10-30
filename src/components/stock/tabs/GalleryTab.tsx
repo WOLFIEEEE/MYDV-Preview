@@ -3,16 +3,18 @@
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { Camera, Video, RotateCw, Maximize, Image, Eye, Download } from "lucide-react";
+import { Camera, Video, RotateCw, Maximize, Image, Eye, Download, Edit3 } from "lucide-react";
 import DataGrid from "../shared/DataGrid";
+import Link from "next/link";
 
 interface GalleryTabProps {
   stockData: any;
+  stockId?: string;
   downloadBrochure: (options: { stockData: any }) => Promise<void>;
   isBrochureGenerating: boolean;
 }
 
-export default function GalleryTab({ stockData, downloadBrochure, isBrochureGenerating }: GalleryTabProps) {
+export default function GalleryTab({ stockData, stockId, downloadBrochure, isBrochureGenerating }: GalleryTabProps) {
   const { isDarkMode } = useTheme();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   
@@ -78,6 +80,15 @@ export default function GalleryTab({ stockData, downloadBrochure, isBrochureGene
                 <Download className="h-4 w-4 mr-1" />
                 {isBrochureGenerating ? 'Generating...' : 'Download Brochure'}
               </Button>
+              {/* Edit Stock Button */}
+              {stockId && (
+                <Link href={`/mystock/edit/${stockId}`}>
+                  <Button variant="outline" size="sm">
+                    <Edit3 className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
 

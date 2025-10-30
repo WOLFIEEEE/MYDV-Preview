@@ -88,6 +88,10 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
 
   const isActionTab = actionTabs.includes(activeTab);
 
+  const moveToGalleryTab = () => {
+    setActiveTab("gallery");
+  }
+
   // Function to refresh action statuses and invalidate stock cache
   const refreshActionStatuses = () => {
     console.log('🔄 [StockDetailLayout] Refreshing action statuses and invalidating stock cache');
@@ -105,17 +109,18 @@ export default function StockDetailLayout({ stockData, stockId, onOpenDocuments,
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
-        return <OverviewTab stockData={stockData} stockId={stockId} onOpenDocuments={onOpenDocuments} />;
+        return <OverviewTab stockData={stockData} stockId={stockId} onOpenDocuments={onOpenDocuments} moveToGallery={moveToGalleryTab} />;
       case "vehicle":
         return <VehicleTab stockData={stockData} />;
       case "gallery":
         return <GalleryTab 
           stockData={stockData} 
+          stockId={stockId}
           downloadBrochure={downloadBrochure}
           isBrochureGenerating={isBrochureGenerating}
         />;
       case "features":
-        return <FeaturesTab stockData={stockData} />;
+        return <FeaturesTab stockData={stockData} stockId={stockId} />;
       case "adverts":
         return <AdvertsTab stockData={stockData} stockId={stockId} />;
       case "advertiser":
