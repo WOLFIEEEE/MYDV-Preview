@@ -193,7 +193,7 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, maxRetries
 const CACHE_CONFIG = {
   STALE_AFTER_HOURS: 24 * 7, // 7 days - cache is considered "stale" but still usable
   MAX_CACHE_AGE_HOURS: 24 * 30, // 30 days - cache is kept this long before cleanup
-  BACKGROUND_REFRESH_THRESHOLD: 24, // 24 hours - trigger background refresh after this time
+  // BACKGROUND_REFRESH_THRESHOLD removed - no automatic background refresh
   BATCH_SIZE: 50, // Reduced batch size for database inserts to avoid timeouts
   MAX_RETRIES: 3,
   DB_CONNECTION_TIMEOUT: 15000, // 15 seconds for database operations
@@ -254,13 +254,8 @@ export function needsForceRefresh(lastFetched: Date | string): boolean {
   return hoursSinceLastFetch >= CACHE_CONFIG.MAX_CACHE_AGE_HOURS;
 }
 
-// New: Check if background refresh should be triggered (more aggressive than stale)
-export function shouldBackgroundRefresh(lastFetched: Date | string): boolean {
-  const now = new Date();
-  const fetchDate = typeof lastFetched === 'string' ? new Date(lastFetched) : lastFetched;
-  const hoursSinceLastFetch = (now.getTime() - fetchDate.getTime()) / (1000 * 60 * 60);
-  return hoursSinceLastFetch >= CACHE_CONFIG.BACKGROUND_REFRESH_THRESHOLD;
-}
+// Background refresh removed - only manual sync is supported
+// export function shouldBackgroundRefresh(lastFetched: Date | string): boolean { /* removed */ }
 
 // Interface for stock query options
 export interface StockQueryOptions {
@@ -299,9 +294,6 @@ export interface CachedStockResponse {
 
 // Main stock cache service class
 export class StockCacheService {
-  // Mutex for background refresh operations to prevent race conditions
-  private static refreshMutex = new Map<string, Promise<void>>();
-  
   // Circuit breaker for AutoTrader API calls
   private static circuitBreaker = new Map<string, CircuitBreaker>();
   
@@ -428,61 +420,33 @@ export class StockCacheService {
     console.log('📊 Cache status:', cacheStatus);
     
     // ========================================
-    // CACHE-FIRST STRATEGY: NEVER call AutoTrader on page load
+    // CACHE-FIRST STRATEGY: Only sync if database is EMPTY
     // ========================================
     // Priority:
-    // 1. Return cached data if it exists (even if stale)
-    // 2. Refresh in background if needed
-    // 3. Only fetch from AutoTrader if NO cache exists at all
+    // 1. Return cached data if it exists (regardless of age)
+    // 2. Only fetch from AutoTrader if NO cache exists at all (first time setup)
+    // 3. Manual sync available through refresh button
     // ========================================
     
-    // CASE 1: We have cached data (fresh or stale) - RETURN IT IMMEDIATELY
+    // CASE 1: We have cached data - RETURN IT IMMEDIATELY (no auto refresh)
     if (cacheStatus.hasAnyCache) {
-      console.log('✅ Cache exists - returning cached data immediately (cache-first)');
-      console.log(`📊 Cache age: ${cacheStatus.isStale ? 'STALE' : 'FRESH'}, Last fetched: ${cacheStatus.lastFetched}`);
+      console.log('✅ Cache exists - returning cached data immediately');
+      console.log(`📊 Last fetched: ${cacheStatus.lastFetched}`);
       
-      // Optionally refresh in background if cache is old enough (but don't wait for it)
-      const shouldRefresh = cacheStatus.lastFetched ? shouldBackgroundRefresh(cacheStatus.lastFetched) : false;
-      if (shouldRefresh) {
-        const cacheAgeHours = cacheStatus.lastFetched 
-          ? Math.round((Date.now() - new Date(cacheStatus.lastFetched).getTime()) / (1000 * 60 * 60))
-          : 0;
-        console.log(`🔄 Cache is ${cacheAgeHours}h old - scheduling background refresh (non-blocking)`);
-        
-        const mutexKey = `${dealerId}-${advertiserId}`;
-        
-        // Check if refresh is already in progress
-        if (!this.refreshMutex.has(mutexKey)) {
-          console.log('🔄 Starting background refresh (user will see cached data)...');
-          const refreshPromise = this.refreshStockDataBackground(dealerId, advertiserId)
-            .catch(error => {
-              console.error('❌ Background refresh failed (user not affected):', error);
-              // Don't throw - user is already seeing cached data
-            })
-            .finally(() => {
-              this.refreshMutex.delete(mutexKey);
-              console.log('🔓 Background refresh completed/failed');
-            });
-          
-          this.refreshMutex.set(mutexKey, refreshPromise);
-        } else {
-          console.log('⏳ Background refresh already in progress');
-        }
-      } else {
-        const cacheAgeHours = cacheStatus.lastFetched 
-          ? Math.round((Date.now() - new Date(cacheStatus.lastFetched).getTime()) / (1000 * 60 * 60))
-          : 0;
-        console.log(`✅ Cache is ${cacheAgeHours}h old - still fresh enough (no refresh needed)`);
-      }
+      // No automatic background refresh - only manual sync is supported
+      const cacheAgeHours = cacheStatus.lastFetched 
+        ? Math.round((Date.now() - new Date(cacheStatus.lastFetched).getTime()) / (1000 * 60 * 60))
+        : 0;
+      console.log(`📅 Cache is ${cacheAgeHours}h old - use manual sync button to refresh`);
       
-      // Return cached data immediately (don't wait for background refresh)
-      console.log('💾 Returning cached data (page load is fast!)...');
+      // Return cached data immediately
+      console.log('💾 Returning cached data...');
       return await this.getCachedStockData({ ...options, dealerId }, cacheStatus.isStale);
     }
     
-    // CASE 2: NO cached data exists at all - Must fetch from AutoTrader
-    console.log('⚠️ No cached data found - must fetch from AutoTrader (first time setup)');
-    console.log('🔄 This should only happen on first use or after cache cleared');
+    // CASE 2: NO cached data exists at all - Must fetch from AutoTrader (first time setup only)
+    console.log('⚠️ No cached data found - database is empty');
+    console.log('🔄 Performing initial sync from AutoTrader (first time setup)...');
     
     try {
       console.log('📡 Fetching from AutoTrader (blocking - no cache exists)...');
@@ -1433,65 +1397,7 @@ export class StockCacheService {
     }
   }
   
-  /**
-   * Background refresh of stock data
-   */
-  private static async refreshStockDataBackground(dealerUuid: string, advertiserId: string): Promise<void> {
-    console.log('🔄 Background refresh started...');
-    
-    const syncLogId = await this.startSyncLog(dealerUuid, advertiserId, 'partial_sync');
-    
-    try {
-      // Get the Clerk user ID from dealer UUID to get the email
-      const dealerClerkResult = await db
-        .select({ clerkUserId: dealers.clerkUserId })
-        .from(dealers)
-        .where(eq(dealers.id, dealerUuid))
-        .limit(1);
-      
-      if (dealerClerkResult.length === 0) {
-        throw new Error('Dealer not found for UUID: ' + dealerUuid);
-      }
-      
-      const clerkUserId = dealerClerkResult[0].clerkUserId;
-      
-      // Get dealer email for AutoTrader auth
-      const dealerResult = await db
-        .select({ email: storeConfig.email })
-        .from(storeConfig)
-        .where(eq(storeConfig.clerkUserId, clerkUserId))
-        .limit(1);
-      
-      if (dealerResult.length === 0) {
-        throw new Error('Dealer configuration not found');
-      }
-      
-      const userEmail = dealerResult[0].email;
-      
-      // Get AutoTrader token
-      const tokenResult = await getAutoTraderToken(userEmail);
-      if (!tokenResult.success || !tokenResult.access_token) {
-        throw new Error('Failed to authenticate with AutoTrader');
-      }
-      
-      // Fetch stock data from AutoTrader
-      const stockData = await this.fetchAllStockFromAutoTrader(
-        tokenResult.access_token,
-        advertiserId
-      );
-      
-      // Update cache
-      await this.updateCache(dealerUuid, advertiserId, stockData);
-      
-      await this.completeSyncLog(syncLogId, stockData.length, stockData.length, 0, 0);
-      
-      console.log('✅ Background refresh completed');
-      
-    } catch (error) {
-      const errorMessage = this.logError('Background refresh failed', error);
-      await this.failSyncLog(syncLogId, errorMessage);
-    }
-  }
+  // Background refresh method removed - only manual sync is supported
   
   /**
    * Wrapper for fetchAllStockFromAutoTrader with automatic token refresh on 401 errors

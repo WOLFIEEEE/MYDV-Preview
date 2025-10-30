@@ -306,14 +306,16 @@ async function executeOriginalStockLogic(request: NextRequest, user: any) {
     
     const response = NextResponse.json(successResponse);
 
-    // CRITICAL SECURITY FIX: Use private caching to prevent cross-user data leakage
-    // Stock data is user-specific and must NOT be cached publicly at CDN/proxy level
-    // Using 'private' allows browser caching but prevents CDN from serving to other users
+    // CRITICAL: Minimal caching to ensure fresh data from database
+    // Stock data changes frequently and must be up-to-date
+    // no-cache forces revalidation with server on every request
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
     if (stockResponse.cacheStatus.fromCache) {
-      response.headers.set('Cache-Control', 'private, max-age=60, must-revalidate'); // 1 minute browser cache only
       response.headers.set('X-Cache-Status', 'HIT');
     } else {
-      response.headers.set('Cache-Control', 'private, max-age=60, must-revalidate'); // 1 minute browser cache only
       response.headers.set('X-Cache-Status', 'MISS');
     }
     

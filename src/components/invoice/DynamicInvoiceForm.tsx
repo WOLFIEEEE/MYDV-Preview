@@ -100,9 +100,29 @@ const FormInput = React.memo(({
   className?: string;
 }) => {
   const { isDarkMode } = useTheme();
+  const [localValue, setLocalValue] = React.useState<string>('');
+  const [isFocused, setIsFocused] = React.useState(false);
+
+  // Sync local value with prop value when not focused
+  React.useEffect(() => {
+    if (!isFocused) {
+      if (type === 'number') {
+        if (value === 0 || value === '' || value === null || value === undefined) {
+          setLocalValue('');
+        } else {
+          setLocalValue(value.toString());
+        }
+      } else {
+        setLocalValue(value?.toString() || '');
+      }
+    }
+  }, [value, isFocused, type]);
 
   // Handle display value for numeric inputs
   const getDisplayValue = () => {
+    if (isFocused) {
+      return localValue;
+    }
     if (type === 'number') {
       // For number inputs, show empty string if value is 0 or empty
       if (value === 0 || value === '' || value === null || value === undefined) {
@@ -119,16 +139,39 @@ const FormInput = React.memo(({
     if (type === 'number') {
       // For number inputs, allow empty string or valid numbers
       if (inputValue === '') {
+        setLocalValue('');
         onChange('');
       } else {
         // Remove any non-numeric characters except decimal point and minus
         const cleanValue = inputValue.replace(/[^0-9.-]/g, '');
-        if (cleanValue === '' || !isNaN(parseFloat(cleanValue))) {
+        if (cleanValue === '' || !isNaN(parseFloat(cleanValue)) || cleanValue === '-' || cleanValue.endsWith('.')) {
+          setLocalValue(cleanValue);
           onChange(cleanValue);
         }
       }
     } else {
+      setLocalValue(inputValue);
       onChange(inputValue);
+    }
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (type === 'number') {
+      setLocalValue(value === 0 || value === '' || value === null || value === undefined ? '' : value.toString());
+    } else {
+      setLocalValue(value?.toString() || '');
+    }
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    // On blur, ensure the value is properly formatted
+    if (type === 'number' && localValue !== '' && localValue !== '-') {
+      const numValue = parseFloat(localValue);
+      if (!isNaN(numValue)) {
+        onChange(numValue.toString());
+      }
     }
   };
 
@@ -146,6 +189,8 @@ const FormInput = React.memo(({
         type={type === 'number' ? 'text' : type}
         value={getDisplayValue()}
         onChange={handleChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder={placeholder || (type === 'number' ? '0.00' : undefined)}
         disabled={disabled}
         className={`px-4 py-3 border rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none ${disabled
@@ -1468,6 +1513,10 @@ export default function DynamicInvoiceForm({
       // Handle empty string as 0 for numeric fields
       if (value === '' || value === null || value === undefined) {
         updateNestedData(path, 0);
+      } else if (value === '-' || value.endsWith('.') || value.match(/^\d+\.0*$/)) {
+        // Keep string representation while typing decimals (e.g., "5.", "5.0", "-")
+        // This allows users to type decimal points
+        updateNestedData(path, value);
       } else {
         const numValue = parseFloat(value);
         updateNestedData(path, isNaN(numValue) ? 0 : numValue);
@@ -3068,7 +3117,7 @@ export default function DynamicInvoiceForm({
                               <FormInput
                                 label="Cost"
                                 value={invoiceData.addons.finance.addon1?.cost || 0}
-                                onChange={(value) => updateNestedData('addons.finance.addon1.cost', parseFloat(value) || 0)}
+                                onChange={createChangeHandler('addons.finance.addon1.cost')}
                                 type="number"
                                 icon={PoundSterling}
                               />
@@ -3117,7 +3166,7 @@ export default function DynamicInvoiceForm({
                                 <FormInput
                                   label="Cost"
                                   value={invoiceData.addons.finance.addon2.cost}
-                                  onChange={(value) => updateNestedData('addons.finance.addon2.cost', parseFloat(value) || 0)}
+                                  onChange={createChangeHandler('addons.finance.addon2.cost')}
                                   type="number"
                                   icon={PoundSterling}
                                 />
@@ -3329,7 +3378,7 @@ export default function DynamicInvoiceForm({
                             <FormInput
                               label="Cost"
                               value={invoiceData.addons.customer.addon1?.cost || 0}
-                              onChange={(value) => updateNestedData('addons.customer.addon1.cost', parseFloat(value) || 0)}
+                              onChange={createChangeHandler('addons.customer.addon1.cost')}
                               type="number"
                               icon={PoundSterling}
                             />
@@ -3378,7 +3427,7 @@ export default function DynamicInvoiceForm({
                               <FormInput
                                 label="Cost"
                                 value={invoiceData.addons.customer.addon2.cost}
-                                onChange={(value) => updateNestedData('addons.customer.addon2.cost', parseFloat(value) || 0)}
+                                onChange={createChangeHandler('addons.customer.addon2.cost')}
                                 type="number"
                                 icon={PoundSterling}
                               />

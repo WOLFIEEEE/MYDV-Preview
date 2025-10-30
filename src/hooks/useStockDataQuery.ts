@@ -406,10 +406,10 @@ export function useStockDataQuery(options: UseStockDataOptions = {}) {
       }
     },
     enabled: shouldExecuteQuery, // Only enable when all conditions are met
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours - match backend cache duration
-    gcTime: 48 * 60 * 60 * 1000, // 48 hours cache retention - match MAX_CACHE_AGE_HOURS
-    refetchOnWindowFocus: false, // Prevent excessive refetching on focus
-    refetchOnMount: false, // Use cached data on mount for better performance
+    staleTime: 10 * 1000, // 10 seconds - data considered fresh for only 10 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in memory cache
+    refetchOnWindowFocus: true, // Refetch on focus to ensure fresh data
+    refetchOnMount: true, // Always check for fresh data on mount
     refetchOnReconnect: true, // Refetch when network reconnects
     retry: (failureCount, error) => {
       const errorMessage = error?.message || '';
@@ -562,10 +562,10 @@ export function useStockDetailQuery(stockId: string, enabled: boolean = true) {
       : ['stock', 'detail', 'disabled'] as const, // Safe fallback key when disabled
     queryFn: () => fetchStockDetail(stockId),
     enabled: shouldExecuteQuery, // Only enable when all conditions are met
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours - match backend cache duration
-    gcTime: 48 * 60 * 60 * 1000, // 48 hours cache retention
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 10 * 1000, // 10 seconds - data considered fresh for only 10 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in memory cache
+    refetchOnWindowFocus: true, // Refetch on focus to ensure fresh data
+    refetchOnMount: true, // Always check for fresh data on mount
     retry: 1,
   });
 

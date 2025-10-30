@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,70 @@ interface VehicleDetailsTabProps {
   stockId?: string;
   onSave?: (data: any) => void;
 }
+
+// Move FormField component outside to prevent recreation on every render
+interface FormFieldProps {
+  label: string;
+  field: string;
+  type?: string;
+  readonly?: boolean;
+  placeholder?: string;
+  value: string;
+  onChange: (field: string, value: string) => void;
+  isDarkMode: boolean;
+}
+
+const FormField = memo(({ 
+  label, 
+  field, 
+  type = "text", 
+  readonly = false, 
+  placeholder = "",
+  value,
+  onChange,
+  isDarkMode
+}: FormFieldProps) => (
+  <div className="cam-form-group">
+    <label htmlFor={field} className={`block text-sm font-medium mb-2 ${
+      isDarkMode ? 'text-white' : 'text-gray-700'
+    }`}>
+      {label}
+    </label>
+    <input
+      type={type}
+      id={field}
+      value={value || ''}  // Ensure value is never undefined
+      onChange={(e) => onChange(field, e.target.value)}
+      readOnly={readonly}
+      placeholder={placeholder}
+      className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 ${
+        readonly
+          ? isDarkMode
+            ? 'bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed'
+            : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+          : isDarkMode
+          ? 'bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+          : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+      }`}
+    />
+    {readonly && (
+      <span className={`text-xs mt-1 ${
+        isDarkMode ? 'text-white' : 'text-gray-500'
+      }`}>
+        Read Only
+      </span>
+    )}
+    {!readonly && (
+      <span className={`text-xs mt-1 ${
+        isDarkMode ? 'text-green-400' : 'text-green-600'
+      }`}>
+        Editable
+      </span>
+    )}
+  </div>
+));
+
+FormField.displayName = 'FormField';
 
 export default function VehicleDetailsTab({ stockData, stockId, onSave }: VehicleDetailsTabProps) {
   const { isDarkMode } = useTheme();
@@ -130,59 +194,6 @@ export default function VehicleDetailsTab({ stockData, stockId, onSave }: Vehicl
     }
   };
 
-  const FormField = ({ 
-    label, 
-    field, 
-    type = "text", 
-    readonly = false, 
-    placeholder = "" 
-  }: {
-    label: string;
-    field: string;
-    type?: string;
-    readonly?: boolean;
-    placeholder?: string;
-  }) => (
-    <div className="cam-form-group">
-      <label htmlFor={field} className={`block text-sm font-medium mb-2 ${
-        isDarkMode ? 'text-white' : 'text-gray-700'
-      }`}>
-        {label}
-      </label>
-      <input
-        type={type}
-        id={field}
-        value={formData[field as keyof typeof formData]}
-        onChange={(e) => handleInputChange(field, e.target.value)}
-        readOnly={readonly}
-        placeholder={placeholder}
-        className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 ${
-          readonly
-            ? isDarkMode
-              ? 'bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
-            : isDarkMode
-            ? 'bg-gray-800 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-            : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-        }`}
-      />
-      {readonly && (
-        <span className={`text-xs mt-1 ${
-          isDarkMode ? 'text-white' : 'text-gray-500'
-        }`}>
-          Read Only
-        </span>
-      )}
-      {!readonly && (
-        <span className={`text-xs mt-1 ${
-          isDarkMode ? 'text-green-400' : 'text-green-600'
-        }`}>
-          Editable
-        </span>
-      )}
-    </div>
-  );
-
   return (
     <div className="p-8 space-y-8">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -230,7 +241,7 @@ export default function VehicleDetailsTab({ stockData, stockId, onSave }: Vehicl
                   />
                   <input
                     type="text"
-                    value={formData.registration}
+                    value={formData.registration || ''}  // Ensure value is never undefined
                     onChange={(e) => handleInputChange('registration', e.target.value.toUpperCase())}
                     placeholder="ENTER REG"
                     style={{
@@ -265,36 +276,54 @@ export default function VehicleDetailsTab({ stockData, stockId, onSave }: Vehicl
               <FormField
                 label="Make"
                 field="make"
+                value={formData.make}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 readonly={true}
               />
               
               <FormField
                 label="Model"
                 field="model"
+                value={formData.model}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 readonly={true}
               />
               
               <FormField
                 label="Body Type"
                 field="bodyType"
+                value={formData.bodyType}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 readonly={true}
               />
               
               <FormField
                 label="Colour"
                 field="colour"
+                value={formData.colour}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 placeholder="Enter colour"
               />
               
               <FormField
                 label="Plate"
                 field="plate"
+                value={formData.plate}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 readonly={true}
               />
               
               <FormField
                 label="Year of Registration"
                 field="yearOfRegistration"
+                value={formData.yearOfRegistration}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 type="number"
                 readonly={true}
               />
@@ -302,6 +331,9 @@ export default function VehicleDetailsTab({ stockData, stockId, onSave }: Vehicl
               <FormField
                 label="Mileage (miles)"
                 field="odometerReadingMiles"
+                value={formData.odometerReadingMiles}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 type="number"
                 placeholder="Enter mileage"
               />
@@ -309,12 +341,18 @@ export default function VehicleDetailsTab({ stockData, stockId, onSave }: Vehicl
               <FormField
                 label="Fuel Type"
                 field="fuelType"
+                value={formData.fuelType}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 readonly={true}
               />
               
               <FormField
                 label="Transmission"
                 field="transmission"
+                value={formData.transmission}
+                onChange={handleInputChange}
+                isDarkMode={isDarkMode}
                 readonly={true}
               />
             </div>

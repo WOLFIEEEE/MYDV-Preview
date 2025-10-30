@@ -169,7 +169,8 @@ function ListingsManagementContent() {
     data: stockData,
     loading,
     error,
-    refetch
+    refetch,
+    invalidateStockCache
   } = useStockDataQuery(queryOptions);
 
   // 🔍 DEBUG: Log stock data whenever it changes
@@ -718,7 +719,14 @@ function ListingsManagementContent() {
         
         console.log(`Successfully updated row for ${vehicleId}:`, result.data);
         
+        // CRITICAL FIX: Invalidate React Query cache BEFORE refetch
+        // This ensures we bypass any cached data and get fresh results
+        console.log('🗑️ Invalidating stock cache to force fresh data fetch...');
+        invalidateStockCache();
+        
         // Refresh the data to show updated values
+        // invalidateStockCache marks data as stale, refetch pulls fresh data
+        console.log('🔄 Refetching stock data with fresh query...');
         await refetch();
       }
       
@@ -757,7 +765,7 @@ function ListingsManagementContent() {
       setSavingRow(null);
       setEditingRow(null); // Clear editing state on completion
     }
-  }, [editingRow, stockData, channelStatus, refetch, getPrice]);
+  }, [editingRow, stockData, channelStatus, refetch, invalidateStockCache, getPrice]);
 
   const handleRowCancel = useCallback(() => {
     setEditingRow(null);

@@ -10,6 +10,8 @@ import {
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 import { getStockImagesByDealer, createOrGetDealer } from '@/lib/database';
+import { db } from '@/lib/db';
+import { stockCache } from '@/db/schema';
 // Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Flow type definitions
@@ -898,11 +900,117 @@ export async function POST(request: NextRequest) {
     console.log('✅ Stock created successfully in AutoTrader');
     console.log('📋 AutoTrader stock creation response:', stockResult);
 
-    // Return success response with AutoTrader result
-    return NextResponse.json(
+    // Extract stockId from metadata (AutoTrader returns it in metadata.stockId)
+    const createdStockId = stockResult.metadata?.stockId || stockResult.stockId || stockResult.id;
+    
+    if (!createdStockId) {
+      console.error('❌ No stockId found in AutoTrader response!');
+      return NextResponse.json(createErrorResponse({
+        type: ErrorType.SERVER_ERROR,
+        message: 'Stock creation succeeded but no stockId was returned',
+        details: 'AutoTrader did not return a valid stockId',
+        httpStatus: 500,
+        timestamp: new Date().toISOString()
+      }), { status: 500 });
+    }
+    
+    console.log(`✅ Extracted stockId: ${createdStockId}`);
+
+    // CRITICAL FIX: Insert newly created stock into stock_cache immediately
+    // This ensures the stock appears in listings right away without waiting for sync
+    try {
+      console.log('💾 Inserting newly created stock into stock_cache...');
+      
+      // Prepare mediaData with hrefs for proper display in frontend
+      // Format: https://m-qa.atcdn.co.uk/a/media/{resize}/[imageId].jpg (Sandbox/QA)
+      //     or: https://m.atcdn.co.uk/a/media/{resize}/[imageId].jpg (Production)
+      const imageBaseUrl = baseUrl?.includes('api-sandbox') || baseUrl?.includes('api-qa')
+        ? 'https://m-qa.atcdn.co.uk' 
+        : 'https://m.atcdn.co.uk';
+      
+      // Extract images from AutoTrader response and ensure each has href
+      let mediaDataWithHrefs: any = null;
+      
+      if (stockResult.media?.images && Array.isArray(stockResult.media.images)) {
+        // AutoTrader returned media data - ensure each image has href
+        mediaDataWithHrefs = {
+          images: stockResult.media.images.map((img: any) => {
+            const imageId = img.imageId || img;
+            return {
+              imageId,
+              href: img.href || `${imageBaseUrl}/a/media/{resize}/${imageId}.jpg`
+            };
+          }),
+          video: stockResult.media.video || { href: null },
+          spin: stockResult.media.spin || { href: null }
+        };
+      } else if (finalImageIds.length > 0) {
+        // Fallback: use our image IDs if AutoTrader didn't return media
+        mediaDataWithHrefs = {
+          images: finalImageIds.map(imageId => ({
+            imageId,
+            href: `${imageBaseUrl}/a/media/{resize}/${imageId}.jpg`
+          })),
+          video: { href: null },
+          spin: { href: null }
+        };
+      }
+      
+      console.log(`💾 Prepared mediaData with ${mediaDataWithHrefs?.images?.length || 0} images (all with hrefs)`);
+
+      await db.insert(stockCache).values({
+        stockId: createdStockId,
+        dealerId: dealer.id,
+        advertiserId: advertiserId,
+        
+        // Extract searchable fields from AutoTrader response (enriched with calculated values)
+        make: stockResult.vehicle?.make || vehicleData.make || '',
+        model: stockResult.vehicle?.model || vehicleData.model || '',
+        derivative: stockResult.vehicle?.derivative || vehicleData.derivative,
+        registration: stockResult.vehicle?.registration || vehicleData.registration,
+        vin: stockResult.vehicle?.vin || vehicleData.vin,
+        yearOfManufacture: stockResult.vehicle?.yearOfManufacture ? parseInt(stockResult.vehicle.yearOfManufacture.toString()) : null,
+        odometerReadingMiles: stockResult.vehicle?.odometerReadingMiles || vehicleData.odometerReadingMiles,
+        fuelType: stockResult.vehicle?.fuelType || vehicleData.fuelType,
+        bodyType: stockResult.vehicle?.bodyType || vehicleData.bodyType,
+        
+        // Pricing from AutoTrader response
+        forecourtPriceGBP: stockResult.adverts?.forecourtPrice?.amountGBP?.toString() || stockPayload.adverts?.forecourtPrice?.amountGBP?.toString(),
+        totalPriceGBP: stockResult.adverts?.retailAdverts?.suppliedPrice?.amountGBP?.toString() || stockPayload.adverts?.retailAdverts?.suppliedPrice?.amountGBP?.toString(),
+        
+        // Lifecycle from AutoTrader response metadata
+        lifecycleState: stockResult.metadata?.lifecycleState || stockPayload.metadata.lifecycleState,
+        ownershipCondition: stockResult.vehicle?.ownershipCondition || vehicleData.ownershipCondition,
+        
+        // Cache management
+        lastFetchedFromAutoTrader: new Date(),
+        isStale: false,
+        autoTraderVersionNumber: stockResult.metadata?.versionNumber || 1,
+        
+        // JSONB fields with complete enriched data from AutoTrader response
+        vehicleData: stockResult.vehicle || stockPayload.vehicle,
+        advertiserData: stockResult.advertiser || stockPayload.advertiser,
+        advertsData: stockResult.adverts || stockPayload.adverts,
+        metadataRaw: stockResult.metadata || stockPayload.metadata,
+        featuresData: stockResult.features || stockPayload.features,
+        mediaData: mediaDataWithHrefs, // Use version with hrefs for cache
+        
+        // Timestamps
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      
+      console.log(`✅ Successfully inserted stock ${createdStockId} into stock_cache (with ${mediaDataWithHrefs?.images?.length || 0} images with hrefs)`);
+    } catch (cacheError) {
+      console.error('⚠️ Failed to insert stock into cache:', cacheError);
+      // Don't fail the request if cache insert fails - stock is already in AutoTrader
+    }
+
+    // Return success response with AutoTrader result and no-cache headers
+    const response = NextResponse.json(
       createSuccessResponse({
         message: 'Stock created successfully in AutoTrader',
-        stockId: stockResult.stockId || stockResult.id,
+        stockId: createdStockId,
         autoTraderResponse: stockResult,
         flow: requestData.flow,
         vehicleInfo: {
@@ -919,6 +1027,13 @@ export async function POST(request: NextRequest) {
         }
       }, 'stock/create')
     );
+
+    // CRITICAL: No caching for stock mutations to ensure immediate updates
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
 
   } catch (error) {
     console.error('❌ API Route stock create error:', error);

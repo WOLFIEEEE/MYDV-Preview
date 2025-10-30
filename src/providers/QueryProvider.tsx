@@ -11,9 +11,9 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
       new QueryClient({
         defaultOptions: {
           queries: {
-            // 24-hour cache configuration to match backend
-            staleTime: 24 * 60 * 60 * 1000, // 24 hours - match backend cache duration
-            gcTime: 48 * 60 * 60 * 1000, // 48 hours - match MAX_CACHE_AGE_HOURS
+            // Shorter cache times to ensure fresh data from database
+            staleTime: 10 * 1000, // 10 seconds - data considered fresh for only 10 seconds
+            gcTime: 5 * 60 * 1000, // 5 minutes - keep in memory cache for 5 minutes
             retry: (failureCount, error: any) => {
               // Don't retry on client errors (4xx) or auth errors
               if (error?.status >= 400 && error?.status < 500) {
@@ -23,12 +23,12 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
               return failureCount < 2;
             },
             retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-            // Prevent excessive refetching for better performance
-            refetchOnWindowFocus: false,
+            // Enable refetch to ensure fresh data
+            refetchOnWindowFocus: true, // Refetch when user returns to tab
             refetchOnReconnect: true,
-            refetchOnMount: false, // Use cached data on mount
-            // No automatic background refresh - only manual refresh or 24h expiry
-            refetchInterval: false, // Disabled - rely on 24h cache expiry
+            refetchOnMount: true, // Always check for fresh data on mount
+            // No automatic background refresh
+            refetchInterval: false,
             refetchIntervalInBackground: false,
           },
           mutations: {

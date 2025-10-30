@@ -5,6 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   uploadMultipleImages, 
   updateStockImages, 
@@ -196,6 +197,7 @@ async function processImageEdits(imageUrl: string, edits: ImageEdits): Promise<B
 
 export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTabProps) {
   const { isDarkMode } = useTheme();
+  const queryClient = useQueryClient();
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [deletedImages, setDeletedImages] = useState<string[]>([]);
@@ -909,6 +911,21 @@ export default function ImagesTab({ stockData, stockId, advertiserId }: ImagesTa
         setUploadStatus(`✅ Successfully saved ${finalImageIds.length} images to AutoTrader! Primary image: ${allImagesInOrder[0]?.name}`);
         
         console.log('✅ Images saved successfully with correct ordering');
+        
+        // CRITICAL FIX: Invalidate React Query cache to refresh data everywhere
+        // This ensures My Stock page and other pages immediately show the updated images
+        try {
+          console.log('🔄 Invalidating stock cache after image save...');
+          
+          // Invalidate ALL stock-related queries to refresh data everywhere
+          await queryClient.invalidateQueries({ queryKey: ['stock'] });
+          await queryClient.invalidateQueries({ queryKey: ['stock-detail', stockId] });
+          
+          console.log('✅ Stock cache invalidated successfully');
+        } catch (cacheError) {
+          console.error('⚠️ Failed to invalidate cache after image save:', cacheError);
+          // Don't fail the save if cache invalidation fails
+        }
         
       } else {
         setUploadErrors(prev => [...prev, updateResult.error || 'Failed to update stock']);

@@ -161,10 +161,10 @@ export function useOptimizedStockData(options: UseStockDataOptions = {}): Optimi
       : ['stock', 'disabled'] as const,
     queryFn: () => fetchStockListOptimized(options),
     enabled: shouldExecuteQuery,
-    staleTime: 0, // Always consider data potentially stale to enable background refresh
-    gcTime: 48 * 60 * 60 * 1000, // 48 hours cache retention
-    refetchOnWindowFocus: false,
-    refetchOnMount: false, // Don't refetch on mount - use cache first
+    staleTime: 10 * 1000, // 10 seconds - data considered fresh for only 10 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in memory cache
+    refetchOnWindowFocus: true, // Refetch on focus to ensure fresh data
+    refetchOnMount: true, // Always check for fresh data on mount
     refetchOnReconnect: true,
     // Use existing data as placeholder while fetching fresh data
     placeholderData: existingData,

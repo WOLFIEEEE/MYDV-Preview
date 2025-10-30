@@ -19,6 +19,7 @@ import {
   Clock
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useQueryClient } from "@tanstack/react-query";
 import BackToStockButton from "@/components/shared/BackToStockButton";
 import DocumentUpload from "@/components/shared/DocumentUpload";
 import EditInventoryForm from "@/components/stock/tabs/actions/EditInventoryForm";
@@ -108,6 +109,7 @@ export default function EnhancedAddToStockButton({
   
   // Removed router and navigation - keeping user on current page
   const { isDarkMode } = useTheme();
+  const queryClient = useQueryClient();
   
   // Main states
   const [currentStep, setCurrentStep] = useState<'initial' | 'channels' | 'no-pricing-confirm' | 'processing' | 'success' | 'purchase-info' | 'documents'>('initial');
@@ -211,6 +213,23 @@ export default function EnhancedAddToStockButton({
       updateProgressStep('completion', 'in_progress', 'Finalizing...');
       await new Promise(resolve => setTimeout(resolve, 500));
       updateProgressStep('completion', 'completed', 'Stock added successfully');
+      
+      // CRITICAL FIX: Invalidate React Query cache to refresh data everywhere
+      // This ensures My Stock page immediately shows the newly created vehicle
+      try {
+        console.log('🔄 Invalidating stock cache after vehicle finder creation...');
+        
+        // Invalidate ALL stock-related queries to refresh data everywhere
+        await queryClient.invalidateQueries({ queryKey: ['stock'] });
+        if (extractedStockId) {
+          await queryClient.invalidateQueries({ queryKey: ['stock-detail', extractedStockId] });
+        }
+        
+        console.log('✅ Stock cache invalidated successfully');
+      } catch (cacheError) {
+        console.error('⚠️ Failed to invalidate cache after stock creation:', cacheError);
+        // Don't fail the stock creation if cache invalidation fails
+      }
 
       // Call callback if provided
       onAddToStock?.(stockResult);

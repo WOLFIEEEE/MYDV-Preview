@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, FileText, Upload, ArrowLeft, CheckCircle, AlertCircle, GripVertical, RotateCcw } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import LicensePlate from '@/components/ui/license-plate';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface UploadFile {
   file: File;
@@ -18,6 +19,7 @@ export default function QRUploadPage() {
   const params = useParams();
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const queryClient = useQueryClient();
   const stockId = params.stockId as string;
 
   const [uploadType, setUploadType] = useState<'photo' | 'document' | null>(null);
@@ -371,6 +373,22 @@ export default function QRUploadPage() {
         }`;
         setUploadMessage(successMessage);
         setFiles([]);
+        
+        // CRITICAL FIX: Invalidate React Query cache to refresh data everywhere
+        // This ensures My Stock page and other pages immediately show the updated images
+        try {
+          console.log('🔄 Invalidating stock cache after QR upload...');
+          
+          // Invalidate ALL stock-related queries to refresh data everywhere
+          await queryClient.invalidateQueries({ queryKey: ['stock'] });
+          await queryClient.invalidateQueries({ queryKey: ['stock-detail', stockId] });
+          
+          console.log('✅ Stock cache invalidated successfully');
+        } catch (cacheError) {
+          console.error('⚠️ Failed to invalidate cache after upload:', cacheError);
+          // Don't fail the upload if cache invalidation fails
+        }
+        
         // No auto-redirect - user stays on page
       } else {
         throw new Error(result.message || 'Upload failed');

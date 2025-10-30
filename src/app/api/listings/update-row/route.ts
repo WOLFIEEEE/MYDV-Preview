@@ -3,6 +3,9 @@ import { currentUser } from '@clerk/nextjs/server';
 import { getAutoTraderToken, invalidateTokenByEmail } from '@/lib/autoTraderAuth';
 import { BrowserCompatibilityManager } from '@/lib/browserCompatibility';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
+import { db } from '@/lib/db';
+import { stockCache } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 // Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 import { 
   createErrorResponse, 
@@ -285,6 +288,24 @@ export async function POST(request: NextRequest) {
         response: JSON.stringify(autotraderResponse, null, 2)
       });
 
+      // CRITICAL FIX: Update stock_cache immediately after successful AutoTrader update
+      // This ensures the cache stays in sync with AutoTrader and prevents stale data issues
+      try {
+        console.log('💾 Updating stock_cache with new adverts data...');
+        await db
+          .update(stockCache)
+          .set({
+            advertsData: autotraderPayload.adverts,
+            updatedAt: new Date()
+          })
+          .where(eq(stockCache.stockId, stockId));
+        
+        console.log('✅ stock_cache updated successfully for stockId:', stockId);
+      } catch (cacheError) {
+        console.error('⚠️ Failed to update stock_cache:', cacheError);
+        // Don't fail the request if cache update fails - AutoTrader still has the updates
+      }
+
     } catch (error) {
       console.error('❌ AutoTrader API error:', error);
       const networkError = {
@@ -322,9 +343,16 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createSuccessResponse(responseData, 'listings/update-row')
     );
+
+    // CRITICAL: No caching for stock mutations to ensure immediate updates
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
 
   } catch (error) {
     console.error('Error updating row:', error);

@@ -503,26 +503,44 @@ export async function POST(request: NextRequest) {
         
         if (patchResponse.ok) {
           const patchResult = await patchResponse.json();
-          console.log(`✅ ${patchResponse.status} Response: ${JSON.stringify(patchResult)}`);
+          console.log(`✅ ${patchResponse.status} AutoTrader PATCH Response: ${JSON.stringify(patchResult)}`);
           
-          // Verify the update by fetching the stock again
-          const verifyResponse = await fetch(stockUrl, {
-            headers: {
-              'Authorization': `Bearer ${autoTraderToken}`,
-              'Accept': 'application/json',
-            }
-          });
-          
-          if (verifyResponse.ok) {
-            const verifyResult = await verifyResponse.json();
-            const currentImages = verifyResult.media?.images || [];
-            const currentImageIds = currentImages.map((img: Record<string, unknown>) => img.imageId as string).filter(Boolean);
-            console.log(`🔍 Verification - Current images in stock: [${currentImageIds.join(', ')}]`);
-            console.log(`✅ Images successfully ${currentImageIds.length > existingImageIds.length ? 'added' : 'not added'} to stock`);
+          // CRITICAL FIX: Immediately update stock_cache.mediaData after successful AutoTrader upload
+          // We trust our own payload that was just successfully sent to AutoTrader
+          // This prevents stale data issues and ensures subsequent QR uploads have correct existing image IDs
+          try {
+            // Add href to each image for proper display in frontend
+            // Format: https://m-qa.atcdn.co.uk/a/media/{resize}/[imageId].jpg (Sandbox/QA)
+            //     or: https://m.atcdn.co.uk/a/media/{resize}/[imageId].jpg (Production)
+            const apiUrl = process.env.NEXT_PUBLIC_AUTOTRADER_API_BASE_URL || '';
+            const imageBaseUrl = apiUrl.includes('api-sandbox') || apiUrl.includes('api-qa')
+              ? 'https://m-qa.atcdn.co.uk' 
+              : 'https://m.atcdn.co.uk';
+            
+            const imagesWithHref = updatedImageIds.map(imageId => ({
+              imageId,
+              href: `${imageBaseUrl}/a/media/{resize}/${imageId}.jpg`
+            }));
+
+            await db
+              .update(stockCache)
+              .set({ 
+                mediaData: {
+                  images: imagesWithHref
+                },
+                updatedAt: new Date()
+              })
+              .where(eq(stockCache.stockId, stockId));
+            
+            console.log(`💾 Updated stock_cache.mediaData with ${updatedImageIds.length} images (with hrefs): [${updatedImageIds.join(', ')}]`);
+            console.log(`✅ Images successfully added to stock (${existingImageIds.length} existing + ${autoTraderImageIds.length} new = ${updatedImageIds.length} total)`);
+          } catch (cacheUpdateError) {
+            console.error('⚠️ Failed to update stock_cache.mediaData:', cacheUpdateError);
+            // Don't fail the request if cache update fails - AutoTrader still has the images
           }
         } else {
           const patchError = await patchResponse.text();
-          console.error(`❌ ${patchResponse.status} Error: ${patchError}`);
+          console.error(`❌ ${patchResponse.status} AutoTrader PATCH Error: ${patchError}`);
         }
       } catch (error) {
         console.error('❌ Stock update error:', error);

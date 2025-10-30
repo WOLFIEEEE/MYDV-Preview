@@ -8,6 +8,9 @@ import {
 } from '@/lib/errorHandler';
 import { StockCacheService } from '@/lib/stockCacheService';
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
+import { db } from '@/lib/db';
+import { stockCache } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 // Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Force dynamic rendering - prevent static optimization and caching issues
@@ -98,10 +101,12 @@ export async function GET(
       response.headers.set('X-Cache-Last-Fetched', _cacheMetadata.lastFetched.toISOString());
     }
 
-    // CRITICAL SECURITY FIX: Use private caching to prevent cross-user data leakage
-    // Stock details are user-specific and must NOT be cached publicly at CDN/proxy level
-    // Using 'private' allows browser caching but prevents CDN from serving to other users
-    response.headers.set('Cache-Control', 'private, max-age=60, must-revalidate'); // 1 minute browser cache only
+    // CRITICAL: Minimal caching to ensure fresh data from database
+    // Stock details change frequently and must be up-to-date
+    // no-cache forces revalidation with server on every request
+    response.headers.set('Cache-Control', 'private, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     response.headers.set('CDN-Cache-Control', 'no-store');
     response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
 
@@ -390,25 +395,83 @@ export async function PATCH(
     const autoTraderResponseData = await autoTraderResponse.json();
     console.log('✅ AutoTrader update successful');
 
-    // Update local cache if the stock exists in cache
-    try {
-      const cachedStock = await StockCacheService.getStockById(stockId, user.id);
-      if (cachedStock) {
-        console.log('🔄 Refreshing cached stock data after update...');
-        // The cache service will need to be extended to handle individual stock updates
-        // For now, we'll log that an update occurred
-        console.log('📝 Stock update completed, cache may need refresh on next access');
-      }
-    } catch (cacheError) {
-      console.warn('⚠️ Failed to update cache, but AutoTrader update succeeded:', cacheError);
-      // Don't fail the request if cache update fails
-    }
-
     // Determine the action taken based on update type
     let actionMessage = 'Stock updated successfully';
     let updateType = 'general';
     const lifecycleState = requestBody.metadata?.lifecycleState;
     const mediaImages = requestBody.media?.images;
+
+    // CRITICAL FIX: Update stock_cache immediately after successful AutoTrader update
+    // This ensures the cache stays in sync with AutoTrader and prevents stale data issues
+    try {
+      const cachedStock = await StockCacheService.getStockById(stockId, user.id);
+      if (cachedStock) {
+        console.log('🔄 Updating stock_cache after successful AutoTrader update...');
+        
+        // Prepare update object based on what was changed
+        const cacheUpdate: Record<string, unknown> = {
+          updatedAt: new Date()
+        };
+
+        // Update media data if images were modified
+        if (mediaImages && Array.isArray(mediaImages)) {
+          // Add href to each image for proper display in frontend
+          // Format: https://m-qa.atcdn.co.uk/a/media/{resize}/[imageId].jpg (Sandbox/QA)
+          //     or: https://m.atcdn.co.uk/a/media/{resize}/[imageId].jpg (Production)
+          const imageBaseUrl = baseUrl?.includes('api-sandbox') || baseUrl?.includes('api-qa')
+            ? 'https://m-qa.atcdn.co.uk' 
+            : 'https://m.atcdn.co.uk';
+          
+          cacheUpdate.mediaData = {
+            images: mediaImages.map((img: any) => {
+              const imageId = img.imageId || img;
+              return {
+                imageId,
+                // Use existing href if present, otherwise generate it
+                href: img.href || `${imageBaseUrl}/a/media/{resize}/${imageId}.jpg`
+              };
+            })
+          };
+          console.log(`💾 Updating mediaData with ${mediaImages.length} images (all with hrefs for ${imageBaseUrl})`);
+        }
+
+        // Update lifecycle state if it was changed
+        if (lifecycleState) {
+          cacheUpdate.lifecycleState = lifecycleState;
+          console.log(`💾 Updating lifecycleState to: ${lifecycleState}`);
+        }
+
+        // Update vehicle data if it was modified
+        if (requestBody.vehicle) {
+          cacheUpdate.vehicleData = requestBody.vehicle;
+          // Also update top-level searchable fields if they're in the vehicle data
+          if (requestBody.vehicle.make) cacheUpdate.make = requestBody.vehicle.make;
+          if (requestBody.vehicle.model) cacheUpdate.model = requestBody.vehicle.model;
+          if (requestBody.vehicle.derivative) cacheUpdate.derivative = requestBody.vehicle.derivative;
+          if (requestBody.vehicle.registration) cacheUpdate.registration = requestBody.vehicle.registration;
+          console.log(`💾 Updating vehicleData`);
+        }
+
+        // Update adverts data if it was modified
+        if (requestBody.adverts) {
+          cacheUpdate.advertsData = requestBody.adverts;
+          console.log(`💾 Updating advertsData`);
+        }
+
+        // Perform the cache update
+        await db
+          .update(stockCache)
+          .set(cacheUpdate)
+          .where(eq(stockCache.stockId, stockId));
+        
+        console.log(`✅ stock_cache updated successfully for stock: ${stockId}`);
+      } else {
+        console.log('ℹ️ Stock not found in cache, skipping cache update');
+      }
+    } catch (cacheError) {
+      console.error('⚠️ Failed to update stock_cache:', cacheError);
+      // Don't fail the request if cache update fails - AutoTrader still has the updates
+    }
     
     if (mediaImages && Array.isArray(mediaImages)) {
       actionMessage = `Stock images updated successfully (${mediaImages.length} images)`;
@@ -430,7 +493,7 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       createSuccessResponse(
         { 
           stockId,
@@ -445,6 +508,13 @@ export async function PATCH(
         'stock/update'
       )
     );
+
+    // CRITICAL: No caching for stock mutations to ensure immediate updates
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
 
   } catch (error) {
     console.error('❌ API Route update stock error:', error);

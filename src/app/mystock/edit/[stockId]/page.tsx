@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useParams, useRouter } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStockDetailQuery } from "@/hooks/useStockDataQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
 import TopActionNavigation from "@/components/stock/TopActionNavigation";
@@ -48,6 +49,7 @@ export default function EditStockPage() {
   const { isSignedIn, isLoaded, user } = useUser();
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const stockId = params.stockId as string;
   const { isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<EditTabType>("vehicle");
@@ -91,9 +93,28 @@ export default function EditStockPage() {
     }
   }, [isLoaded, isSignedIn, router]);
 
-  // Function to refresh action statuses
-  const refreshActionStatuses = () => {
+  // Function to refresh action statuses and invalidate caches
+  const refreshActionStatuses = async () => {
+    console.log('🔄 Refreshing action statuses and invalidating caches...');
+    
+    // Increment refresh trigger for local UI updates
     setRefreshTrigger(prev => prev + 1);
+    
+    // CRITICAL FIX: Invalidate React Query cache to refresh data everywhere
+    // This ensures My Stock page and other pages immediately show the updated data
+    try {
+      // Refetch current stock detail
+      await refetch();
+      
+      // Invalidate ALL stock-related queries to refresh data everywhere
+      await queryClient.invalidateQueries({ queryKey: ['stock'] });
+      await queryClient.invalidateQueries({ queryKey: ['stock-detail', stockId] });
+      
+      console.log('✅ Stock cache invalidated successfully');
+    } catch (error) {
+      console.error('⚠️ Failed to invalidate cache after action:', error);
+      // Don't fail the action if cache invalidation fails
+    }
   };
 
   // Get vehicle name for display
@@ -332,7 +353,7 @@ export default function EditStockPage() {
     // Show edit tabs
     switch (activeTab) {
       case "vehicle":
-        return <VehicleDetailsTab stockData={stockData} stockId={stockId} />;
+        return <VehicleDetailsTab stockData={stockData} stockId={stockId} onSave={refreshActionStatuses} />;
       case "gallery":
         return <ImagesTab 
           stockData={stockData} 
@@ -340,13 +361,13 @@ export default function EditStockPage() {
           advertiserId={stockData?.advertiser?.advertiserId || stockData?.metadata?.advertiserId}
         />;
       case "features":
-        return <FeaturesTab stockData={stockData} stockId={stockId} />;
+        return <FeaturesTab stockData={stockData} stockId={stockId} onSave={refreshActionStatuses} />;
       case "adverts":
-        return <AdvertsTab stockData={stockData} stockId={stockId} />;
+        return <AdvertsTab stockData={stockData} stockId={stockId} onSave={refreshActionStatuses} />;
       case "advertiser":
-        return <AdvertiserTab stockData={stockData} stockId={stockId} />;
+        return <AdvertiserTab stockData={stockData} stockId={stockId} onSave={refreshActionStatuses} />;
       default:
-        return <VehicleDetailsTab stockData={stockData} />;
+        return <VehicleDetailsTab stockData={stockData} onSave={refreshActionStatuses} />;
     }
   };
 
