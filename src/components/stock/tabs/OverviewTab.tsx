@@ -500,15 +500,28 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 <div className="flex items-start gap-6">
                   {/* Performance Score - Simple like the image */}
                   {stockData?.responseMetrics?.performanceRating?.score !== undefined && (
-                    <div className="space-y-2">
-                      <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Performance Rating: <span className="font-semibold">{stockData.responseMetrics.performanceRating.score}</span>
+                    <div className="flex items-end gap-3">
+                      <div className="space-y-2">
+                        {/* Logo Image */}
+                        <img 
+                          src="/autotrader.jpeg" 
+                          alt="AutoTrader" 
+                          className="h-4 w-auto"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                        
+                        <div className={`text-[12px] ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Performance Rating: <span className="font-semibold">{stockData.responseMetrics.performanceRating.score}</span>
+                        </div>
                       </div>
                       
-                      {/* Progress Bar - exactly like the image */}
-                      <div className="w-32 bg-gray-300 dark:bg-gray-600 rounded-full h-2">
+                      {/* Vertical Progress Bar - no roundness */}
+                      <div className="h-16 w-2 bg-gray-300 dark:bg-gray-600">
                         <div 
-                          className={`h-2 rounded-full transition-all duration-300 ${
+                          className={`w-2 transition-all duration-300 ${
                             stockData.responseMetrics.performanceRating.score >= 80 
                               ? 'bg-green-500' 
                               : stockData.responseMetrics.performanceRating.score >= 60 
@@ -518,7 +531,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                               : 'bg-red-500'
                           }`}
                           style={{
-                            width: `${Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`
+                            height: `${Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`,
+                            marginTop: `${100 - Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`
                           }}
                         />
                       </div>
