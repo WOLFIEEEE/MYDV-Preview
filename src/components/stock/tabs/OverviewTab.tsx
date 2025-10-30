@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "@/contexts/ThemeContext";
-import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2, Plus, ClipboardCheck, Calculator, TrendingUp, Handshake, User, FileText, ExternalLink } from "lucide-react";
+import { PoundSterling, Factory, Car, Fuel, Settings, Zap, Calendar, Gauge, Clock, MapPin, Wrench, BarChart3, Edit3, Upload, X, Trash2, Plus, ClipboardCheck, Calculator, TrendingUp, Handshake, User, FileText, ExternalLink, ShoppingCart, FileSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -18,6 +18,7 @@ import LicensePlate from "@/components/ui/license-plate";
 import EditListingModal from "../edit-tabs/EditListingModal";
 import OverviewRightCards from "./helper/OverviewRightCards";
 import EditVehicleModal from "../edit-tabs/EditVehicleModal";
+import { StockItem, VehicleInfo } from "@/types/stock";
 
 
 interface RecentInvoice {
@@ -313,11 +314,11 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
     extractPrice(adverts.retailAdverts?.totalPrice) ||
     extractPrice(adverts.retailAdverts?.suppliedPrice);
 
-    const handleGalleryMove = () => {
-      if (moveToGallery) {
-        moveToGallery();
-      }
+  const handleGalleryMove = () => {
+    if (moveToGallery) {
+      moveToGallery();
     }
+  }
 
   const priceIndicatorRating = adverts.retailAdverts?.priceIndicatorRating ||
     stockData.priceIndicatorRating ||
@@ -374,29 +375,44 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
     return new Intl.NumberFormat('en-GB').format(mileage) + ' miles';
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
+
+  // Helper functions to safely access nested properties
+  const getVehicleProperty = (item: StockItem, property: keyof VehicleInfo): string | number | undefined => {
+    return (item.vehicle?.[property] ?? item[property as keyof StockItem]) as string | number | undefined;
   };
 
-  const getPriceIndicatorColor = (rating: string) => {
-    switch (rating?.toLowerCase()) {
-      case 'great':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'good':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'fair':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'high':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'noanalysis':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white';
+  const handleRetailCheck = (item?: StockItem) => {
+    // Navigate to retail check page with vehicle data
+    const params = new URLSearchParams();
+
+    if (item) {
+      // Use stock item data
+      if (item.stockId) {
+        params.append('stockId', item.stockId);
+      }
+
+      const registration = getVehicleProperty(item, 'registration');
+      if (registration) {
+        params.append('registration', String(registration));
+      }
+
+      const mileage = getVehicleProperty(item, 'odometerReadingMiles');
+      if (mileage) {
+        params.append('mileage', String(mileage));
+      }
+    }
+
+    const url = `/mystock/retail-check${params.toString() ? `?${params.toString()}` : ''}`;
+    router.push(url);
+  };
+
+  const handleVehicleCheck = (item: StockItem) => {
+    const registration = getVehicleProperty(item, 'registration');
+    if (registration) {
+      // Navigate to vehicle history check page with registration
+      router.push(`/mystock/vehicle-history-check?registration=${encodeURIComponent(registration)}`);
+    } else {
+      alert('No registration number found for this vehicle');
     }
   };
 
@@ -506,46 +522,71 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
 
               <div className="flex-shrink-0 text-right">
                 <div className="flex items-start gap-6">
+                  <div className="space-y-4">
                   {/* Performance Score - Simple like the image */}
-                  {stockData?.responseMetrics?.performanceRating?.score !== undefined && (
-                    <div className="flex items-end gap-3">
-                      <div className="space-y-2">
-                        {/* Logo Image */}
-                        <img 
-                          src="/autotrader.jpeg" 
-                          alt="AutoTrader" 
-                          className="h-4 w-auto"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                        
-                        <div className={`text-[12px] ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Performance Rating: <span className="font-semibold">{stockData.responseMetrics.performanceRating.score}</span>
+                    {stockData?.responseMetrics?.performanceRating?.score !== undefined && (
+                      <div className="flex items-end gap-6">
+                        <div className="space-y-2">
+                          {/* Logo Image */}
+                          <img
+                            src="/autotrader.jpeg"
+                            alt="AutoTrader"
+                            className="h-4 w-auto"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+
+                          <div className={`text-[12px] ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Performance Rating: <span className="font-semibold">{stockData.responseMetrics.performanceRating.score}</span>
+                          </div>
+                        </div>
+
+                        {/* Vertical Progress Bar */}
+                        <div className="h-16 w-2 bg-gray-300 dark:bg-gray-600">
+                          <div
+                            className={`w-2 transition-all duration-300 ${stockData.responseMetrics.performanceRating.score >= 80
+                                ? 'bg-green-500'
+                                : stockData.responseMetrics.performanceRating.score >= 60
+                                  ? 'bg-yellow-500'
+                                  : stockData.responseMetrics.performanceRating.score >= 40
+                                    ? 'bg-orange-500'
+                                    : 'bg-red-500'
+                              }`}
+                            style={{
+                              height: `${Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`,
+                              marginTop: `${100 - Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`
+                            }}
+                          />
                         </div>
                       </div>
-                      
-                      {/* Vertical Progress Bar - no roundness */}
-                      <div className="h-16 w-2 bg-gray-300 dark:bg-gray-600">
-                        <div 
-                          className={`w-2 transition-all duration-300 ${
-                            stockData.responseMetrics.performanceRating.score >= 80 
-                              ? 'bg-green-500' 
-                              : stockData.responseMetrics.performanceRating.score >= 60 
-                              ? 'bg-yellow-500' 
-                              : stockData.responseMetrics.performanceRating.score >= 40
-                              ? 'bg-orange-500'
-                              : 'bg-red-500'
-                          }`}
-                          style={{
-                            height: `${Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`,
-                            marginTop: `${100 - Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`
-                          }}
-                        />
-                      </div>
+                    )}
+
+                    {/* Check Options - Below Performance Component */}
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleRetailCheck(stockData)}
+                          className={`cursor-pointer border-2 border-black/60 font-semibold flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${isDarkMode
+                              ? 'text-blue-400 hover:bg-blue-900/20'
+                              : 'text-blue-600 hover:bg-blue-50'
+                            }`}
+                        >
+                          Retail Check
+                        </button>
+                        {stockData?.vehicle?.registration && (
+                          <button
+                            onClick={() => handleVehicleCheck(stockData)}
+                            className={`cursor-pointer border-2 border-black/60 font-semibold flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${isDarkMode
+                                ? 'text-purple-400 hover:bg-purple-900/20'
+                                : 'text-purple-600 hover:bg-purple-50'
+                              }`}
+                          >
+                            Vehicle Check
+                          </button>
+                        )}
                     </div>
-                  )}
+                  </div>
 
                   {/* Edit Stock Button */}
                   {stockId && (
@@ -689,9 +730,8 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
 
             {/* Attention Grabber */}
             {stockData?.adverts?.retailAdverts?.attentionGrabber && (
-              <div className={`mb-4 p-3 rounded-md border-l-4 border-orange-500 ${
-                isDarkMode ? 'bg-orange-900/20 text-orange-300' : 'bg-orange-50 text-orange-800'
-              }`}>
+              <div className={`mb-4 p-3 rounded-md border-l-4 border-orange-500 ${isDarkMode ? 'bg-orange-900/20 text-orange-300' : 'bg-orange-50 text-orange-800'
+                }`}>
                 <p className="font-medium text-sm">
                   {stockData.adverts.retailAdverts.attentionGrabber}
                 </p>
@@ -712,28 +752,26 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
             {/* Price, VAT Status, and Vehicle Status */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               {/* Total Price */}
-              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${
-                isDarkMode 
-                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10' 
+              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${isDarkMode
+                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10'
                   : 'bg-gray-100/80 border-gray-200/90 shadow-gray-200/50'
-              }`}>
+                }`}>
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Listing Price
                 </label>
                 <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {adverts.retailAdverts?.totalPrice?.amountGBP 
-                    ? `£${Number(adverts.retailAdverts.totalPrice.amountGBP).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                  {adverts.retailAdverts?.totalPrice?.amountGBP
+                    ? `£${Number(adverts.retailAdverts.totalPrice.amountGBP).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : 'Not set'
                   }
                 </div>
               </div>
 
               {/* VAT Status */}
-              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${
-                isDarkMode 
-                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10' 
+              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${isDarkMode
+                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10'
                   : 'bg-gray-100/80 border-gray-200/90 shadow-gray-200/50'
-              }`}>
+                }`}>
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   VAT Status
                 </label>
@@ -743,11 +781,10 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
               </div>
 
               {/* Vehicle Status */}
-              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${
-                isDarkMode 
-                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10' 
+              <div className={`space-y-1 p-3 rounded-lg border shadow-sm ${isDarkMode
+                  ? 'bg-gray-700/50 border-gray-600/50 shadow-gray-900/10'
                   : 'bg-gray-100/80 border-gray-200/90 shadow-gray-200/50'
-              }`}>
+                }`}>
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Vehicle Status
                 </label>
