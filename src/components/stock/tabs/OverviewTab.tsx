@@ -496,18 +496,43 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments }: Ove
                 </div>
               </div>
 
-              <div className="flex-shrink-0 text-right space-y-3">
-                {/* Edit Stock Button */}
-                {stockId && (
-                  <div className="flex justify-end">
-                    {/* <Link href={`/mystock/edit/${stockId}`}> */}
-                      <Button variant="outline" size="sm" onClick={() => setIsVehicleModalOpen(true)}>
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                    {/* </Link> */}
-                  </div>
-                )}
+              <div className="flex-shrink-0 text-right">
+                <div className="flex items-start gap-6">
+                  {/* Performance Score - Simple like the image */}
+                  {stockData?.responseMetrics?.performanceRating?.score !== undefined && (
+                    <div className="space-y-2">
+                      <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Performance Rating: <span className="font-semibold">{stockData.responseMetrics.performanceRating.score}</span>
+                      </div>
+                      
+                      {/* Progress Bar - exactly like the image */}
+                      <div className="w-32 bg-gray-300 dark:bg-gray-600 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            stockData.responseMetrics.performanceRating.score >= 80 
+                              ? 'bg-green-500' 
+                              : stockData.responseMetrics.performanceRating.score >= 60 
+                              ? 'bg-yellow-500' 
+                              : stockData.responseMetrics.performanceRating.score >= 40
+                              ? 'bg-orange-500'
+                              : 'bg-red-500'
+                          }`}
+                          style={{
+                            width: `${Math.min(Math.max(stockData.responseMetrics.performanceRating.score, 0), 100)}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Edit Stock Button */}
+                  {stockId && (
+                    <Button variant="outline" size="sm" onClick={() => setIsVehicleModalOpen(true)}>
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
