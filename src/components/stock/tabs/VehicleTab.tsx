@@ -126,6 +126,10 @@ export default function VehicleTab({ stockData, insideComponent=false }: Vehicle
     },
   ];
 
+  const updatedAccordionItems = insideComponent
+  ? accordionItems.slice(1)
+  : accordionItems;
+
   const handleExpandAll = () => {
     setExpandAll(true);
   };
@@ -162,7 +166,7 @@ export default function VehicleTab({ stockData, insideComponent=false }: Vehicle
 
       {/* Data Accordion */}
       <DataAccordion 
-        items={accordionItems} 
+        items={updatedAccordionItems} 
         expandAll={expandAll}
         onExpandAllChange={handleExpandAllChange}
       />

@@ -837,7 +837,7 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
             </div>
           )}
 
-          {/* <VehicleTab stockData={stockData} insideComponent={true} /> */}
+          <VehicleTab stockData={stockData} insideComponent={true} />
         </div>
 
         {/* Right Container - Detailed Information */}
