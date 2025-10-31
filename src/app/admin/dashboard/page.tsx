@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { 
   Shield,
   Crown,
-  Briefcase
+  Briefcase,
+  RefreshCw,
+  ArrowRight
 } from "lucide-react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import Footer from "@/components/shared/Footer";
@@ -204,6 +206,17 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => router.push('/admin/dvla-sync')}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  DVLA Sync
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </section>

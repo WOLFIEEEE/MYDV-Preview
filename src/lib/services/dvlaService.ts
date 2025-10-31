@@ -356,73 +356,65 @@ export async function processDVLABatch(options: DVLAServiceOptions = {}): Promis
       return result;
     }
 
-    console.log(`📋 Processing ${vehicles.length} vehicles in batches of ${batchSize}`);
+    // Limit to batch size for API call (frontend will call multiple times)
+    const vehiclesToProcess = vehicles.slice(0, batchSize);
+    
+    console.log(`📋 Processing ${vehiclesToProcess.length} of ${vehicles.length} vehicles (batch size: ${batchSize})`);
 
-    // Process in batches
-    for (let i = 0; i < vehicles.length; i += batchSize) {
-      const batch = vehicles.slice(i, i + batchSize);
-      console.log(`🔄 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(vehicles.length / batchSize)}`);
+    // Process the batch
+    for (let i = 0; i < vehiclesToProcess.length; i++) {
+      const vehicle = vehiclesToProcess[i];
+      result.processed++;
 
-      // Process each vehicle in the batch
-      for (const vehicle of batch) {
-        result.processed++;
-
-        try {
-          // Fetch DVLA data
-          const dvlaResult = await fetchDVLAData(vehicle.registration);
+      try {
+        // Fetch DVLA data
+        const dvlaResult = await fetchDVLAData(vehicle.registration);
+        
+        if (dvlaResult.success && dvlaResult.data) {
+          // Update stock with DVLA data
+          const updateResult = await updateStockWithDVLAData(vehicle.stockId, dvlaResult.data);
           
-          if (dvlaResult.success && dvlaResult.data) {
-            // Update stock with DVLA data
-            const updateResult = await updateStockWithDVLAData(vehicle.stockId, dvlaResult.data);
-            
-            if (updateResult.success) {
-              result.updated++;
-              result.details.push({
-                stockId: vehicle.stockId,
-                registration: vehicle.registration,
-                success: true,
-                motStatus: dvlaResult.data.motStatus,
-                motExpiryDate: dvlaResult.data.motExpiryDate
-              });
-            } else {
-              result.errors++;
-              result.details.push({
-                stockId: vehicle.stockId,
-                registration: vehicle.registration,
-                success: false,
-                error: updateResult.error
-              });
-            }
+          if (updateResult.success) {
+            result.updated++;
+            result.details.push({
+              stockId: vehicle.stockId,
+              registration: vehicle.registration,
+              success: true,
+              motStatus: dvlaResult.data.motStatus,
+              motExpiryDate: dvlaResult.data.motExpiryDate
+            });
           } else {
             result.errors++;
             result.details.push({
               stockId: vehicle.stockId,
               registration: vehicle.registration,
               success: false,
-              error: dvlaResult.error
+              error: updateResult.error
             });
           }
-
-          // Delay between requests to avoid rate limiting
-          if (batch.indexOf(vehicle) < batch.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, DVLA_CONFIG.REQUEST_DELAY));
-          }
-
-        } catch (error) {
+        } else {
           result.errors++;
           result.details.push({
             stockId: vehicle.stockId,
             registration: vehicle.registration,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: dvlaResult.error
           });
         }
-      }
 
-      // Delay between batches
-      if (i + batchSize < vehicles.length) {
-        console.log(`⏳ Waiting ${DVLA_CONFIG.BATCH_DELAY}ms before next batch...`);
-        await new Promise(resolve => setTimeout(resolve, DVLA_CONFIG.BATCH_DELAY));
+        // Delay between requests to avoid rate limiting
+        if (i < vehiclesToProcess.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, DVLA_CONFIG.REQUEST_DELAY));
+        }
+
+      } catch (error) {
+        result.errors++;
+        result.details.push({
+          stockId: vehicle.stockId,
+          registration: vehicle.registration,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
 
