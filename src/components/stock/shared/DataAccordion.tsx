@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
@@ -12,13 +12,28 @@ interface AccordionItem {
 
 interface DataAccordionProps {
   items: AccordionItem[];
+  expandAll?: boolean;
+  onExpandAllChange?: (expanded: boolean) => void;
 }
 
-export default function DataAccordion({ items }: DataAccordionProps) {
+export default function DataAccordion({ items, expandAll, onExpandAllChange }: DataAccordionProps) {
   const [openItems, setOpenItems] = useState<Set<number>>(
     new Set(items.map((_, index) => items[index]?.defaultOpen ? index : -1).filter(i => i !== -1))
   );
   const { isDarkMode } = useTheme();
+
+  // Handle external expand/collapse all control
+  useEffect(() => {
+    if (expandAll !== undefined) {
+      if (expandAll) {
+        // Expand all items
+        setOpenItems(new Set(items.map((_, index) => index)));
+      } else {
+        // Collapse all items
+        setOpenItems(new Set());
+      }
+    }
+  }, [expandAll, items.length]);
 
   const toggleItem = (index: number) => {
     const newOpenItems = new Set(openItems);
@@ -28,6 +43,17 @@ export default function DataAccordion({ items }: DataAccordionProps) {
       newOpenItems.add(index);
     }
     setOpenItems(newOpenItems);
+    
+    // Notify parent if callback is provided
+    if (onExpandAllChange) {
+      const allExpanded = newOpenItems.size === items.length;
+      const noneExpanded = newOpenItems.size === 0;
+      if (allExpanded) {
+        onExpandAllChange(true);
+      } else if (noneExpanded) {
+        onExpandAllChange(false);
+      }
+    }
   };
 
   return (

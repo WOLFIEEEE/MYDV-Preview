@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { CheckCircle, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { CheckCircle, ChevronDown, ChevronUp, Edit3, Star } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 interface FeaturesTabProps {
   stockData: any;
+  stockId?: string;
 }
 
 interface FeaturesByCategory {
   [category: string]: any[];
 }
 
-export default function FeaturesTab({ stockData }: FeaturesTabProps) {
+export default function FeaturesTab({ stockData, stockId }: FeaturesTabProps) {
   const { isDarkMode } = useTheme();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   
@@ -47,6 +50,18 @@ export default function FeaturesTab({ stockData }: FeaturesTabProps) {
           <CheckCircle className="h-6 w-6 text-blue-600" />
           <h2 className="text-2xl font-bold">Features & Highlights</h2>
         </div>
+
+        {/* Edit Stock Button */}
+        {stockId && (
+          <div className="flex justify-end">
+            <Link href={`/mystock/edit/${stockId}`}>
+              <Button variant="outline" size="sm">
+                <Edit3 className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="space-y-6">

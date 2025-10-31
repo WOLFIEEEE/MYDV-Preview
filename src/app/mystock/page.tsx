@@ -77,6 +77,7 @@ import QRCodeModal from "@/components/shared/QRCodeModal";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getStatusLabel, getStatusColor, getStatusOptions, getStatusCounts } from "@/lib/statusMapping";
+import AutotraderPriceCard from "@/components/ui/autotrader-price-label";
 
 
 
@@ -3015,14 +3016,15 @@ function MyStockContent() {
                                   </td>
 
                                   <td className={`px-2 py-1 text-xs align-middle border-r ${isDarkMode ? 'text-slate-300 border-slate-700/20' : 'text-slate-700 border-slate-200/30'}`}>
-                                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                    {/* <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                                       apiItem.priceIndicatorRating === 'GREAT' ? 'bg-green-500/20 text-green-400' :
                                       apiItem.priceIndicatorRating === 'GOOD' ? 'bg-blue-500/20 text-blue-400' :
                                       apiItem.priceIndicatorRating === 'FAIR' ? 'bg-amber-500/20 text-amber-400' :
                                       'bg-slate-500/20 text-slate-400'
                                     }`}>
                                       {apiItem.priceIndicatorRating || 'N/A'}
-                                    </span>
+                                    </span> */}
+                                    <AutotraderPriceCard priceIndicatorRating={apiItem.adverts?.retailAdverts?.priceIndicatorRating || 'NOANALYSIS'} showWithoutIcon={true} />
                                 </td>
                                 <td className={`p-2 text-xs align-middle border-r font-semibold ${isDarkMode ? 'text-white border-slate-700/20' : 'text-slate-900 border-slate-200/30'}`}>
                                     {formatMileage(apiItem.vehicle?.odometerReadingMiles || apiItem.odometerReadingMiles)}
