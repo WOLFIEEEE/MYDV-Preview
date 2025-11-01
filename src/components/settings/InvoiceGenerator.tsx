@@ -505,12 +505,12 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       setFilteredCustomers(customers);
     } else {
       const query = customerSearchQuery.toLowerCase();
-      const filtered = customers.filter(customer =>
-        customer.firstName.toLowerCase().includes(query) ||
-        customer.lastName.toLowerCase().includes(query) ||
-        customer.email.toLowerCase().includes(query) ||
-        (customer.phone && customer.phone.includes(query)) ||
-        (customer.displayName && customer.displayName.toLowerCase().includes(query))
+      const filtered = customers?.filter(customer =>
+        customer?.firstName?.toLowerCase()?.includes(query) ||
+        customer?.lastName?.toLowerCase()?.includes(query) ||
+        customer?.email?.toLowerCase()?.includes(query) ||
+        (customer?.phone && customer?.phone?.includes(query)) ||
+        (customer?.displayName && customer?.displayName?.toLowerCase()?.includes(query))
       );
       setFilteredCustomers(filtered);
     }
