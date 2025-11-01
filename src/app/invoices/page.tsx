@@ -36,9 +36,7 @@ import {
   RefreshCw,
   Edit3,
   Download,
-  Trash2,
-  CheckCircle2,
-  X
+  Trash2
 } from 'lucide-react';
 import Header from '@/components/shared/Header';
 import Footer from '@/components/shared/Footer';
@@ -370,8 +368,8 @@ export default function InvoicesPage() {
                         <TableHead>Vehicle</TableHead>
                         <TableHead>Invoice Type</TableHead>
                         <TableHead>Remaining Balance</TableHead>
-                        <TableHead>Updated</TableHead>
                         <TableHead>Created</TableHead>
+                        <TableHead>Updated</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -432,13 +430,13 @@ export default function InvoicesPage() {
                           <TableCell>
                             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                               <Calendar className="h-4 w-4" />
-                              {formatDate(invoice.updatedAt)}
+                              {formatDate(invoice.createdAt)}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                               <Calendar className="h-4 w-4" />
-                              {formatDate(invoice.createdAt)}
+                              {formatDate(invoice.updatedAt)}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
