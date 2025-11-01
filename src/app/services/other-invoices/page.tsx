@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Header from '@/components/shared/Header';
 import Footer from '@/components/shared/Footer';
+import InvoiceGeneratorModal from '@/components/settings/AddInvoiceModal';
 
 interface CustomInvoice {
   id: string;
@@ -33,6 +34,7 @@ export default function OtherInvoicesPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<CustomInvoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch invoices
@@ -58,7 +60,8 @@ export default function OtherInvoicesPage() {
   };
 
   const handleCreateInvoice = () => {
-    router.push('/store-owner/settings?tab=invoice-generator');
+    setIsOpen(true)
+    // router.push('/store-owner/settings?tab=invoice-generator');
   };
 
   const handleEditInvoice = async (invoiceId: string) => {
@@ -313,6 +316,8 @@ export default function OtherInvoicesPage() {
           </div>
         </main>
       </div>
+
+      <InvoiceGeneratorModal dealerId="" isOpen={isOpen} onClose={() => setIsOpen(false)} />
       
       <Footer />
     </div>
