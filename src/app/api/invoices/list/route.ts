@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         eq(savedInvoices.userId, user.id)     // Old invoices (saved with Clerk user ID)
       )
     )
-    .orderBy(desc(savedInvoices.updatedAt));
+    .orderBy(desc(savedInvoices.createdAt));
 
     // Filter to only get the latest invoice per stockId + registration combination
     const invoiceMap = new Map<string, typeof allInvoices[0]>();
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
     
     const latestInvoices = Array.from(invoiceMap.values())
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     console.log(`✅ Retrieved ${latestInvoices.length} latest invoices (filtered from ${allInvoices.length} total) for dealer ${dealerId} (includes backward compatibility for old Clerk user ID invoices)`);
 
