@@ -2379,14 +2379,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 2 }}>
                     CUSTOMER DETAILS
                   </Text>
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 2 }}>
                     {[invoiceData.customer.title, invoiceData.customer.firstName, invoiceData.customer.lastName].filter(Boolean).join(' ')}
                   </Text>
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 2 }}>
                     {invoiceData.customer.address.firstLine} {invoiceData.customer.address.secondLine && invoiceData.customer.address.secondLine + ', '}
                     {invoiceData.customer.address.city}, {invoiceData.customer.address.county} {invoiceData.customer.address.postCode}, GB,
                   </Text>
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 2 }}>
                     Email: {invoiceData.customer.contact.email || 'N/A'} - Phone: {invoiceData.customer.contact.phone || 'N/A'}
                   </Text>
                 </>

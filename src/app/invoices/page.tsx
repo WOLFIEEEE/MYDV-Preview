@@ -143,8 +143,11 @@ export default function InvoicesPage() {
         const blob = await pdfResponse.blob();
         const url = URL.createObjectURL(blob);
         
-        // Create filename
-        const filename = `${invoiceData.invoiceNumber}_${invoiceData.vehicle.registration}_${new Date().toISOString().split('T')[0]}.pdf`;
+        // Create filename: VehicleReg-FirstName-LastName with fallbacks (matching dynamic invoice editor)
+        const vehicleReg = invoiceData.vehicle?.registration || 'VEHICLE';
+        const firstName = invoiceData.customer?.firstName || 'Customer';
+        const lastName = invoiceData.customer?.lastName || 'Name';
+        const filename = `${vehicleReg}-${firstName}-${lastName}.pdf`;
         
         // Download the PDF
         const a = document.createElement('a');
