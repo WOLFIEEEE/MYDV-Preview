@@ -11,6 +11,7 @@ const mockInvoiceData: ComprehensiveInvoiceData = {
   // Meta Information
   invoiceNumber: 'TEST-INV-001',
   invoiceDate: '2024-01-15',
+  dueDate: '2024-02-15',
   saleType: 'Retail',
   invoiceType: 'Retail (Customer) Invoice',
   invoiceTo: 'Customer',

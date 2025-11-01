@@ -467,6 +467,7 @@ const convertFormDataToInvoiceData = (formData: InvoiceFormData): ComprehensiveI
     invoiceNumber: toString(formData.invoiceNumber) || `INV-${Date.now()}`,
     invoiceDate: toString(formData.dateOfSale) || new Date().toISOString().split('T')[0],
     saleType: saleType,
+    dueDate: toString(formData.dueDate) || new Date().toISOString().split('T')[0],
     invoiceType: invoiceType,
     invoiceTo: invoiceTo,
     

@@ -560,6 +560,7 @@ export async function GET(request: NextRequest) {
       // Meta Information - Enhanced mapping
       invoiceNumber: existingInvoice?.invoiceNumber || `INV-${stockData?.registration || saleDetailsData?.registration || stockId || 'DRAFT'}-${Date.now()}`,
       invoiceDate: saleDetailsData?.saleDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      dueDate: (new Date())?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
       saleType: (existingInvoice?.saleType as 'Retail' | 'Trade' | 'Commercial') || 'Retail',
       invoiceType: ((existingInvoice?.saleType as 'Retail' | 'Trade' | 'Commercial') === 'Trade') ? 'Trade Invoice' : 'Retail (Customer) Invoice',
       invoiceTo: (existingInvoice?.invoiceTo as 'Finance Company' | 'Customer') || 'Customer',
