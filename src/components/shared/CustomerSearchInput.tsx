@@ -6,10 +6,10 @@ import { Search, User, Mail, Phone, MapPin, X } from "lucide-react";
 
 interface Customer {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
   addressLine1: string | null;
   addressLine2: string | null;
   city: string | null;
@@ -78,12 +78,17 @@ export default function CustomerSearchInput({
     }
 
     const term = searchTerm.toLowerCase();
-    const filtered = customers.filter(customer => 
-      customer.firstName.toLowerCase().includes(term) ||
-      customer.lastName.toLowerCase().includes(term) ||
-      customer.email.toLowerCase().includes(term) ||
-      `${customer.firstName} ${customer.lastName}`.toLowerCase().includes(term)
-    ).slice(0, 8); // Limit to 8 suggestions
+    const filtered = customers.filter(customer => {
+      // Safely handle null/undefined values
+      const firstName = customer.firstName || '';
+      const lastName = customer.lastName || '';
+      const email = customer.email || '';
+      
+      return firstName.toLowerCase().includes(term) ||
+        lastName.toLowerCase().includes(term) ||
+        email.toLowerCase().includes(term) ||
+        `${firstName} ${lastName}`.toLowerCase().includes(term);
+    }).slice(0, 8); // Limit to 8 suggestions
 
     setFilteredCustomers(filtered);
     setShowSuggestions(filtered.length > 0);
@@ -97,7 +102,9 @@ export default function CustomerSearchInput({
 
   // Handle customer selection
   const handleCustomerSelect = (customer: Customer) => {
-    setSearchTerm(`${customer.firstName} ${customer.lastName}`);
+    const firstName = customer.firstName || '';
+    const lastName = customer.lastName || '';
+    setSearchTerm(`${firstName} ${lastName}`.trim());
     setShowSuggestions(false);
     setSelectedIndex(-1);
     onCustomerSelect(customer);
@@ -253,7 +260,7 @@ export default function CustomerSearchInput({
                   customer.tags && customer.tags.includes('individual') ? 'bg-blue-600' :
                   customer.tags && customer.tags.includes('business') ? 'bg-green-600' : 'bg-purple-600'
                 }`}>
-                  {customer.firstName.charAt(0)}{customer.lastName.charAt(0)}
+                  {(customer.firstName || '').charAt(0) || '?'}{(customer.lastName || '').charAt(0) || ''}
                 </div>
                 
                 {/* Customer Info */}
@@ -262,7 +269,7 @@ export default function CustomerSearchInput({
                     <h4 className={`font-medium ${
                       isDarkMode ? 'text-white' : 'text-slate-900'
                     }`}>
-                      {customer.firstName} {customer.lastName}
+                      {customer.firstName || ''} {customer.lastName || ''}
                     </h4>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCustomerTypeColor(customer.tags)}`}>
                       {customer.tags && customer.tags.length > 0 ? customer.tags[0].charAt(0).toUpperCase() + customer.tags[0].slice(1) : 'Individual'}
@@ -277,12 +284,14 @@ export default function CustomerSearchInput({
                       <span className="truncate">{customer.email}</span>
                     </div>
                     <div className="flex items-center gap-4 text-xs">
-                      <div className={`flex items-center gap-2 ${
-                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
-                      }`}>
-                        <Phone className="w-3 h-3 flex-shrink-0" />
-                        <span>{customer.phone}</span>
-                      </div>
+                      {customer.phone && (
+                        <div className={`flex items-center gap-2 ${
+                          isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                        }`}>
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span>{customer.phone}</span>
+                        </div>
+                      )}
                       {customer.city && customer.postcode && (
                         <div className={`flex items-center gap-2 ${
                           isDarkMode ? 'text-slate-300' : 'text-slate-600'

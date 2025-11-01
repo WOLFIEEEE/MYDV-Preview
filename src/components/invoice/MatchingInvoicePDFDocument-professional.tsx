@@ -1768,12 +1768,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
           {/* Invoice To Section - No Background */}
           <View style={{ marginBottom: 2 }}>
-            <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 4 }}>
+            <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: mainInvoiceFontSize >= 9 ? 6 : 4 }}>
               INVOICE TO:
             </Text>
             {invoiceData.invoiceTo === 'Finance Company' ? (
               <>
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                   {invoiceData.vehicle?.registration || 'REG'} - {
                     invoiceData.financeCompany?.name === 'Other' 
                       ? (invoiceData.financeCompany?.companyName || 'Finance Company')
@@ -1781,39 +1781,39 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   }
                 </Text>
               {invoiceData.financeCompany?.address?.firstLine && (
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                     {invoiceData.financeCompany?.address?.firstLine}
                   </Text>
                 )}
               {invoiceData.financeCompany?.address?.countyPostCodeContact && (
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                     {invoiceData.financeCompany?.address?.countyPostCodeContact}
                   </Text>
                 )}
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 0 }}>
                   {invoiceData.financeCompany?.address?.countyPostCodeContact || ''}
                 </Text>
               </>
             ) : (
               <>
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                   INV-{invoiceData.vehicle.registration} - {invoiceData.customer.title} {invoiceData.customer.firstName} {invoiceData.customer.lastName}
                 </Text>
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                   {invoiceData.customer.address.firstLine}
                 </Text>
                 {invoiceData.customer.address.secondLine && (
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                     {invoiceData.customer.address.secondLine}
                   </Text>
                 )}
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                   {invoiceData.customer.address.city}, {invoiceData.customer.address.postCode}
                 </Text>
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
                   Tel: {invoiceData.customer.contact.phone}
                 </Text>
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 0 }}>
                   Email: {invoiceData.customer.contact.email}
                 </Text>
               </>
