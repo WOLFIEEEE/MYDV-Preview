@@ -179,6 +179,7 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): any 
     // Meta Information
     invoiceNumber: previewData.invoiceNumber,
     invoiceDate: previewData.invoiceDate,
+    dueDate: previewData.dueDate,
     saleType: 'Retail' as const,
     invoiceType: 'Retail (Customer) Invoice' as const,
     // invoiceTo: 'Customer' as const,

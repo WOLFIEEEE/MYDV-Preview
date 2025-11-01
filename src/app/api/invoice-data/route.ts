@@ -51,6 +51,7 @@ export interface ComprehensiveInvoiceData {
   // Meta Information
   invoiceNumber: string;
   invoiceDate: string;
+  dueDate: string;
   saleType: 'Retail' | 'Trade' | 'Commercial';
   invoiceType: 'Retail (Customer) Invoice' | 'Trade Invoice';
   invoiceTo: 'Finance Company' | 'Customer';

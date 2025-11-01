@@ -644,7 +644,7 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                 </View>
                 <View style={styles.invoiceDetailRow}>
                   <Text style={styles.invoiceLabel}>Due Date:</Text>
-                  <Text style={styles.invoiceValue}>{formatDate(invoiceData.sale.date)}</Text>
+                  <Text style={styles.invoiceValue}>{formatDate(invoiceData.dueDate)}</Text>
                 </View>
               </View>
 
