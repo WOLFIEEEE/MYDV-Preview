@@ -1781,14 +1781,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   }
                 </Text>
               {invoiceData.financeCompany?.address?.firstLine && (
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 3 }}>
-                    {invoiceData.financeCompany?.address?.firstLine}
-                  </Text>
+                  <View style={{ marginBottom: mainInvoiceFontSize >= 9 ? 4 : 0 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.4 }}>
+                      {invoiceData.financeCompany?.address?.firstLine}
+                    </Text>
+                  </View>
                 )}
               {invoiceData.financeCompany?.address?.countyPostCodeContact && (
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 3 }}>
-                    {invoiceData.financeCompany?.address?.countyPostCodeContact}
-                  </Text>
+                  <View style={{ marginBottom: mainInvoiceFontSize >= 9 ? 4 : 0 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.4 }}>
+                      {invoiceData.financeCompany?.address?.countyPostCodeContact}
+                    </Text>
+                  </View>
                 )}
               </>
             ) : (
