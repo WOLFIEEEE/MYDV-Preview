@@ -1773,7 +1773,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             </Text>
             {invoiceData.invoiceTo === 'Finance Company' ? (
               <>
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: mainInvoiceFontSize >= 9 ? 4 : 3 }}>
                   {invoiceData.vehicle?.registration || 'REG'} - {
                     invoiceData.financeCompany?.name === 'Other' 
                       ? (invoiceData.financeCompany?.companyName || 'Finance Company')
@@ -1781,18 +1781,15 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   }
                 </Text>
               {invoiceData.financeCompany?.address?.firstLine && (
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 3 }}>
                     {invoiceData.financeCompany?.address?.firstLine}
                   </Text>
                 )}
               {invoiceData.financeCompany?.address?.countyPostCodeContact && (
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 2 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: mainInvoiceFontSize >= 9 ? 4 : 3 }}>
                     {invoiceData.financeCompany?.address?.countyPostCodeContact}
                   </Text>
                 )}
-                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 0 }}>
-                  {invoiceData.financeCompany?.address?.countyPostCodeContact || ''}
-                </Text>
               </>
             ) : (
               <>
