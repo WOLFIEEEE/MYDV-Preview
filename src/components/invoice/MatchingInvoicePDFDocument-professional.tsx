@@ -1658,6 +1658,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
   // Removed showDiscounts as it's not used in this component
 
+  // Determine font size for main invoice based on sale type
+  const mainInvoiceFontSize = (() => {
+    if (invoiceData.saleType === 'Trade') return 10;
+    if (invoiceData.invoiceTo === 'Customer') return 9;
+    if (invoiceData.invoiceTo === 'Finance Company') return 8;
+    return 9; // Default to retail customer size
+  })();
+
   // Render content across multiple pages with proper page breaks
   return (
     <Document>
@@ -1688,27 +1696,27 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               
               {/* Company Details */}
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                   {invoiceData.companyInfo.address.street}
                 </Text>
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                   {invoiceData.companyInfo.address.city}
                 </Text>
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                   {invoiceData.companyInfo.address.postCode}
                 </Text>
                   {invoiceData.companyInfo.vatNumber && (
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                     VAT No: {invoiceData.companyInfo.vatNumber}
                   </Text>
                 )}
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
                   {hasVATApplied(invoiceData) ? 'VAT INVOICE' : 'VAT MARGIN SCHEME'}
                 </Text>
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                   {invoiceData.companyInfo.contact.phone}
                 </Text>
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
                   {invoiceData.companyInfo.contact.email}
                 </Text>
                 </View>
@@ -1716,31 +1724,31 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               
             {/* Right Side - Invoice Info */}
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                 Invoice:
               </Text>
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
                 INV-{invoiceData.vehicle.registration}
               </Text>
               
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                 Date:
               </Text>
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
                 {formatDate(invoiceData.invoiceDate)}
               </Text>
               
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                 Sale Price:
               </Text>
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.itemGap + 2 }}>
                 {formatCurrency(invoiceData.pricing.salePricePostDiscount)}
               </Text>
               
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, marginBottom: GLOBAL_FORMAT_CONFIG.spacing.smallGap }}>
                 Remaining Balance:
               </Text>
-              <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
                 {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateRemainingBalance(invoiceData))}
               </Text>
               </View>
@@ -1753,19 +1761,19 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             marginBottom: 2,
             alignItems: 'flex-end'
           }}>
-            <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>
+            <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>
               PURCHASE INVOICE
             </Text>
           </View>
 
           {/* Invoice To Section - No Background */}
           <View style={{ marginBottom: 2 }}>
-            <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 4 }}>
+            <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 4 }}>
               INVOICE TO:
             </Text>
             {invoiceData.invoiceTo === 'Finance Company' ? (
               <>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
                   {invoiceData.vehicle?.registration || 'REG'} - {
                     invoiceData.financeCompany?.name === 'Other' 
                       ? (invoiceData.financeCompany?.companyName || 'Finance Company')
@@ -1773,39 +1781,39 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   }
                 </Text>
               {invoiceData.financeCompany?.address?.firstLine && (
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
                     {invoiceData.financeCompany?.address?.firstLine}
                   </Text>
                 )}
               {invoiceData.financeCompany?.address?.countyPostCodeContact && (
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
                     {invoiceData.financeCompany?.address?.countyPostCodeContact}
                   </Text>
                 )}
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                   {invoiceData.financeCompany?.address?.countyPostCodeContact || ''}
                 </Text>
               </>
             ) : (
               <>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
                   INV-{invoiceData.vehicle.registration} - {invoiceData.customer.title} {invoiceData.customer.firstName} {invoiceData.customer.lastName}
                 </Text>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                   {invoiceData.customer.address.firstLine}
                 </Text>
                 {invoiceData.customer.address.secondLine && (
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family }}>
                     {invoiceData.customer.address.secondLine}
                   </Text>
                 )}
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                   {invoiceData.customer.address.city}, {invoiceData.customer.address.postCode}
                 </Text>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                   Tel: {invoiceData.customer.contact.phone}
                 </Text>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                   Email: {invoiceData.customer.contact.email}
                 </Text>
               </>
@@ -1829,12 +1837,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                paddingBottom: 3, 
                marginBottom: 3 
              }}>
-               <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 3, textAlign: 'left' }}>DESCRIPTION</Text>
-               <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>RATE</Text>
-               <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'center' }}>QTY</Text>
-               <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>DISCOUNT</Text>
-               {hasVATApplied(invoiceData) && <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>VAT</Text>}
-               <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>TOTAL</Text>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 3, textAlign: 'left' }}>DESCRIPTION</Text>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>RATE</Text>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'center' }}>QTY</Text>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>DISCOUNT</Text>
+               {hasVATApplied(invoiceData) && <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>VAT</Text>}
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', flex: 1, textAlign: 'right' }}>TOTAL</Text>
              </View>
             
              {/* Vehicle Row */}
@@ -1844,14 +1852,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                borderBottom: '1px solid #ccc',
                fontWeight: 'semibold'
              }}>
-               <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                 {invoiceData.vehicle?.make || ''} {invoiceData.vehicle?.model || ''} - {invoiceData.vehicle?.registration || ''}
               </Text>
-               <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                  {formatCurrency(invoiceData.pricing.salePrice)}
                </Text>
-               <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-               <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }]}>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }}>
                  {GLOBAL_CALCULATION_CONFIG.calculations.formatDiscountDisplay(
                    GLOBAL_CALCULATION_CONFIG.calculations.calculateDiscountAmount(
                      invoiceData.pricing.salePrice || 0, 
@@ -1860,11 +1868,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                  )}
                </Text>
                {hasVATApplied(invoiceData) && (
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                    {invoiceData.pricing.applyVatToSalePrice ? formatCurrency(invoiceData.pricing.salePriceVatAmount || 0) : '-'}
                  </Text>
                )}
-               <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+               <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                  {formatCurrency(
                    invoiceData.pricing.applyVatToSalePrice 
                      ? (invoiceData.pricing.salePriceIncludingVat || invoiceData.pricing.salePricePostDiscount)
@@ -1880,26 +1888,26 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                  paddingVertical: 2,
                  borderBottom: '1px solid #ccc'
                }}>
-                 <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                   <Text style={{ fontWeight: 'semibold' }}>Warranty</Text> - {invoiceData.warranty.name || invoiceData.warranty.level}
                    {invoiceData.warranty.inHouse ? '\nIn-House Warranty: Yes' : ''}
                    {invoiceData.warranty.details ? `\n${invoiceData.warranty.details}` : ''}
                 </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                    {formatCurrency(invoiceData.pricing.warrantyPrice || 0)}
                  </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }}>
                    {GLOBAL_CALCULATION_CONFIG.calculations.formatDiscountDisplay(
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateWarrantyDiscount(invoiceData)
                    )}
                  </Text>
                  {hasVATApplied(invoiceData) && (
-                   <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                   <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                      {invoiceData.pricing.applyVatToWarranty ? formatCurrency(invoiceData.pricing.warrantyVatAmount || 0) : '-'}
                    </Text>
                  )}
-                 <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                    {formatCurrency(
                      invoiceData.pricing.applyVatToWarranty
                        ? (invoiceData.pricing.warrantyIncludingVat ?? invoiceData.pricing.warrantyPricePostDiscount ?? invoiceData.pricing.warrantyPrice ?? 0)
@@ -1916,25 +1924,25 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                  paddingVertical: 2,
                  borderBottom: '1px solid #ccc'
                }}>
-                 <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                   <Text style={{ fontWeight: 'semibold' }}>Enhanced Warranty</Text> - {invoiceData.warranty.enhancedName || invoiceData.warranty.enhancedLevel}
                    {invoiceData.warranty.enhancedDetails && `\n${invoiceData.warranty.enhancedDetails}`}
                 </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                    {formatCurrency(invoiceData.pricing.enhancedWarrantyPrice || 0)}
                  </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }}>
                    {GLOBAL_CALCULATION_CONFIG.calculations.formatDiscountDisplay(
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateEnhancedWarrantyDiscount(invoiceData)
                    )}
                  </Text>
                  {hasVATApplied(invoiceData) && (
-                   <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                   <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                      {invoiceData.pricing.applyVatToEnhancedWarranty ? formatCurrency(invoiceData.pricing.enhancedWarrantyVatAmount || 0) : '-'}
                    </Text>
                  )}
-                <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                   {formatCurrency(
                     invoiceData.pricing.applyVatToEnhancedWarranty
                       ? (invoiceData.pricing.enhancedWarrantyIncludingVat ?? invoiceData.pricing.enhancedWarrantyPricePostDiscount ?? invoiceData.pricing.enhancedWarrantyPrice ?? 0)
@@ -1953,24 +1961,24 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      paddingVertical: 2,
                      borderBottom: '1px solid #ccc'
                    }}>
-                     <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                        <Text style={{ fontWeight: 'semibold' }}>{invoiceData.addons.customer.addon1?.name}</Text> - Non Refundable
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                        {formatCurrency(invoiceData.addons.customer.addon1?.cost || 0)}
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }}>
                        {GLOBAL_CALCULATION_CONFIG.calculations.formatDiscountDisplay(
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon1)
                        )}
                      </Text>
                      {hasVATApplied(invoiceData) && (
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {invoiceData.addons.customer.addon1.applyVat ? formatCurrency(invoiceData.addons.customer.addon1.vatAmount || 0) : '-'}
                        </Text>
                      )}
-                    <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                       {formatCurrency(
                         invoiceData.addons.customer.addon1.applyVat
                           ? (invoiceData.addons.customer.addon1.costIncludingVat ?? invoiceData.addons.customer.addon1.postDiscountCost ?? invoiceData.addons.customer.addon1.cost ?? 0)
@@ -1985,24 +1993,24 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      paddingVertical: 2,
                      borderBottom: '1px solid #ccc'
                    }}>
-                     <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                        <Text style={{ fontWeight: 'semibold' }}>{invoiceData.addons.customer.addon2?.name}</Text> - Non Refundable
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                        {formatCurrency(invoiceData.addons.customer.addon2?.cost || 0)}
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }}>
                        {GLOBAL_CALCULATION_CONFIG.calculations.formatDiscountDisplay(
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(invoiceData.addons.customer.addon2)
                        )}
                      </Text>
                      {hasVATApplied(invoiceData) && (
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {invoiceData.addons.customer.addon2.applyVat ? formatCurrency(invoiceData.addons.customer.addon2.vatAmount || 0) : '-'}
                        </Text>
                      )}
-                    <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                       {formatCurrency(
                         invoiceData.addons.customer.addon2.applyVat
                           ? (invoiceData.addons.customer.addon2.costIncludingVat ?? invoiceData.addons.customer.addon2.postDiscountCost ?? invoiceData.addons.customer.addon2.cost ?? 0)
@@ -2028,24 +2036,24 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                      paddingVertical: 5,
                      borderBottom: '1px solid #ccc'
                    }}>
-                       <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                          <Text style={{ fontWeight: 'semibold' }}>{addon.name}</Text> - Non Refundable
                        </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                        {formatCurrency(addon.cost || 0)}
                      </Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                     <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }]}>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                     <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }}>
                        {GLOBAL_CALCULATION_CONFIG.calculations.formatDiscountDisplay(
                          GLOBAL_CALCULATION_CONFIG.calculations.calculateAddonDiscount(addon)
                        )}
                      </Text>
                      {hasVATApplied(invoiceData) && (
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
                        </Text>
                      )}
-                    <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                       {formatCurrency(
                         addon.applyVat
                           ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
@@ -2067,14 +2075,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                        flexDirection: 'row', 
                        paddingVertical: 5
                      }}>
-                       <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                          <Text style={{ fontWeight: 'semibold' }}>{invoiceData.addons.finance.addon1?.name}</Text> - Non Refundable
                        </Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {formatCurrency(invoiceData.addons.finance.addon1?.cost || 0)}
                        </Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {invoiceData.addons.finance.addon1?.discount && invoiceData.addons.finance.addon1.discount > 0
                            ? formatCurrency(invoiceData.addons.finance.addon1.discount)
                            : (invoiceData.addons.finance.addon1?.cost && invoiceData.addons.finance.addon1?.postDiscountCost && 
@@ -2084,11 +2092,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          }
                        </Text>
                       {hasVATApplied(invoiceData) && (
-                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                           {invoiceData.addons.finance.addon1.applyVat ? formatCurrency(invoiceData.addons.finance.addon1.vatAmount || 0) : '-'}
                         </Text>
                       )}
-                      <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                         {formatCurrency(
                           invoiceData.addons.finance.addon1.applyVat
                             ? (invoiceData.addons.finance.addon1.costIncludingVat ?? invoiceData.addons.finance.addon1.postDiscountCost ?? invoiceData.addons.finance.addon1.cost ?? 0)
@@ -2102,7 +2110,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                       paddingBottom: 2,
                       borderBottom: '1px solid #ccc'
                     }}>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
                         To be covered by Finance/included in Cash Price
                       </Text>
                     </View>
@@ -2114,14 +2122,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                        flexDirection: 'row', 
                        paddingVertical: 5
                      }}>
-                       <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                          <Text style={{ fontWeight: 'semibold' }}>{invoiceData.addons.finance.addon2?.name}</Text> - Non Refundable
                        </Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {formatCurrency(invoiceData.addons.finance.addon2?.cost || 0)}
                        </Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {invoiceData.addons.finance.addon2?.discount && invoiceData.addons.finance.addon2.discount > 0
                            ? formatCurrency(invoiceData.addons.finance.addon2.discount)
                            : (invoiceData.addons.finance.addon2?.cost && invoiceData.addons.finance.addon2?.postDiscountCost && 
@@ -2131,11 +2139,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          }
                        </Text>
                       {hasVATApplied(invoiceData) && (
-                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                           {invoiceData.addons.finance.addon2.applyVat ? formatCurrency(invoiceData.addons.finance.addon2.vatAmount || 0) : '-'}
                         </Text>
                       )}
-                      <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                         {formatCurrency(
                           invoiceData.addons.finance.addon2.applyVat
                             ? (invoiceData.addons.finance.addon2.costIncludingVat ?? invoiceData.addons.finance.addon2.postDiscountCost ?? invoiceData.addons.finance.addon2.cost ?? 0)
@@ -2149,7 +2157,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                       paddingBottom: 2,
                       borderBottom: '1px solid #ccc'
                     }}>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
                         To be covered by Finance/included in Cash Price
                       </Text>
                     </View>
@@ -2172,14 +2180,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                        flexDirection: 'row', 
                        paddingVertical: 5
                      }}>
-                         <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                         <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                            <Text style={{ fontWeight: 'semibold' }}>{addon.name}</Text> - Non Refundable
                          </Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {formatCurrency(addon.cost || 0)}
                        </Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                       <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                       <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                          {addon.discount && addon.discount > 0
                            ? formatCurrency(addon.discount)
                            : (addon.cost && addon.postDiscountCost && addon.cost > addon.postDiscountCost)
@@ -2188,11 +2196,11 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                          }
                        </Text>
                       {hasVATApplied(invoiceData) && (
-                        <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                           {addon.applyVat ? formatCurrency(addon.vatAmount || 0) : '-'}
                         </Text>
                       )}
-                      <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                         {formatCurrency(
                           addon.applyVat
                             ? (addon.costIncludingVat ?? addon.postDiscountCost ?? addon.cost ?? 0)
@@ -2206,13 +2214,13 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                       paddingBottom: 2,
                       borderBottom: '1px solid #ccc'
                     }}>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, flex: 5, textAlign: 'left', fontStyle: 'italic', color: '#666' }}>
                         To be covered by Finance/included in Cash Price
                       </Text>
                     </View>
                   </React.Fragment>
                   ));
-                 })()}
+                })()}
                </>
              )}
              
@@ -2223,24 +2231,24 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                  paddingVertical: 5,
                  borderBottom: '1px solid #ccc'
                }}>
-                 <Text style={[styles.vehicleDetails, { flex: 3, textAlign: 'left' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 3, textAlign: 'left' }}>
                    Cost of Delivery
                  </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                    {formatCurrency(invoiceData.delivery?.cost || 0)}
                  </Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'center' }]}>1</Text>
-                 <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }]}>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'center' }}>1</Text>
+                 <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right', color: GLOBAL_FORMAT_CONFIG.colors.accent }}>
                    {GLOBAL_CALCULATION_CONFIG.calculations.formatDiscountDisplay(
                      GLOBAL_CALCULATION_CONFIG.calculations.calculateDeliveryDiscount(invoiceData)
                    )}
                  </Text>
                 {hasVATApplied(invoiceData) && (
-                  <Text style={[styles.vehicleDetails, { flex: 1, textAlign: 'right' }]}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, flex: 1, textAlign: 'right' }}>
                     {invoiceData.pricing.applyVatToDelivery ? formatCurrency(invoiceData.pricing.deliveryVatAmount || 0) : '-'}
                   </Text>
                 )}
-                <Text style={[styles.vehicleDetailsBold, { flex: 1, textAlign: 'right' }]}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, flex: 1, textAlign: 'right' }}>
                   {formatCurrency(
                     invoiceData.pricing.applyVatToDelivery
                       ? (invoiceData.pricing.deliveryIncludingVat ?? invoiceData.delivery?.postDiscountCost ?? invoiceData.pricing?.deliveryCostPostDiscount ?? invoiceData.delivery?.cost ?? 0)
@@ -2252,25 +2260,25 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             
             {/* Vehicle Details - Multi-line format with generous spacing */}
             <View style={{ marginTop: 8, marginBottom: 8 }}>
-              <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 2 }}>
                 DERIVATIVE: {invoiceData.vehicle?.derivative || ''}
               </Text>
-              <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 2 }}>
                 MILEAGE: {invoiceData.vehicle?.mileage || ''}
               </Text>
-              <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 2}}>
                 ENGINE NO: {invoiceData.vehicle?.engineNumber || ''}
               </Text>
-              <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 2 }}>
                 ENGINE CAPACITY: {invoiceData.vehicle?.engineCapacity || ''}
               </Text>
-              <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 2 }}>
                 CHASSIS NO: {invoiceData.vehicle?.vin || ''}
               </Text>
-              <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 2 }}>
                 DATE FIRST REG UK: {formatDate(invoiceData.vehicle?.firstRegDate)}
               </Text>
-              <Text style={[styles.vehicleDetails, { lineHeight: 1.6 }]}>
+              <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6 }}>
                 COLOUR: {invoiceData.vehicle?.colour || ''}
               </Text>
                     </View>
@@ -2283,12 +2291,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Single Column Layout - All Left Aligned */}
                 <View style={{ marginLeft: 0 }}>
                   {/* Total Cash Price */}
-                  <Text style={[styles.vehicleDetails, { fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, lineHeight: 1.6, marginBottom: 8 }]}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, lineHeight: 1.6, marginBottom: 8 }}>
                     TOTAL CASH PRICE: {formatCurrency(invoiceData.pricing.salePricePostDiscount)}
                   </Text>
 
                   {/* Amounts Due Header */}
-                  <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
                     <Text style={{ fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>AMOUNTS DUE:</Text> DEPOSIT: {formatCurrency(((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0))}, DELIVERY: {formatCurrency(invoiceData?.delivery?.cost || 0)}, DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
                   </Text>
                   
@@ -2306,7 +2314,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   
 
                   {/* Deposit Paid */}
-                  <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
                     <Text style={{ fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>DEPOSIT PAID:</Text> {formatCurrency(
                       invoiceData.invoiceTo === 'Finance Company' 
                         ? (invoiceData.pricing?.totalFinanceDepositPaid || (invoiceData.pricing?.dealerDepositPaidCustomer || 0) + (invoiceData.pricing?.amountPaidDepositFinance || 0))
@@ -2321,7 +2329,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   </Text>
 
                   {/* Part Exchange Section */}
-                  <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
                     PART EX: {formatCurrency(invoiceData.payment?.partExchange?.valueOfVehicle || 0)}
                     {(invoiceData.payment?.partExchange?.valueOfVehicle && invoiceData.payment.partExchange.valueOfVehicle > 0) && 
                       ` - DETAILS: ${invoiceData.payment?.partExchange?.makeAndModel || ''}-  ${invoiceData.payment?.partExchange?.vehicleRegistration || ''}`
@@ -2330,13 +2338,13 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
                   {/* Settlement - only show when part exchange is included */}
                   {invoiceData.payment?.partExchange?.included && (
-                    <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 8 }]}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
                       SETTLEMENT: {formatCurrency(invoiceData.payment?.partExchange?.settlementAmount || 0)}
                     </Text>
                   )}
 
                   {/* Balance to Finance */}
-                  <Text style={[styles.vehicleDetails, { lineHeight: 1.6, marginBottom: 0}]}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 0}}>
                     <Text >BALANCE TO FINANCE:</Text> {formatCurrency(invoiceData.payment.balanceToFinance || 0)} ,   DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
                   </Text>
                   
@@ -2347,16 +2355,16 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
                     {invoiceData.saleType !== 'Trade' && invoiceData.warranty.level && invoiceData.warranty.level !== 'None Selected' && (
               <View style={{ borderTop: '1px solid #d0d0d0', paddingTop: 2, marginBottom: 2, borderBottom: '1px solid #d0d0d0', paddingBottom: 2 }}>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 2 }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 2 }}>
                   {invoiceData.warranty.inHouse ? 'IN HOUSE WARRANTY DISCLAIMER' : 'WARRANTY DISCLAIMER'}
                 </Text>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 2 }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 2 }}>
                   {invoiceData.warranty.inHouse 
                     ? '30 day complimentary (Engine and Gearbox) warranty - Customer must return the vehicle to dealer at own expense (Extendable on collection/delivery)'
                     : 'Third-party warranty terms and conditions apply as per the warranty provider.'
                   }
                 </Text>
-                <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY }}>
                   I confirm that when purchasing the above vehicle, I have been offered various options for warranty cover 
                   and have chosen to opt for this level of cover. I am confirming my understanding of the above and that 
                   all the details listed are correct.
@@ -2367,17 +2375,17 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                     <View style={{ marginTop: 0, marginBottom: 2 }}>
               {invoiceData.invoiceTo === 'Finance Company' && (
                 <>
-                  <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 2 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold', marginBottom: 2 }}>
                     CUSTOMER DETAILS
                   </Text>
-                  <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
                     {invoiceData.customer.title} {invoiceData.customer.firstName} {invoiceData.customer.lastName}
                   </Text>
-                  <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
                     {invoiceData.customer.address.firstLine} {invoiceData.customer.address.secondLine && invoiceData.customer.address.secondLine + ', '}
                     {invoiceData.customer.address.city}, {invoiceData.customer.address.county} {invoiceData.customer.address.postCode}, GB,
                   </Text>
-                  <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, marginBottom: 1 }}>
                     Email: {invoiceData.customer.contact.email || 'N/A'} - Phone: {invoiceData.customer.contact.phone || 'N/A'}
                   </Text>
                 </>
@@ -2389,7 +2397,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
           {invoiceData.additionalInformation && (
             <View style={{ marginTop: 2, marginBottom: 2, paddingTop: 2 }}>
               <Text style={{ 
-                fontSize: 7, 
+                fontSize: mainInvoiceFontSize, 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY, 
                 fontWeight: 'semibold',
                 color: '#000000',
@@ -2398,7 +2406,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 ADDITIONAL COMMENTS:
               </Text>
               <Text style={{ 
-                fontSize: 7, 
+                fontSize: mainInvoiceFontSize, 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY, 
                 color: '#000000',
                 lineHeight: 1.2 
@@ -2412,7 +2420,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
           {invoiceData.saleType === 'Trade' && (
             <View style={{ marginTop: 2, marginBottom: 2, paddingTop: 2 }}>
               <Text style={{ 
-                fontSize: 7, 
+                fontSize: mainInvoiceFontSize, 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY, 
                 fontWeight: 'semibold',
                 color: '#000000',
@@ -2421,7 +2429,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 TRADE SALE DISCLAIMER
               </Text>
               <Text style={{ 
-                fontSize: 7, 
+                fontSize: mainInvoiceFontSize, 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY, 
                 color: '#000000',
                 lineHeight: 1.2,
@@ -2443,14 +2451,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               {/* Header Row - Payment Breakdown and Subtotal in same row */}
               <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                 <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
                     PAYMENT BREAKDOWN
                   </Text>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right' }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right' }}>
                     SUBTOTAL:
                   </Text>
                 </View>
-                <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                   {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateSubtotal(invoiceData))}
                 </Text>
               </View>
@@ -2458,38 +2466,38 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
               {/* Payment Items - Two Column Layout with right-aligned labels and right-aligned values */}
               <View style={{ marginLeft: 0 }}>
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
                     VAT ({hasVATApplied(invoiceData) ? '20%' : '0%'}):
                   </Text>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                     {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData))}
                   </Text>
                 </View>
                 
                 {hasVATApplied(invoiceData) && (
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', flex: 1 }}>
                     TOTAL INC VAT:
                   </Text>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                     {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateSubtotal(invoiceData) + GLOBAL_CALCULATION_CONFIG.calculations.calculateTotalVAT(invoiceData))}
                   </Text>
                 </View>)}
                 
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
                     DEPOSIT DUE:
                   </Text>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                   {formatCurrency(((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0))}
                   </Text>
                 </View>
                 
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-                  <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                     DEPOSIT AMOUNT PAID:
                   </Text>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                     {(() => {
                       const depositPaid = invoiceData.invoiceTo === 'Finance Company' 
                         ? (invoiceData.pricing?.totalFinanceDepositPaid || (invoiceData.pricing?.dealerDepositPaidCustomer || 0) + (invoiceData.pricing?.amountPaidDepositFinance || 0))
@@ -2501,20 +2509,20 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
                 {((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0)) > 0 && (
                   <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                           REMAINING DEPOSIT AMOUNT:
                         </Text>
-                        <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                           {formatCurrency((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) - (invoiceData.pricing?.amountPaidDepositFinance || 0))}
                         </Text>
                       </View>
                   )}
                 
                 <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-                  <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                     DATE OF COLLECTION (ESTIMATED):
                   </Text>
-                  <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                     {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
                   </Text>
                 </View>
@@ -2522,10 +2530,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Finance Deposit Payment - Only show for Finance Company when deposit paid */}
                 {invoiceData.invoiceTo === 'Finance Company' && (invoiceData.payment?.breakdown?.financeAmount || 0) > 0 && (
                   <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-                    <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                       FINANCE DEPOSIT PAID:
                     </Text>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatCurrency(invoiceData.payment?.breakdown?.financeAmount || 0)} - {formatDate(invoiceData.payment?.breakdown?.depositDate || invoiceData.invoiceDate)}
                     </Text>
                   </View>
@@ -2545,14 +2553,14 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   {/* Header Row - Payments and Paid from Balance in same row */}
                   <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                     <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'semibold' }}>
                         PAYMENTS
                       </Text>
-                      <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right' }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right' }}>
                         PAID FROM BALANCE:
                       </Text>
                     </View>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatCurrency(
                         (invoiceData.payment?.partExchange?.amountPaid || 0) + 
                         // Sum all card payments
@@ -2573,18 +2581,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {(invoiceData.payment?.breakdown?.cashPayments || []).map((payment, index) => 
                   payment.amount > 0 && (
                     <View key={`cash-${index}`} style={{ flexDirection: 'row', marginBottom: 1 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: mainInvoiceFontSize, flex: 1 }}>
                         {/* Left side: Date */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
                           {formatDate(payment.date || invoiceData.invoiceDate)}
                         </Text>
 
                         {/* Right side: Cash + Amount + Date */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                           CASH PAYMENT 
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                         {formatCurrency(payment.amount)}
                       </Text>
                     </View>
@@ -2595,18 +2603,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {(invoiceData.payment?.breakdown?.cardPayments || []).map((payment, index) => 
                   payment.amount > 0 && (
                     <View key={`card-${index}`} style={{ flexDirection: 'row', marginBottom: 1 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: mainInvoiceFontSize, flex: 1 }}>
                         {/* Left side: Date */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
                           {formatDate(payment.date || invoiceData.invoiceDate)}
                         </Text>
 
                         {/* Right side: Card + Amount + Date */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                           CARD PAYMENT
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                         {formatCurrency(payment.amount)}
                       </Text>
                     </View>
@@ -2617,18 +2625,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {(invoiceData.payment?.breakdown?.bacsPayments || []).map((payment, index) => 
                   payment.amount > 0 && (
                     <View key={`bacs-${index}`} style={{ flexDirection: 'row', marginBottom: 1 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: mainInvoiceFontSize, flex: 1 }}>
                         {/* Left side: Date */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
                           {formatDate(payment.date || invoiceData.invoiceDate)}
                         </Text>
 
                         {/* Right side: BACS + Amount + Date */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                           BACS PAYMENT
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                         {formatCurrency(payment.amount)}
                       </Text>
                     </View>
@@ -2638,10 +2646,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Finance Payment */}
                 {(invoiceData.payment?.breakdown?.financeAmount || 0) > 0 && invoiceData.saleType === 'Trade' && invoiceData.invoiceTo === 'Finance Company' && (
                   <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                    <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                       FINANCE:
                     </Text>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatCurrency(invoiceData.payment.breakdown.financeAmount)} - {formatDate(invoiceData.payment?.breakdown?.financeDate || invoiceData.invoiceDate)}
                     </Text>
                   </View>
@@ -2650,18 +2658,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Vehicle Reservation Fees (Overpayment) - Only show when there's an OVERPAYMENT in Finance Company invoices */}
                 {invoiceData.invoiceTo === 'Finance Company' && (invoiceData.pricing?.overpaymentsFinance || 0) > 0 && (
                   <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: mainInvoiceFontSize, flex: 1 }}>
                       {/* Left side: Date */}
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
                         {invoiceData.payment?.breakdown?.depositDate ? formatDate(invoiceData.payment.breakdown.depositDate) : ''}
                       </Text>
 
                       {/* Right side: VEHICLE RESERVATION FEES label */}
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                         VEHICLE RESERVATION FEES:
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatCurrency(invoiceData.pricing?.overpaymentsFinance || 0)}
                     </Text>
                   </View>
@@ -2670,18 +2678,18 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Additional Deposit Payment (Overpayment) - Only show when there's an OVERPAYMENT in Customer invoices */}
                 {invoiceData.invoiceTo === 'Customer' && (invoiceData.pricing?.overpaymentsCustomer || 0) > 0 && (
                   <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, flex: 1 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: mainInvoiceFontSize, flex: 1 }}>
                       {/* Left side: Date */}
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
                         {invoiceData.payment?.breakdown?.depositDate ? formatDate(invoiceData.payment.breakdown.depositDate) : ''}
                       </Text>
 
                       {/* Right side: ADDITIONAL DEPOSIT PAYMENT label */}
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                         ADDITIONAL DEPOSIT PAYMENT:
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatCurrency(invoiceData.pricing?.overpaymentsCustomer || 0)}
                     </Text>
                   </View>
@@ -2691,25 +2699,25 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {(invoiceData.payment?.partExchange?.amountPaid || 0) > 0 && (
                   <>
                     <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: 7, flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', fontSize: mainInvoiceFontSize, flex: 1 }}>
                         {/* Left side: Date - only show if date exists */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'center', flex: 1 }}>
                           {invoiceData.payment?.breakdown?.partExDate ? formatDate(invoiceData.payment.breakdown.partExDate) : ''}
                         </Text>
 
                         {/* Right side: PART EXCHANGE label */}
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1 }}>
                           PART EXCHANGE:
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                         {formatCurrency(invoiceData.payment?.partExchange?.amountPaid || 0)}
                       </Text>
                     </View>
                     {/* Vehicle details on new line below */}
                     {(invoiceData.payment?.partExchange?.makeAndModel || invoiceData.payment?.partExchange?.vehicleRegistration) && (
                       <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                        <Text style={{ fontSize: 7, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1, fontStyle: 'italic', color: '#000' }}>
+                        <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, textAlign: 'right', flex: 1, fontStyle: 'italic', color: '#000' }}>
                           {invoiceData.payment.partExchange.makeAndModel || ''} {invoiceData.payment.partExchange.makeAndModel && invoiceData.payment.partExchange.vehicleRegistration ? '-' : ''} {invoiceData.payment.partExchange.vehicleRegistration || ''}
                         </Text>
                       </View>
@@ -2725,10 +2733,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {invoiceData.saleType !== 'Trade' && (
                   <View style={{ flexDirection: 'row', marginBottom: 2 }}>
                     <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>
                         {invoiceData.invoiceTo === 'Finance Company' ? 'FINANCE' : 'CUSTOMER'}
                       </Text>
-                      <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right' }}>
+                      <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right' }}>
                         {(() => {
                           // Check if there's unpaid deposit for Customer invoices (not Finance Company)
                           const hasUnpaidDeposit = invoiceData.invoiceTo === 'Customer' && 
@@ -2740,7 +2748,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                         })()}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.heading, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateRemainingBalance(invoiceData))}
                     </Text>
                   </View>
@@ -2749,7 +2757,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Amount Due Section - Only for Finance Company or Trade */}
                 {(invoiceData.invoiceTo === 'Finance Company' || invoiceData.saleType === 'Trade') && (
                   <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, textAlign: 'right', flex: 1 }}>
                       {(() => {
                         // Check if there's unpaid deposit for Trade sales (not Finance Company)
                         const hasUnpaidDeposit = invoiceData.saleType === 'Trade' && 
@@ -2765,7 +2773,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                         }
                       })()}
                     </Text>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatCurrency(GLOBAL_CALCULATION_CONFIG.calculations.calculateRemainingBalance(invoiceData))}
                     </Text>
                   </View>
@@ -2774,10 +2782,10 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Due Date Section - Only show if balance due > 0 */}
                 {GLOBAL_CALCULATION_CONFIG.calculations.calculateRemainingBalance(invoiceData) > 0 && (
                   <View style={{ flexDirection: 'row', marginBottom: 1 }}>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', flex: 1 }}>
                       DUE BY:
                     </Text>
-                    <Text style={{ fontSize: GLOBAL_FORMAT_CONFIG.fonts.sizes.normal, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, textAlign: 'right', marginLeft: 10, flex: 1 }}>
                       {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
                     </Text>
                   </View>
@@ -2803,27 +2811,27 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             {/* Left Column - Payment Information */}
             <View style={{ flex: 1 }}>
               <Text style={{ 
-                fontSize: 7, 
+                fontSize: mainInvoiceFontSize, 
                 fontWeight: 'semibold', 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                 marginBottom: 2
               }}>
                 PAYMENT INFORMATION
               </Text>
-              <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
               {invoiceData.companyInfo.name}
             </Text>
               {invoiceData.companyInfo.payment?.bankSortCode && (
-                <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
                   {invoiceData.companyInfo.payment.bankSortCode}
                 </Text>
               )}
               {invoiceData.companyInfo.payment?.bankAccountNumber && (
-                <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+                <Text style={{ fontSize: mainInvoiceFontSize, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
                   {invoiceData.companyInfo.payment.bankAccountNumber}
                 </Text>
               )}
-              <Text style={{ fontSize: 7, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
+              <Text style={{ fontSize: mainInvoiceFontSize, marginBottom: 1, fontFamily: CENTURY_GOTHIC_FONT_FAMILY, fontWeight: 'normal' }}>
                 Ref - INV-{invoiceData.vehicle.registration}
             </Text>
             </View>
@@ -2831,7 +2839,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
             {/* Center Column - Thank You Message */}
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ 
-                fontSize: 7, 
+                fontSize: mainInvoiceFontSize, 
                 fontWeight: 'normal', 
                 fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                 textAlign: 'center',
@@ -2862,7 +2870,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   backgroundColor: '#f9f9f9'
                 }}>
                   <Text style={{ 
-                    fontSize: 7, 
+                    fontSize: mainInvoiceFontSize, 
                     fontFamily: CENTURY_GOTHIC_FONT_FAMILY,
                     textAlign: 'center',
                     color: '#000',
