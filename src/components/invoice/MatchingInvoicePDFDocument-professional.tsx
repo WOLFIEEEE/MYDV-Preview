@@ -2292,12 +2292,12 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                 {/* Single Column Layout - All Left Aligned */}
                 <View style={{ marginLeft: 0 }}>
                   {/* Total Cash Price */}
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, lineHeight: 1.6, marginBottom: 8 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold, lineHeight: 1.2, marginBottom: 4 }}>
                     TOTAL CASH PRICE: {formatCurrency(invoiceData.pricing.salePricePostDiscount)}
                   </Text>
 
                   {/* Amounts Due Header */}
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.2, marginBottom: 4 }}>
                     <Text style={{ fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>AMOUNTS DUE:</Text> DEPOSIT: {formatCurrency(((invoiceData.pricing?.compulsorySaleDepositFinance || 0) + (invoiceData.pricing?.voluntaryContribution || 0) || invoiceData.pricing.compulsorySaleDepositCustomer || 0))}, DELIVERY: {formatCurrency(invoiceData?.delivery?.cost || 0)}, DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
                   </Text>
                   
@@ -2315,7 +2315,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   
 
                   {/* Deposit Paid */}
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.2, marginBottom: 4 }}>
                     <Text style={{ fontWeight: GLOBAL_FORMAT_CONFIG.fonts.weights.semibold }}>DEPOSIT PAID:</Text> {formatCurrency(
                       invoiceData.invoiceTo === 'Finance Company' 
                         ? (invoiceData.pricing?.totalFinanceDepositPaid || (invoiceData.pricing?.dealerDepositPaidCustomer || 0) + (invoiceData.pricing?.amountPaidDepositFinance || 0))
@@ -2330,7 +2330,7 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
                   </Text>
 
                   {/* Part Exchange Section */}
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.2, marginBottom: 4 }}>
                     PART EX: {formatCurrency(invoiceData.payment?.partExchange?.valueOfVehicle || 0)}
                     {(invoiceData.payment?.partExchange?.valueOfVehicle && invoiceData.payment.partExchange.valueOfVehicle > 0) && 
                       ` - DETAILS: ${invoiceData.payment?.partExchange?.makeAndModel || ''}-  ${invoiceData.payment?.partExchange?.vehicleRegistration || ''}`
@@ -2339,13 +2339,13 @@ export default function ProfessionalMatchingInvoicePDFDocument({ invoiceData }: 
 
                   {/* Settlement - only show when part exchange is included */}
                   {invoiceData.payment?.partExchange?.included && (
-                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 8 }}>
+                    <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.2, marginBottom: 4 }}>
                       SETTLEMENT: {formatCurrency(invoiceData.payment?.partExchange?.settlementAmount || 0)}
                     </Text>
                   )}
 
                   {/* Balance to Finance */}
-                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.6, marginBottom: 0}}>
+                  <Text style={{ fontSize: mainInvoiceFontSize, fontFamily: GLOBAL_FORMAT_CONFIG.fonts.family, lineHeight: 1.2, marginBottom: 0}}>
                     <Text >BALANCE TO FINANCE:</Text> {formatCurrency(invoiceData.payment.balanceToFinance || 0)} ,   DUE BY (Estimated): {formatDate(invoiceData.delivery?.date || invoiceData.invoiceDate)}
                   </Text>
                   

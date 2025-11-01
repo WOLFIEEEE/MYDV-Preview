@@ -368,6 +368,7 @@ export default function InvoicesPage() {
                         <TableHead>Invoice Type</TableHead>
                         <TableHead>Remaining Balance</TableHead>
                         <TableHead>Updated</TableHead>
+                        <TableHead>Created</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -429,6 +430,12 @@ export default function InvoicesPage() {
                             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                               <Calendar className="h-4 w-4" />
                               {formatDate(invoice.updatedAt)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                              <Calendar className="h-4 w-4" />
+                              {formatDate(invoice.createdAt)}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
