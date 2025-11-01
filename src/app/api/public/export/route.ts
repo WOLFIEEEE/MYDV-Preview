@@ -5,6 +5,12 @@ import { eq, and } from 'drizzle-orm';
 import JSZip from 'jszip';
 import { rateLimiter, getClientIdentifier } from '@/lib/rateLimiter';
 
+// Helper function to check if a string is a valid UUID
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 /**
  * Public Export API Endpoint
  * 
@@ -490,7 +496,7 @@ export async function GET() {
           'Content-Type': 'application/json'
         },
         body: {
-          dealerId: 'optional - specific dealer ID or omit for all dealers',
+          dealerId: 'required - dealer ID (UUID) or advertiser ID (string)',
           format: 'required - "car_24" or "aa" (aliases: "cf247", "aacars")'
         },
         response: {
@@ -556,6 +562,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { dealerId, format } = body;
 
+    // Validate required fields
+    if (!dealerId) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'dealerId is required',
+          details: 'Please provide a dealerId (UUID) or advertiserId (string) in the request body'
+        },
+        { status: 400 }
+      );
+    }
+
     if (!format) {
       return NextResponse.json(
         { 
@@ -588,7 +606,9 @@ export async function POST(request: NextRequest) {
     // 4. Fetch vehicles data - ONLY FORECOURT vehicles
     let vehiclesData;
     
-    if (dealerId) {
+    // dealerId is now required - check if it's a UUID (dealer ID) or an advertiser ID
+    if (isValidUUID(dealerId)) {
+      // Query by dealerId (UUID)
       vehiclesData = await db.select().from(stockCache).where(
         and(
           eq(stockCache.dealerId, dealerId),
@@ -596,8 +616,12 @@ export async function POST(request: NextRequest) {
         )
       );
     } else {
+      // Query by advertiserId (string like "10031798")
       vehiclesData = await db.select().from(stockCache).where(
-        eq(stockCache.lifecycleState, 'FORECOURT')
+        and(
+          eq(stockCache.advertiserId, dealerId),
+          eq(stockCache.lifecycleState, 'FORECOURT')
+        )
       );
     }
 
@@ -616,7 +640,11 @@ export async function POST(request: NextRequest) {
 
     // 5. Fetch dealer information
     let selectedDealerInfo = null;
-    const targetDealerId = dealerId || vehiclesData[0]?.dealerId;
+    // If dealerId was an advertiserId, get the actual dealerId from the first vehicle
+    // Otherwise use the provided dealerId (if it's a UUID)
+    const targetDealerId = isValidUUID(dealerId) 
+      ? dealerId 
+      : vehiclesData[0]?.dealerId;
     
     if (targetDealerId) {
       const dealerData = await db.select().from(dealers).where(eq(dealers.id, targetDealerId));
