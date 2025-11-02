@@ -235,7 +235,8 @@ export default function InvoicePreviewPage() {
           vatRate: Number(parsedData.vatRate) || 20,
           vatAmount: Number(parsedData.vatAmount) || 0,
           total: Number(parsedData.total) || 0,
-          vatMode: parsedData.vatMode || 'global', // Default to global VAT mode
+          // vatMode: parsedData.vatMode || 'global', // Default to global VAT mode
+          vatMode: 'individual', // Default to global VAT mode
           discountMode: parsedData.discountMode || 'global', // Default to global discount mode
           globalDiscountType: parsedData.globalDiscountType || 'percentage',
           globalDiscountValue: Number(parsedData.globalDiscountValue) || 0,
@@ -1624,8 +1625,8 @@ export default function InvoicePreviewPage() {
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
-                      <Label className="text-sm font-semibold text-slate-700" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>VAT Mode:</Label>
-                      <Button
+                      {/* <Label className="text-sm font-semibold text-slate-700" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>VAT Mode:</Label> */}
+                      {/* <Button
                         onClick={toggleVatMode}
                         size="sm"
                         variant={invoiceData.vatMode === 'individual' ? 'default' : 'outline'}
@@ -1633,7 +1634,7 @@ export default function InvoicePreviewPage() {
                         style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}
                       >
                         {invoiceData.vatMode === 'individual' ? 'Individual' : 'Global'}
-                      </Button>
+                      </Button> */}
                     </div>
                     <Button
                       onClick={addItem}

@@ -123,6 +123,9 @@ export interface ComprehensiveInvoiceData {
     firstRegDate: string;       // {First Reg Date (UK):29}
     colour: string;             // {Colour:30}
     fuelType: string;           // {Fuel Type:25}
+    transmissionType?: string
+    bodyType?: string
+    ownershipCondition?: string
   };
   
   // Financial Information

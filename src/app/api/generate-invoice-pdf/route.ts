@@ -87,6 +87,10 @@ interface InvoicePreviewData {
     vin?: string;
     colour?: string;
     displayName?: string;
+    firstRegistrationDate?: string;
+    transmissionType?: string;
+    ownershipCondition?: string;
+    engineNumber?: string;
   } | null;
   customer: {
     id?: string;
@@ -219,12 +223,15 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): any 
       model: previewData.vehicle?.model || '',
       derivative: previewData.vehicle?.derivative || '',
       mileage: previewData.vehicle?.mileage?.toString() || previewData.vehicle?.odometerReadingMiles?.toString() || '',
-      engineNumber: '',
+      engineNumber: previewData.vehicle?.engineNumber || '',
       engineCapacity: '',
+      bodyType: previewData.vehicle?.bodyType || '',
+      ownershipCondition: previewData.vehicle?.ownershipCondition || '',
       vin: previewData.vehicle?.vin || '',
-      firstRegDate: '',
+      firstRegDate: previewData.vehicle?.firstRegistrationDate || '',
       colour: previewData.vehicle?.colour || '',
       fuelType: previewData.vehicle?.fuelType || '',
+      transmissionType: previewData.vehicle?.transmissionType || '',
     },
     
     // Financial Information

@@ -240,7 +240,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
   const [filteredCustomersPurchaseFrom, setFilteredCustomersPurchaseFrom] = useState<Customer[]>([]);
   const [filteredBusinessesPurchaseFrom, setFilteredBusinessesPurchaseFrom] = useState<Business[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [showVehicleInfo, setShowVehicleInfo] = useState(false);
+  const [showVehicleInfo, setShowVehicleInfo] = useState(true); //TODO: use option to select vehicle only
   const [showForm, setShowForm] = useState(false);
   const [showBusinessForm, setShowBusinessForm] = useState(false);
 
@@ -1291,7 +1291,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
 
             <div className="space-y-8 pb-8">
               {/* Invoice Configuration */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 gap-8">
 
                 {/* Basic Invoice Information */}
                 <Card className="shadow-lg border-slate-200 dark:border-slate-700">
@@ -1378,7 +1378,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
                 </Card>
 
                 {/* Company Information Display */}
-                <Card className="shadow-lg border-slate-200 dark:border-slate-700">
+                {/* <Card className="shadow-lg border-slate-200 dark:border-slate-700">
                   <CardHeader className="pb-6 pt-6">
                     <CardTitle className="flex items-center gap-2">
                       <Building className="w-5 h-5" />
@@ -1403,7 +1403,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
                       </div>
                     )}
                   </CardContent>
-                </Card>
+                </Card> */}
               </div>
 
               {/* Vehicle Selection */}
@@ -1430,7 +1430,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4 pb-6">
-                    <div className="flex items-center space-x-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    {/* <div className="flex items-center space-x-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                       <div className="flex items-center">
                         <input
                           type="checkbox"
@@ -1448,7 +1448,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
                           Add vehicle details and specifications to the invoice
                         </p>
                       </div>
-                    </div>
+                    </div> */}
                     {showVehicleInfo && (
                       <div>
                         {useVehicleDatabase ? (

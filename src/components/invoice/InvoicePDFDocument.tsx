@@ -659,11 +659,19 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
                     {(deliverTo as Business).addressLine1 && (
                       <Text style={styles.detailInfo}>{(deliverTo as Business).addressLine1}</Text>
                     )}
+                    {(deliverTo as Business).city && (deliverTo as Business).postcode && (
+                      <Text style={styles.detailInfo}>
+                        {(deliverTo as Business).city}, {(deliverTo as Business).postcode}
+                      </Text>
+                    )}
                     {(deliverTo as Business).email && (
                       <Text style={styles.detailInfo}>Email: {(deliverTo as Business).email}</Text>
                     )}
                     {(deliverTo as Business).phone && (
                       <Text style={styles.detailInfo}>Phone: {(deliverTo as Business).phone}</Text>
+                    )}
+                    {(deliverTo as Business).vatNumber && (
+                      <Text style={styles.detailInfo}>VAT: {(deliverTo as Business).vatNumber}</Text>
                     )}
                   </>
                 ) : isCustomer(deliverTo) ? (
@@ -671,6 +679,11 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
                     <Text style={styles.detailName}>{(deliverTo as Customer).firstName} {(deliverTo as Customer).lastName}</Text>
                     {(deliverTo as Customer).addressLine1 && (
                       <Text style={styles.detailInfo}>{(deliverTo as Customer).addressLine1}</Text>
+                    )}
+                    {(deliverTo as Customer).city && (deliverTo as Customer).postcode && (
+                      <Text style={styles.detailInfo}>
+                        {(deliverTo as Customer).city}, {(deliverTo as Customer).postcode}
+                      </Text>
                     )}
                     {(deliverTo as Customer).email && (
                       <Text style={styles.detailInfo}>Email: {(deliverTo as Customer).email}</Text>
@@ -728,11 +741,19 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
                   {(purchaseFrom as Business).addressLine1 && (
                     <Text style={styles.detailInfo}>{(purchaseFrom as Business).addressLine1}</Text>
                   )}
+                  {(purchaseFrom as Business).city && (purchaseFrom as Business).postcode && (
+                    <Text style={styles.detailInfo}>
+                      {(purchaseFrom as Business).city}, {(purchaseFrom as Business).postcode}
+                    </Text>
+                  )}
                   {(purchaseFrom as Business).email && (
                     <Text style={styles.detailInfo}>Email: {(purchaseFrom as Business).email}</Text>
                   )}
                   {(purchaseFrom as Business).phone && (
                     <Text style={styles.detailInfo}>Phone: {(purchaseFrom as Business).phone}</Text>
+                  )}
+                  {(purchaseFrom as Business).vatNumber && (
+                    <Text style={styles.detailInfo}>VAT: {(purchaseFrom as Business).vatNumber}</Text>
                   )}
                 </>
               ) : isCustomer(purchaseFrom) ? (
@@ -740,6 +761,11 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
                   <Text style={styles.detailName}>{(purchaseFrom as Customer).firstName} {(purchaseFrom as Customer).lastName}</Text>
                   {(purchaseFrom as Customer).addressLine1 && (
                     <Text style={styles.detailInfo}>{(purchaseFrom as Customer).addressLine1}</Text>
+                  )}
+                  {(purchaseFrom as Customer).city && (purchaseFrom as Customer).postcode && (
+                    <Text style={styles.detailInfo}>
+                      {(purchaseFrom as Customer).city}, {(purchaseFrom as Customer).postcode}
+                    </Text>
                   )}
                   {(purchaseFrom as Customer).email && (
                     <Text style={styles.detailInfo}>Email: {(purchaseFrom as Customer).email}</Text>

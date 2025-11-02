@@ -406,6 +406,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     padding: 12,
+    paddingBottom: 50,
     paddingTop: 0,
   },
 
@@ -527,6 +528,7 @@ interface ProfessionalInvoicePreviewPDFProps {
 }
 
 export default function ProfessionalInvoicePreviewPDF({ invoiceData }: ProfessionalInvoicePreviewPDFProps) {
+  console.log("🚀 ~ ProfessionalInvoicePreviewPDF ~ invoiceData:", invoiceData)
   const formatCurrency = (amount: number | string) => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return `£${(numAmount || 0).toFixed(2)}`;
@@ -575,14 +577,22 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
     return party.address || {
       firstLine: party.firstLine || party.addressLine1 || '',
       city: party.city || '',
-      postCode: party.postcode || '',
+      postCode: party.postcode || party.postCode || '',
     };
   };
 
   const getPartyContact = (party: any, type?: string) => {
-    if (!party) return { phone: '', email: '' };
-    if (type === 'myself') return { phone: invoiceData.companyInfo.contact.phone, email: invoiceData.companyInfo.contact.email };
-    return { phone: party.phone || '', email: party.email || '' };
+    if (!party) return { phone: '', email: '', vatNumber: '' };
+    if (type === 'myself') return { 
+      phone: invoiceData.companyInfo.contact.phone, 
+      email: invoiceData.companyInfo.contact.email,
+      vatNumber: invoiceData.companyInfo.vatNumber 
+    };
+    return { 
+      phone: party.phone || '', 
+      email: party.email || '',
+      vatNumber: party.vatNumber || ''
+    };
   };
 
   // Helper function to get recipient address
@@ -680,12 +690,13 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                 <View style={styles.customerAddress}>
                   <Text>{recipientAddress.firstLine || ''}</Text>
                   <Text>{recipientAddress.city || ''} {recipientAddress.postCode || ''}</Text>
+                  {/* Contact information for all recipient types */}
+                  {recipientContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>)}
+                  {recipientContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>)}
                 </View>
                 {/* Additional business information */}
                 {(invoiceData.recipientType === 'business' || invoiceData.recipientType === 'myself') && businessInfo && (
                   <View style={[styles.customerAddress, { marginTop: 4 }]}>
-                    {recipientContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>)}
-                    {recipientContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>)}
                     {businessInfo.vatNumber && (
                       <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {businessInfo.vatNumber}</Text>
                     )}
@@ -704,20 +715,11 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   <View style={styles.customerAddress}>
                     <Text>{(deliverToAddress.firstLine || recipientAddress.firstLine) || ''}</Text>
                     <Text>{(deliverToAddress.city || recipientAddress.city) || ''} {(deliverToAddress.postCode || recipientAddress.postCode) || ''}</Text>
+                    {/* Contact information */}
+                    {deliverToContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {deliverToContact.email}</Text>)}
+                    {deliverToContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {deliverToContact.phone}</Text>)}
+                    {deliverToContact.vatNumber && (<Text style={{ fontSize: 7, color: '#666666' }}>VAT: {deliverToContact.vatNumber}</Text>)}
                   </View>
-                  {/* Additional info */}
-                  {(invoiceData.deliverToType === 'business' || (invoiceData.deliverToType === 'myself' && invoiceData.deliverTo)) && (
-                    <View style={[styles.customerAddress, { marginTop: 4 }]}>
-                      {deliverToContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {deliverToContact.email}</Text>)}
-                      {deliverToContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {deliverToContact.phone}</Text>)}
-                      {invoiceData.deliverToType === 'business' && invoiceData.deliverTo && typeof invoiceData.deliverTo === 'object' && 'vatNumber' in invoiceData.deliverTo && (
-                        <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {invoiceData.deliverTo.vatNumber}</Text>
-                      )}
-                      {invoiceData.deliverToType === 'business' && invoiceData.deliverTo && typeof invoiceData.deliverTo === 'object' && 'companyNumber' in invoiceData.deliverTo && (
-                        <Text style={{ fontSize: 7, color: '#666666' }}>Company No: {invoiceData.deliverTo.companyNumber}</Text>
-                      )}
-                    </View>
-                  )}
                 </View>
               )}
             </View>
@@ -734,18 +736,18 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
             {/* Consolidated Invoice Details Box */}
             <View style={styles.invoiceDetailsBox}>
               <View style={styles.invoiceDetailsRow}>
-                <Text style={styles.invoiceDetailsLabel}>Invoice Number:</Text>
+                <Text style={styles.invoiceDetailsLabel}>PO #:</Text>
                 <Text style={styles.invoiceDetailsValue}>{invoiceData.invoiceNumber}</Text>
               </View>
               <View style={styles.invoiceDetailsRow}>
-                <Text style={styles.invoiceDetailsLabel}>Invoice Date:</Text>
+                <Text style={styles.invoiceDetailsLabel}>Date:</Text>
                 <Text style={styles.invoiceDetailsValue}>{formatDate(invoiceData.invoiceDate)}</Text>
               </View>
               <View style={styles.invoiceDetailsRow}>
                 <Text style={styles.invoiceDetailsLabel}>Due Date:</Text>
                 <Text style={styles.invoiceDetailsValue}>{formatDate(invoiceData.dueDate)}</Text>
               </View>
-              <View style={styles.invoiceDetailsRow}>
+              {/* <View style={styles.invoiceDetailsRow}>
                 <Text style={styles.invoiceDetailsLabel}>PO #</Text>
                 <Text style={styles.invoiceDetailsValue}>{invoiceData.invoiceNumber.replace('INV-', '')}</Text>
               </View>
@@ -756,7 +758,7 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               <View style={styles.invoiceDetailsRow}>
                 <Text style={styles.invoiceDetailsLabel}>Prepared by:</Text>
                 <Text style={styles.invoiceDetailsValue}>{invoiceData.companyInfo.name}</Text>
-              </View>
+              </View> */}
             </View>
 
             {/* Purchase From Section - only for purchase invoices */}
@@ -767,20 +769,11 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                 <View style={[styles.customerAddress, { alignItems: 'flex-end' }]}>
                   <Text>{purchaseFromAddress.firstLine || recipientAddress.firstLine}</Text>
                   <Text>{purchaseFromAddress.city || recipientAddress.city}, {purchaseFromAddress.postCode || recipientAddress.postCode}</Text>
+                  {/* Contact information */}
+                  {purchaseFromContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {purchaseFromContact.email}</Text>)}
+                  {purchaseFromContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {purchaseFromContact.phone}</Text>)}
+                  {purchaseFromContact.vatNumber && (<Text style={{ fontSize: 7, color: '#666666' }}>VAT: {purchaseFromContact.vatNumber}</Text>)}
                 </View>
-                {/* Additional business information for purchaseFrom */}
-                {(invoiceData.purchaseFromType === 'business' && invoiceData.purchaseFrom) && (
-                  <View style={[styles.customerAddress, { alignItems: 'flex-end', marginTop: 4 }]}>
-                    {purchaseFromContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {purchaseFromContact.email}</Text>)}
-                    {purchaseFromContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {purchaseFromContact.phone}</Text>)}
-                    {invoiceData.purchaseFrom && typeof invoiceData.purchaseFrom === 'object' && 'vatNumber' in invoiceData.purchaseFrom && (
-                      <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>VAT Number: {invoiceData.purchaseFrom.vatNumber}</Text>
-                    )}
-                    {invoiceData.purchaseFrom && typeof invoiceData.purchaseFrom === 'object' && 'companyNumber' in invoiceData.purchaseFrom && (
-                      <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>Company Number: {invoiceData.purchaseFrom.companyNumber}</Text>
-                    )}
-                  </View>
-                )}
               </View>
             )}
           </View>
@@ -802,10 +795,16 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   <Text style={styles.vehicleTableValueHighlight}>{invoiceData.vehicle.registration}</Text>
                 </View>
               </View>
-              <View style={styles.vehicleTableCell}>
+              {/* <View style={styles.vehicleTableCell}>
                 <View style={styles.vehicleTableCellContent}>
                   <Text style={styles.vehicleTableLabel}>MOT Expiry</Text>
                   <Text style={styles.vehicleTableValue}>03/09/2025</Text>
+                </View>
+              </View> */}
+              <View style={styles.vehicleTableCell}>
+                <View style={styles.vehicleTableCellContent}>
+                  <Text style={styles.vehicleTableLabel}>Chassis/VIN No.</Text>
+                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.vin || 'VF12RFA1H49406992'}</Text>
                 </View>
               </View>
               <View style={styles.vehicleTableCellLast}>
@@ -852,10 +851,16 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.fuelType}</Text>
                 </View>
               </View>
-              <View style={styles.vehicleTableCellLast}>
+              {/* <View style={styles.vehicleTableCellLast}>
                 <View style={styles.vehicleTableCellContent}>
                   <Text style={styles.vehicleTableLabel}>Ext. Colour</Text>
                   <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.colour || 'N/A'}</Text>
+                </View>
+              </View> */}
+              <View style={styles.vehicleTableCellLast}>
+                <View style={styles.vehicleTableCellContent}>
+                  <Text style={styles.vehicleTableLabel}>Type</Text>
+                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.ownershipCondition}</Text>
                 </View>
               </View>
             </View>
@@ -865,13 +870,13 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               <View style={styles.vehicleTableCell}>
                 <View style={styles.vehicleTableCellContent}>
                   <Text style={styles.vehicleTableLabel}>Body Type</Text>
-                  <Text style={styles.vehicleTableValue}>Saloon</Text>
+                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.bodyType}</Text>
                 </View>
               </View>
               <View style={styles.vehicleTableCell}>
                 <View style={styles.vehicleTableCellContent}>
                   <Text style={styles.vehicleTableLabel}>Transmission</Text>
-                  <Text style={styles.vehicleTableValue}>AUTO 7 GEARS</Text>
+                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.transmissionType}</Text>
                 </View>
               </View>
               <View style={styles.vehicleTableCellLast}>
@@ -892,28 +897,6 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.engineNumber || 'DNFB108955'}</Text>
                 </View>
               </View>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Chassis/VIN No.</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.vin || 'VF12RFA1H49406992'}</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleTableCellLast}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Stock No.</Text>
-                  <Text style={styles.vehicleTableValue}>235</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Sixth Row - 1 Column */}
-            <View style={styles.vehicleTableRow}>
-              <View style={styles.vehicleTableCellLast}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Type</Text>
-                  <Text style={styles.vehicleTableValue}>Used</Text>
-                </View>
-              </View>
             </View>
           </View>
         </View>
@@ -930,9 +913,9 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               <Text style={styles.tableHeaderCell}>Description</Text>
               <Text style={[styles.tableHeaderCell, { textAlign: 'center', flex: 0.3 }]}>Qty</Text>
               <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.4 }]}>Unit Price</Text>
-              <Text style={[styles.tableHeaderCell, { textAlign: 'center', flex: 0.3 }]}>VAT%</Text>
-              <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.4 }]}>VAT Amount</Text>
-              <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.4 }]}>Total (Inc VAT)</Text>
+              <Text style={[styles.tableHeaderCell, { textAlign: 'center', flex: 0.4 }]}>VAT%</Text>
+              <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.25 }]}>VAT Amount</Text>
+              <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.3 }]}>Total (Inc VAT)</Text>
             </View>
             {invoiceData.items.map((item, index) => {
               const vatAmount = (item.total * (Number(item.vatRate) || 0)) / 100;
@@ -943,9 +926,9 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   <Text style={styles.tableCell}>{item.description}</Text>
                   <Text style={[styles.tableCell, { textAlign: 'center', flex: 0.3 }]}>{item.quantity}</Text>
                   <Text style={[styles.tableCell, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(item.unitPrice)}</Text>
-                  <Text style={[styles.tableCell, { textAlign: 'center', flex: 0.3 }]}>{(Number(item.vatRate) || 0).toFixed(1)}%</Text>
-                  <Text style={[styles.tableCell, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(vatAmount)}</Text>
-                  <Text style={[styles.tableCellBold, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(totalWithVat)}</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'center', flex: 0.4 }]}>{(Number(item.vatRate) || 0).toFixed(1)}%</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'right', flex: 0.25 }]}>{formatCurrency(vatAmount)}</Text>
+                  <Text style={[styles.tableCellBold, { textAlign: 'right', flex: 0.3 }]}>{formatCurrency(totalWithVat)}</Text>
                 </View>
               );
             })}
@@ -961,7 +944,8 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               <Text style={styles.totalsValue}>{formatCurrency(invoiceData.subtotal)}</Text>
             </View>
             <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>VAT ({invoiceData.vatMode === 'global' ? '20' : 'Individual'}%):</Text>
+              <Text style={styles.totalsLabel}>VAT:</Text>
+              {/* <Text style={styles.totalsLabel}>VAT ({invoiceData.vatMode === 'global' ? '20' : 'Individual'}%):</Text> */}
               <Text style={styles.totalsValue}>{formatCurrency(invoiceData.vatAmount)}</Text>
             </View>
             <View style={styles.totalsRow}>
@@ -993,7 +977,7 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
             </View>
             
             {/* Payment Information */}
-            {invoiceData.payment?.breakdown && (
+            {/* {invoiceData.payment?.breakdown && (
               <>
                 {(invoiceData.payment.breakdown.cardAmount > 0 || 
                   invoiceData.payment.breakdown.bacsAmount > 0 || 
@@ -1045,7 +1029,7 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   </>
                 )}
               </>
-            )}
+            )} */}
           </View>
         </View>
 
