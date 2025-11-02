@@ -310,6 +310,43 @@ const styles = StyleSheet.create({
     ...centuryGothicStyles_predefined.semibold,
     textAlign: 'center',
   },
+  totalLabel: {
+    fontSize: 10,
+    color: '#374151',
+  },
+  totalValue: {
+    fontSize: 10,
+    color: '#374151',
+  },
+  totalLabelMain: {
+    fontSize: 12,
+    color: '#111827',
+    ...centuryGothicStyles_predefined.semibold,
+  },
+  totalValueMain: {
+    fontSize: 12,
+    color: '#111827',
+    ...centuryGothicStyles_predefined.semibold,
+  },
+  balanceDue: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+    padding: 8,
+    marginTop: 8,
+    borderRadius: 4,
+  },
+  balanceDueLabel: {
+    fontSize: 11,
+    color: '#ffffff',
+    ...centuryGothicStyles_predefined.semibold,
+  },
+  balanceDueValue: {
+    fontSize: 11,
+    color: '#ffffff',
+    ...centuryGothicStyles_predefined.semibold,
+  },
   footer: {
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
@@ -811,70 +848,65 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
         <View style={styles.totalsSection}>
           <View style={styles.totalsBox}>
             <View style={styles.totalsRow}>
-              <Text>Subtotal:</Text>
-              <Text>{formatCurrency(invoiceData.subtotal)}</Text>
+              <Text style={styles.totalLabel}>Subtotal:</Text>
+              <Text style={styles.totalValue}>{formatCurrency(invoiceData.subtotal)}</Text>
             </View>
+            
             {invoiceData.totalDiscount && invoiceData.totalDiscount > 0 && (
               <View style={styles.totalsRow}>
-                <Text>
+                <Text style={styles.totalLabel}>
                   Discount {invoiceData.discountMode === 'global' 
                     ? `(${invoiceData.globalDiscountType === 'percentage' 
                         ? `${invoiceData.globalDiscountValue}%` 
                         : `£${invoiceData.globalDiscountValue}`})` 
                     : '(Item-wise)'}:
                 </Text>
-                <Text>-{formatCurrency(invoiceData.totalDiscount)}</Text>
+                <Text style={styles.totalValue}>-{formatCurrency(invoiceData.totalDiscount)}</Text>
               </View>
             )}
-            {invoiceData.totalDiscount && invoiceData.totalDiscount > 0 && (
-              <View style={styles.totalsRow}>
-                <Text>Subtotal after discount:</Text>
-                <Text>{formatCurrency(invoiceData.subtotalAfterDiscount || 0)}</Text>
-              </View>
-            )}
+            
             <View style={styles.totalsRow}>
-              <Text>
+              <Text style={styles.totalLabel}>
                 VAT {invoiceData.vatMode === 'global' ? `(${invoiceData.vatRate}%)` : '(Individual)'}:
               </Text>
-              <Text>{formatCurrency(invoiceData.vatAmount)}</Text>
-            </View>
-            <View style={styles.totalsRowTotal}>
-              <Text>Total:</Text>
-              <Text>{formatCurrency(invoiceData.total)}</Text>
+              <Text style={styles.totalValue}>{formatCurrency(invoiceData.vatAmount)}</Text>
             </View>
             
-            {/* Payment Information */}
-            {invoiceData.paymentStatus && invoiceData.paymentStatus !== 'unpaid' && (
+            <View style={styles.totalsRowTotal}>
+              <Text style={styles.totalLabelMain}>Total Incl VAT:</Text>
+              <Text style={styles.totalValueMain}>{formatCurrency(invoiceData.total)}</Text>
+            </View>
+            
+            {/* Payment Information Section */}
+            {(invoiceData.paymentStatus && invoiceData.paymentStatus !== 'unpaid') || 
+             (invoiceData.paidAmount && invoiceData.paidAmount > 0) ? (
               <>
                 <View style={styles.totalsRow}>
-                  <Text style={styles.paymentSectionTitle}>Payment Information:</Text>
-                  <Text></Text>
-                </View>
-                {invoiceData.paidAmount && invoiceData.paidAmount > 0 && (
-                  <View style={styles.totalsRow}>
-                    <Text>
-                      Amount Paid {invoiceData.paymentStatus === 'partial' 
-                        ? `(${invoiceData.paymentType === 'percentage' 
-                            ? `${invoiceData.paymentValue}%` 
-                            : `£${invoiceData.paymentValue}`})` 
-                        : '(Full)'}:
-                    </Text>
-                    <Text style={styles.paidAmount}>{formatCurrency(invoiceData.paidAmount)}</Text>
-                  </View>
-                )}
-                <View style={styles.totalsRowOutstanding}>
-                  <Text>Outstanding Balance:</Text>
-                  <Text style={invoiceData.outstandingBalance && invoiceData.outstandingBalance > 0 ? styles.outstandingAmount : styles.paidAmount}>
-                    {formatCurrency(invoiceData.outstandingBalance || 0)}
+                  <Text style={styles.totalLabel}>Payments Received:</Text>
+                  <Text style={styles.totalValue}>
+                    {formatCurrency(invoiceData.paidAmount || 0)}
                   </Text>
                 </View>
-                {invoiceData.paymentStatus === 'paid' && (
+                
+                <View style={styles.balanceDue}>
+                  <Text style={styles.balanceDueLabel}>Balance Due:</Text>
+                  <Text style={styles.balanceDueValue}>
+                    {formatCurrency(invoiceData.outstandingBalance || invoiceData.total)}
+                  </Text>
+                </View>
+                
+                {invoiceData.paymentStatus === 'paid' && invoiceData.outstandingBalance === 0 && (
                   <View style={styles.totalsRow}>
                     <Text style={styles.paidStatusText}>✓ Invoice Fully Paid</Text>
                     <Text></Text>
                   </View>
                 )}
               </>
+            ) : (
+              <View style={styles.balanceDue}>
+                <Text style={styles.balanceDueLabel}>Balance Due:</Text>
+                <Text style={styles.balanceDueValue}>{formatCurrency(invoiceData.total)}</Text>
+              </View>
             )}
           </View>
         </View>

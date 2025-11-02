@@ -955,9 +955,32 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               <Text style={styles.totalsLabel}>VAT ({invoiceData.vatMode === 'global' ? '20' : 'Individual'}%):</Text>
               <Text style={styles.totalsValue}>{formatCurrency(invoiceData.vatAmount)}</Text>
             </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Total Incl VAT:</Text>
+              <Text style={styles.totalsValue}>{formatCurrency(invoiceData.totalAmount)}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Payments Received:</Text>
+              <Text style={styles.totalsValue}>
+                {formatCurrency(
+                  invoiceData.payment?.breakdown ? 
+                  (invoiceData.payment.breakdown.cardAmount + 
+                   invoiceData.payment.breakdown.bacsAmount + 
+                   invoiceData.payment.breakdown.cashAmount) : 0
+                )}
+              </Text>
+            </View>
             <View style={styles.totalsFinalRow}>
-              <Text style={styles.totalsFinalLabel}>Total:</Text>
-              <Text style={styles.totalsFinalValue}>{formatCurrency(invoiceData.totalAmount)}</Text>
+              <Text style={styles.totalsFinalLabel}>Balance Due:</Text>
+              <Text style={styles.totalsFinalValue}>
+                {formatCurrency(
+                  invoiceData.payment?.outstandingBalance || 
+                  (invoiceData.totalAmount - (invoiceData.payment?.breakdown ? 
+                    (invoiceData.payment.breakdown.cardAmount + 
+                     invoiceData.payment.breakdown.bacsAmount + 
+                     invoiceData.payment.breakdown.cashAmount) : 0))
+                )}
+              </Text>
             </View>
             
             {/* Payment Information */}
