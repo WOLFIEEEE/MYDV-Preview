@@ -50,6 +50,11 @@ interface Customer {
 interface ExtendedInvoiceData extends Omit<ComprehensiveInvoiceData, 'customer'> {
   recipientType?: 'customer' | 'business' | 'myself';
   customer: Customer | Business;
+  // Optional parties for purchase invoices
+  deliverTo?: Customer | Business | null;
+  deliverToType?: 'customer' | 'business' | 'myself';
+  purchaseFrom?: Customer | Business | null;
+  purchaseFromType?: 'customer' | 'business' | 'myself';
 }
 
 // Register Century Gothic fonts
@@ -549,6 +554,37 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
     }
   };
 
+  // Generic helper to read a party (customer/business/company)
+  const getPartyName = (party: any, type?: string) => {
+    if (!party) return '';
+    if (type === 'myself') return invoiceData.companyInfo.name;
+    if (type === 'business' && party.businessName) return party.businessName;
+    if (party.firstName) return `${party.firstName} ${party.lastName || ''}`;
+    return party.businessName || party.displayName || '';
+  };
+
+  const getPartyAddress = (party: any, type?: string) => {
+    if (!party) return { firstLine: '', city: '', postCode: '' };
+    if (type === 'myself') {
+      return {
+        firstLine: invoiceData.companyInfo.address.street,
+        city: invoiceData.companyInfo.address.city,
+        postCode: invoiceData.companyInfo.address.postCode,
+      };
+    }
+    return party.address || {
+      firstLine: party.firstLine || party.addressLine1 || '',
+      city: party.city || '',
+      postCode: party.postcode || '',
+    };
+  };
+
+  const getPartyContact = (party: any, type?: string) => {
+    if (!party) return { phone: '', email: '' };
+    if (type === 'myself') return { phone: invoiceData.companyInfo.contact.phone, email: invoiceData.companyInfo.contact.email };
+    return { phone: party.phone || '', email: party.email || '' };
+  };
+
   // Helper function to get recipient address
   const getRecipientAddress = () => {
     if (invoiceData.recipientType === 'myself') {
@@ -596,6 +632,12 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
   const recipientAddress = getRecipientAddress();
   const recipientContact = getRecipientContact();
   const businessInfo = getBusinessInfo();
+  const deliverToName = getPartyName(invoiceData.deliverTo, invoiceData.deliverToType);
+  const deliverToAddress = getPartyAddress(invoiceData.deliverTo, invoiceData.deliverToType);
+  const deliverToContact = getPartyContact(invoiceData.deliverTo, invoiceData.deliverToType);
+  const purchaseFromName = getPartyName(invoiceData.purchaseFrom, invoiceData.purchaseFromType);
+  const purchaseFromAddress = getPartyAddress(invoiceData.purchaseFrom, invoiceData.purchaseFromType);
+  const purchaseFromContact = getPartyContact(invoiceData.purchaseFrom, invoiceData.purchaseFromType);
 
   return (
     <Document>
@@ -629,60 +671,21 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               </View>
             </View>
 
-            {/* Two Column Layout for Invoice and Deliver To */}
+            {/* Two Column Layout for Invoice To and Deliver To */}
             <View style={styles.invoiceDeliverRow}>
-              {/* Invoice Section */}
+              {/* Invoice To Section */}
               <View style={styles.invoiceDeliverBox}>
-                <Text style={styles.sectionTitle}>Invoice</Text>
-                <View style={styles.invoiceDetailRow}>
-                  <Text style={styles.invoiceLabel}>Number:</Text>
-                  <Text style={styles.invoiceValue}>{invoiceData.invoiceNumber}</Text>
-                </View>
-                <View style={styles.invoiceDetailRow}>
-                  <Text style={styles.invoiceLabel}>Date:</Text>
-                  <Text style={styles.invoiceValue}>{formatDate(invoiceData.invoiceDate)}</Text>
-                </View>
-                <View style={styles.invoiceDetailRow}>
-                  <Text style={styles.invoiceLabel}>Due Date:</Text>
-                  <Text style={styles.invoiceValue}>{formatDate(invoiceData.dueDate)}</Text>
-                </View>
-              </View>
-
-              {/* Deliver To Section */}
-              <View style={styles.invoiceDeliverBox}>
-                <Text style={styles.sectionTitle}>
-                  {invoiceData.recipientType === 'business' ? 'Deliver To (Business)' : 
-                   invoiceData.recipientType === 'myself' ? 'Deliver To (Company)' : 
-                   'Deliver To'}
-                </Text>
-                <Text style={styles.customerName}>
-                  {getRecipientName()}
-                </Text>
+                <Text style={styles.sectionTitle}>Invoice To</Text>
+                <Text style={styles.customerName}>{getRecipientName()}</Text>
                 <View style={styles.customerAddress}>
-                  <Text>{recipientAddress.firstLine}</Text>
-                  <Text>
-                    {recipientAddress.city} {recipientAddress.postCode}
-                  </Text>
+                  <Text>{recipientAddress.firstLine || ''}</Text>
+                  <Text>{recipientAddress.city || ''} {recipientAddress.postCode || ''}</Text>
                 </View>
                 {/* Additional business information */}
-                {invoiceData.recipientType === 'business' && businessInfo && (
+                {(invoiceData.recipientType === 'business' || invoiceData.recipientType === 'myself') && businessInfo && (
                   <View style={[styles.customerAddress, { marginTop: 4 }]}>
-                    {businessInfo.vatNumber && (
-                      <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {businessInfo.vatNumber}</Text>
-                    )}
-                    {businessInfo.companyNumber && (
-                      <Text style={{ fontSize: 7, color: '#666666' }}>Company No: {businessInfo.companyNumber}</Text>
-                    )}
-                    {recipientContact.email && (
-                      <Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>
-                    )}
-                    {recipientContact.phone && (
-                      <Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>
-                    )}
-                  </View>
-                )}
-                {invoiceData.recipientType === 'myself' && businessInfo && (
-                  <View style={[styles.customerAddress, { marginTop: 4 }]}>
+                    {recipientContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>)}
+                    {recipientContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>)}
                     {businessInfo.vatNumber && (
                       <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {businessInfo.vatNumber}</Text>
                     )}
@@ -692,17 +695,56 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   </View>
                 )}
               </View>
+
+              {/* Deliver To Section - only for purchase invoices */}
+              {(invoiceData as any).invoiceType === 'purchase' && (
+                <View style={styles.invoiceDeliverBox}>
+                  <Text style={styles.sectionTitle}>Deliver To</Text>
+                  <Text style={styles.customerName}>{deliverToName || getRecipientName()}</Text>
+                  <View style={styles.customerAddress}>
+                    <Text>{(deliverToAddress.firstLine || recipientAddress.firstLine) || ''}</Text>
+                    <Text>{(deliverToAddress.city || recipientAddress.city) || ''} {(deliverToAddress.postCode || recipientAddress.postCode) || ''}</Text>
+                  </View>
+                  {/* Additional info */}
+                  {(invoiceData.deliverToType === 'business' || (invoiceData.deliverToType === 'myself' && invoiceData.deliverTo)) && (
+                    <View style={[styles.customerAddress, { marginTop: 4 }]}>
+                      {deliverToContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {deliverToContact.email}</Text>)}
+                      {deliverToContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {deliverToContact.phone}</Text>)}
+                      {invoiceData.deliverToType === 'business' && invoiceData.deliverTo && typeof invoiceData.deliverTo === 'object' && 'vatNumber' in invoiceData.deliverTo && (
+                        <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {invoiceData.deliverTo.vatNumber}</Text>
+                      )}
+                      {invoiceData.deliverToType === 'business' && invoiceData.deliverTo && typeof invoiceData.deliverTo === 'object' && 'companyNumber' in invoiceData.deliverTo && (
+                        <Text style={{ fontSize: 7, color: '#666666' }}>Company No: {invoiceData.deliverTo.companyNumber}</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           </View>
 
-          {/* Right Column - Purchase Invoice Header and Details */}
+          {/* Right Column - Invoice Header and Details */}
           <View style={styles.rightColumn}>
             <View style={styles.purchaseInvoiceHeader}>
-              <Text style={styles.purchaseInvoiceTitle}>PURCHASE INVOICE</Text>
+              <Text style={styles.purchaseInvoiceTitle}>
+                {(invoiceData as any).invoiceType === 'purchase' ? 'PURCHASE INVOICE' : 'INVOICE'}
+              </Text>
             </View>
 
-            {/* Invoice Details Box */}
+            {/* Consolidated Invoice Details Box */}
             <View style={styles.invoiceDetailsBox}>
+              <View style={styles.invoiceDetailsRow}>
+                <Text style={styles.invoiceDetailsLabel}>Invoice Number:</Text>
+                <Text style={styles.invoiceDetailsValue}>{invoiceData.invoiceNumber}</Text>
+              </View>
+              <View style={styles.invoiceDetailsRow}>
+                <Text style={styles.invoiceDetailsLabel}>Invoice Date:</Text>
+                <Text style={styles.invoiceDetailsValue}>{formatDate(invoiceData.invoiceDate)}</Text>
+              </View>
+              <View style={styles.invoiceDetailsRow}>
+                <Text style={styles.invoiceDetailsLabel}>Due Date:</Text>
+                <Text style={styles.invoiceDetailsValue}>{formatDate(invoiceData.dueDate)}</Text>
+              </View>
               <View style={styles.invoiceDetailsRow}>
                 <Text style={styles.invoiceDetailsLabel}>PO #</Text>
                 <Text style={styles.invoiceDetailsValue}>{invoiceData.invoiceNumber.replace('INV-', '')}</Text>
@@ -712,59 +754,35 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                 <Text style={styles.invoiceDetailsValue}>235</Text>
               </View>
               <View style={styles.invoiceDetailsRow}>
-                <Text style={styles.invoiceDetailsLabel}>Date:</Text>
-                <Text style={styles.invoiceDetailsValue}>{formatDate(invoiceData.invoiceDate)}</Text>
-              </View>
-              <View style={styles.invoiceDetailsRow}>
                 <Text style={styles.invoiceDetailsLabel}>Prepared by:</Text>
                 <Text style={styles.invoiceDetailsValue}>{invoiceData.companyInfo.name}</Text>
               </View>
             </View>
 
-            {/* Purchase From Section */}
-            <View style={styles.contactDetailsBox}>
-              <Text style={[styles.sectionTitle, { textAlign: 'right', marginBottom: 4 }]}>
-                {invoiceData.recipientType === 'business' ? 'PURCHASE FROM' : 
-                 invoiceData.recipientType === 'myself' ? 'PURCHASE FROM' : 
-                 'PURCHASE FROM'}
-              </Text>
-              <Text style={[styles.customerName, { textAlign: 'right' }]}>
-                {getRecipientName()}
-              </Text>
-              <View style={[styles.customerAddress, { alignItems: 'flex-end' }]}>
-                <Text>{recipientAddress.firstLine}</Text>
-                <Text>
-                  {recipientAddress.city}, {recipientAddress.postCode}
-                </Text>
+            {/* Purchase From Section - only for purchase invoices */}
+            {(invoiceData as any).invoiceType === 'purchase' && (
+              <View style={styles.contactDetailsBox}>
+                <Text style={[styles.sectionTitle, { textAlign: 'right', marginBottom: 4 }]}>PURCHASE FROM</Text>
+                <Text style={[styles.customerName, { textAlign: 'right' }]}>{purchaseFromName || getRecipientName()}</Text>
+                <View style={[styles.customerAddress, { alignItems: 'flex-end' }]}>
+                  <Text>{purchaseFromAddress.firstLine || recipientAddress.firstLine}</Text>
+                  <Text>{purchaseFromAddress.city || recipientAddress.city}, {purchaseFromAddress.postCode || recipientAddress.postCode}</Text>
+                </View>
+                {/* Additional business information for purchaseFrom */}
+                {(invoiceData.purchaseFromType === 'business' && invoiceData.purchaseFrom) && (
+                  <View style={[styles.customerAddress, { alignItems: 'flex-end', marginTop: 4 }]}>
+                    {purchaseFromContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {purchaseFromContact.email}</Text>)}
+                    {purchaseFromContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {purchaseFromContact.phone}</Text>)}
+                    {invoiceData.purchaseFrom && typeof invoiceData.purchaseFrom === 'object' && 'vatNumber' in invoiceData.purchaseFrom && (
+                      <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>VAT Number: {invoiceData.purchaseFrom.vatNumber}</Text>
+                    )}
+                    {invoiceData.purchaseFrom && typeof invoiceData.purchaseFrom === 'object' && 'companyNumber' in invoiceData.purchaseFrom && (
+                      <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>Company Number: {invoiceData.purchaseFrom.companyNumber}</Text>
+                    )}
+                  </View>
+                )}
               </View>
-              {/* Additional business information for business recipients */}
-              {invoiceData.recipientType === 'business' && businessInfo && (
-                <View style={[styles.customerAddress, { alignItems: 'flex-end', marginTop: 4 }]}>
-                  {recipientContact.email && (
-                    <Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>
-                  )}
-                  {recipientContact.phone && (
-                    <Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>
-                  )}
-                  {businessInfo.vatNumber && (
-                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>VAT Number: {businessInfo.vatNumber}</Text>
-                  )}
-                  {businessInfo.companyNumber && (
-                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>Company Number: {businessInfo.companyNumber}</Text>
-                  )}
-                </View>
-              )}
-              {invoiceData.recipientType === 'myself' && businessInfo && (
-                <View style={[styles.customerAddress, { alignItems: 'flex-end', marginTop: 4 }]}>
-                  {businessInfo.vatNumber && (
-                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>VAT: {businessInfo.vatNumber}</Text>
-                  )}
-                  {businessInfo.companyNumber && (
-                    <Text style={{ fontSize: 7, color: '#666666', fontWeight: 'bold' }}>Company No: {businessInfo.companyNumber}</Text>
-                  )}
-                </View>
-              )}
-            </View>
+            )}
           </View>
         </View>
 

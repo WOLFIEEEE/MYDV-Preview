@@ -884,7 +884,6 @@ export default function InvoicePreviewPage() {
   };
 
   const generateFinalPDF = async () => {
-    console.log("🚀 ~ generateFinalPDF ~ invoiceData:", invoiceData)
     if (!invoiceData) return;
     
     setGeneratingPdf(true);
@@ -913,8 +912,8 @@ export default function InvoicePreviewPage() {
         window.URL.revokeObjectURL(url);
         
         // Clear session storage and redirect back
-        sessionStorage.removeItem('invoicePreviewData');
-        // router.push('/store-owner/settings?tab=invoice-generator');
+        // sessionStorage.removeItem('invoicePreviewData');
+        // TODO: uncomment router.push('/store-owner/settings?tab=invoice-generator');
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to generate PDF');

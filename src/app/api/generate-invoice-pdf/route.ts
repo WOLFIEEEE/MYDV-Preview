@@ -12,6 +12,11 @@ interface InvoicePreviewData {
   invoiceTitle?: string;
   invoiceType?: 'purchase' | 'standard';
   recipientType?: 'customer' | 'business' | 'myself';
+  // New fields for purchase invoices
+  deliverToType?: 'customer' | 'business' | 'myself';
+  deliverToData?: any | null;
+  purchaseFromType?: 'customer' | 'business' | 'myself';
+  purchaseFromData?: any | null;
   items: Array<{
     description: string;
     quantity: number;
@@ -181,7 +186,7 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): any 
     invoiceDate: previewData.invoiceDate,
     dueDate: previewData.dueDate,
     saleType: 'Retail' as const,
-    invoiceType: 'Retail (Customer) Invoice' as const,
+    invoiceType: previewData.invoiceType || 'standard',
     // invoiceTo: 'Customer' as const,
     
     // Company Information
@@ -359,6 +364,73 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): any 
   };
 }
 
+// After mapping the primary data, build deliverTo/purchaseFrom parties if present
+function attachOptionalParties(comprehensive: any, previewData: InvoicePreviewData) {
+  const mapParty = (type?: string, data?: any) => {
+    if (!type) return null;
+    if (type === 'myself') {
+      return {
+        businessName: previewData.companyInfo?.companyName || 'Your Company Name',
+        email: previewData.companyInfo?.email || '',
+        phone: previewData.companyInfo?.phone || '',
+        vatNumber: previewData.companyInfo?.vatNumber || '',
+        companyNumber: previewData.companyInfo?.companyNumber || '',
+        address: {
+          firstLine: previewData.companyInfo?.addressLine1 || '',
+          secondLine: previewData.companyInfo?.addressLine2 || '',
+          city: previewData.companyInfo?.city || '',
+          county: previewData.companyInfo?.county || '',
+          postCode: previewData.companyInfo?.postcode || '',
+          country: previewData.companyInfo?.country || 'United Kingdom',
+        }
+      };
+    }
+
+    if (type === 'business' && data) {
+      return {
+        businessName: data.businessName || data.business || data.businessName || data.displayName || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        vatNumber: data.vatNumber || data.businessVatNumber || '',
+        companyNumber: data.companyNumber || data.companyNumber || data.businessCompanyNumber || '',
+        address: {
+          firstLine: data.addressLine1 || data.address || '',
+          secondLine: data.addressLine2 || '',
+          city: data.city || '',
+          county: data.county || '',
+          postCode: data.postcode || '',
+          country: data.country || 'United Kingdom',
+        }
+      };
+    }
+
+    // customer
+    if (type === 'customer' && data) {
+      return {
+        firstName: data.firstName || data.name || '',
+        lastName: data.lastName || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        address: {
+          firstLine: data.addressLine1 || '',
+          secondLine: data.addressLine2 || '',
+          city: data.city || '',
+          county: data.county || '',
+          postCode: data.postcode || '',
+          country: data.country || 'United Kingdom',
+        }
+      };
+    }
+
+    return null;
+  };
+
+  comprehensive.deliverTo = mapParty(previewData.deliverToType, previewData.deliverToData);
+  comprehensive.purchaseFrom = mapParty(previewData.purchaseFromType, previewData.purchaseFromData);
+
+  return comprehensive;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Verify user authentication
@@ -382,16 +454,20 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 Generating PDF for invoice preview:', invoicePreviewData.invoiceNumber);
 
-    // Convert InvoicePreviewData to ComprehensiveInvoiceData
-    const comprehensiveData = mapInvoicePreviewToComprehensive(invoicePreviewData);
+  // Convert InvoicePreviewData to ComprehensiveInvoiceData
+  let comprehensiveData = mapInvoicePreviewToComprehensive(invoicePreviewData);
+  // Attach optional parties (deliverTo / purchaseFrom) when present
+  comprehensiveData = attachOptionalParties(comprehensiveData, invoicePreviewData);
 
     console.log('📊 Mapped invoice data:', {
       invoiceNumber: comprehensiveData.invoiceNumber,
       saleType: comprehensiveData.saleType,
       invoiceType: comprehensiveData.invoiceType,
-      customerName: `${comprehensiveData.customer.firstName} ${comprehensiveData.customer.lastName}`,
+      customerName: comprehensiveData.customer?.firstName ? `${comprehensiveData.customer.firstName} ${comprehensiveData.customer.lastName}` : (comprehensiveData.customer?.businessName || ''),
       vehicleReg: comprehensiveData.vehicle.registration,
       salePrice: comprehensiveData.pricing.salePrice,
+      deliverTo: comprehensiveData.deliverTo?.businessName || `${comprehensiveData.deliverTo?.firstName || ''} ${comprehensiveData.deliverTo?.lastName || ''}`,
+      purchaseFrom: comprehensiveData.purchaseFrom?.businessName || `${comprehensiveData.purchaseFrom?.firstName || ''} ${comprehensiveData.purchaseFrom?.lastName || ''}`,
     });
 
     // Generate PDF buffer using the professional invoice preview PDF component

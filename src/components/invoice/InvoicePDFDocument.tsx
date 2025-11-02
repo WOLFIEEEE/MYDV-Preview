@@ -411,6 +411,11 @@ interface InvoicePDFData {
   dueDate: string;
   invoiceTitle?: string;
   recipientType?: 'customer' | 'business' | 'myself';
+  // Optional parties (for purchase invoices)
+  deliverToType?: 'customer' | 'business' | 'myself';
+  deliverTo?: Customer | Business | null;
+  purchaseFromType?: 'customer' | 'business' | 'myself';
+  purchaseFrom?: Customer | Business | null;
   items: InvoiceItem[];
   subtotal: number;
   vatRate: number;
@@ -447,6 +452,20 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
 
   const formatCurrency = (amount: number) => {
     return `£${(amount || 0).toFixed(2)}`;
+  };
+
+  // Support both server-mapped parties (deliverTo/purchaseFrom) and client preview fields (deliverToData/purchaseFromData)
+  const deliverTo = (invoiceData as any).deliverTo || (invoiceData as any).deliverToData || null;
+  const purchaseFrom = (invoiceData as any).purchaseFrom || (invoiceData as any).purchaseFromData || null;
+
+  // Helper function to safely check if an object has businessName property
+  const isBusiness = (party: any): boolean => {
+    return party && typeof party === 'object' && 'businessName' in party;
+  };
+
+  // Helper function to safely check if an object has firstName property  
+  const isCustomer = (party: any): boolean => {
+    return party && typeof party === 'object' && 'firstName' in party;
   };
 
   return (
@@ -486,7 +505,9 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
             </View>
           </View>
           <View style={styles.invoiceTitle}>
-            <Text style={styles.invoiceTitleText}>{invoiceData.invoiceTitle || 'INVOICE'}</Text>
+            <Text style={styles.invoiceTitleText}>
+              {(invoiceData as any).invoiceType === 'purchase' ? 'PURCHASE INVOICE' : (invoiceData.invoiceTitle || 'INVOICE')}
+            </Text>
             <Text style={styles.invoiceNumber}>#{invoiceData.invoiceNumber}</Text>
             <View style={styles.invoiceDates}>
               <Text>Date: {formatDate(invoiceData.invoiceDate)}</Text>
@@ -497,13 +518,9 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
 
         {/* Customer and Vehicle Details */}
         <View style={styles.detailsSection}>
-          {/* Recipient Info */}
+          {/* Invoice To and Deliver To Info */}
           <View style={styles.detailBox}>
-            <Text style={styles.detailBoxTitle}>
-              {invoiceData.recipientType === 'myself' ? 'Bill To:' : 
-               invoiceData.recipientType === 'business' ? 'Bill To:' : 
-               'Bill To:'}
-            </Text>
+            <Text style={styles.detailBoxTitle}>Invoice To:</Text>
             
             {/* Render content based on recipient type */}
             {invoiceData.recipientType === 'myself' && invoiceData.companyInfo && (
@@ -592,6 +609,43 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
                 )}
               </>
             )}
+
+            {/* Deliver To (for purchase invoices only) */}
+            {(invoiceData as any).invoiceType === 'purchase' && deliverTo && (
+              <>
+                <Text style={[styles.detailBoxTitle, { marginTop: 10 }]}>Deliver To:</Text>
+                {/* Treat deliverTo as business or customer */}
+                {isBusiness(deliverTo) ? (
+                  <>
+                    <Text style={styles.detailName}>{(deliverTo as Business).businessName}</Text>
+                    {(deliverTo as Business).addressLine1 && (
+                      <Text style={styles.detailInfo}>{(deliverTo as Business).addressLine1}</Text>
+                    )}
+                    {(deliverTo as Business).email && (
+                      <Text style={styles.detailInfo}>Email: {(deliverTo as Business).email}</Text>
+                    )}
+                    {(deliverTo as Business).phone && (
+                      <Text style={styles.detailInfo}>Phone: {(deliverTo as Business).phone}</Text>
+                    )}
+                  </>
+                ) : isCustomer(deliverTo) ? (
+                  <>
+                    <Text style={styles.detailName}>{(deliverTo as Customer).firstName} {(deliverTo as Customer).lastName}</Text>
+                    {(deliverTo as Customer).addressLine1 && (
+                      <Text style={styles.detailInfo}>{(deliverTo as Customer).addressLine1}</Text>
+                    )}
+                    {(deliverTo as Customer).email && (
+                      <Text style={styles.detailInfo}>Email: {(deliverTo as Customer).email}</Text>
+                    )}
+                    {(deliverTo as Customer).phone && (
+                      <Text style={styles.detailInfo}>Phone: {(deliverTo as Customer).phone}</Text>
+                    )}
+                  </>
+                ) : (
+                  <Text style={styles.detailName}>Same as Invoice To</Text>
+                )}
+              </>
+            )}
           </View>
 
           {/* Vehicle Info */}
@@ -622,6 +676,42 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
                 <Text style={styles.detailInfo}>
                   Mileage: {((invoiceData.vehicle.mileage || invoiceData.vehicle.odometerReadingMiles) || 0).toLocaleString()} miles
                 </Text>
+              )}
+            </View>
+          )}
+
+          {/* Purchase From (for purchase invoices only) */}
+          {(invoiceData as any).invoiceType === 'purchase' && purchaseFrom && (
+            <View style={styles.detailBox}>
+              <Text style={styles.detailBoxTitle}>Purchase From:</Text>
+              {isBusiness(purchaseFrom) ? (
+                <>
+                  <Text style={styles.detailName}>{(purchaseFrom as Business).businessName}</Text>
+                  {(purchaseFrom as Business).addressLine1 && (
+                    <Text style={styles.detailInfo}>{(purchaseFrom as Business).addressLine1}</Text>
+                  )}
+                  {(purchaseFrom as Business).email && (
+                    <Text style={styles.detailInfo}>Email: {(purchaseFrom as Business).email}</Text>
+                  )}
+                  {(purchaseFrom as Business).phone && (
+                    <Text style={styles.detailInfo}>Phone: {(purchaseFrom as Business).phone}</Text>
+                  )}
+                </>
+              ) : isCustomer(purchaseFrom) ? (
+                <>
+                  <Text style={styles.detailName}>{(purchaseFrom as Customer).firstName} {(purchaseFrom as Customer).lastName}</Text>
+                  {(purchaseFrom as Customer).addressLine1 && (
+                    <Text style={styles.detailInfo}>{(purchaseFrom as Customer).addressLine1}</Text>
+                  )}
+                  {(purchaseFrom as Customer).email && (
+                    <Text style={styles.detailInfo}>Email: {(purchaseFrom as Customer).email}</Text>
+                  )}
+                  {(purchaseFrom as Customer).phone && (
+                    <Text style={styles.detailInfo}>Phone: {(purchaseFrom as Customer).phone}</Text>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.detailName}>Company Purchase</Text>
               )}
             </View>
           )}
