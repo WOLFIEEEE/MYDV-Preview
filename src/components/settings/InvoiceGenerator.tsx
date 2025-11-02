@@ -505,12 +505,12 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       setFilteredCustomers(customers);
     } else {
       const query = customerSearchQuery.toLowerCase();
-      const filtered = customers?.filter(customer =>
-        customer?.firstName?.toLowerCase()?.includes(query) ||
-        customer?.lastName?.toLowerCase()?.includes(query) ||
-        customer?.email?.toLowerCase()?.includes(query) ||
-        (customer?.phone && customer?.phone?.includes(query)) ||
-        (customer?.displayName && customer?.displayName?.toLowerCase()?.includes(query))
+      const filtered = customers.filter(customer =>
+        customer?.firstName?.toLowerCase().includes(query) ||
+        customer?.lastName?.toLowerCase().includes(query) ||
+        customer?.email?.toLowerCase().includes(query) ||
+        (customer?.phone && customer.phone?.includes(query)) ||
+        (customer?.displayName && customer?.displayName?.toLowerCase().includes(query))
       );
       setFilteredCustomers(filtered);
     }
@@ -532,6 +532,13 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
       setFilteredBusinesses(filtered);
     }
   }, [businessSearchQuery, businesses]);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (!invoiceData.invoiceDate || invoiceData.invoiceDate !== today) {
+      updateDueDates(invoiceData.paymentTerms);
+    }
+  }, []);
 
   // Memoized calculation function to avoid unnecessary re-renders
   const calculateTotals = useCallback(() => {
@@ -917,7 +924,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
   };
 
   const removeInvoiceItem = (itemId: string) => {
-    if (invoiceData.items.length <= 1) return; // Keep at least one item
+    if (invoiceData.items.length <= 0) return; // Keep at least one item
 
     setInvoiceData(prev => ({
       ...prev,
@@ -1078,6 +1085,45 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     }));
   };
 
+  const updateDueDates = (value: string) => {
+    const today = new Date();
+    const invoiceDate = today.toISOString().split('T')[0]; // Current date as invoice date
+    
+    let dueDate = new Date(today);
+    
+    // Calculate due date based on payment terms
+    switch (value) {
+      case 'immediate':
+        dueDate = new Date(today);
+        break;
+      case '7 days':
+        dueDate.setDate(today.getDate() + 7);
+        break;
+      case '14 days':
+        dueDate.setDate(today.getDate() + 14);
+        break;
+      case '30 days':
+        dueDate.setDate(today.getDate() + 30);
+        break;
+      case '60 days':
+        dueDate.setDate(today.getDate() + 60);
+        break;
+      case '90 days':
+        dueDate.setDate(today.getDate() + 90);
+        break;
+      default:
+        dueDate = new Date(today);
+    }
+    
+    const dueDateString = dueDate.toISOString().split('T')[0];
+    
+    setInvoiceData(prev => ({ 
+      ...prev, 
+      paymentTerms: value,
+      dueDate: dueDateString
+    }));
+  }
+
   const validateInvoiceData = (): string[] => {
     const errors: string[] = [];
 
@@ -1175,9 +1221,9 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
     }
 
     // Items validation
-    if (invoiceData.items.length === 0) {
-      errors.push('At least one invoice item is required');
-    }
+    // if (invoiceData.items.length === 0) {
+    //   errors.push('At least one invoice item is required');
+    // }
 
     invoiceData.items.forEach((item, index) => {
       if (!item.description.trim()) {
@@ -1276,7 +1322,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
         customerPhone,
         customerAddress,
         companyInfo,
-        vehicleInfo: useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
+        vehicleInfo: !showVehicleInfo ? null : useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
         deliveryAddress: invoiceData.deliveryAddress,
         items: invoiceData.items,
         subtotal: Number(invoiceData.subtotal) || 0,
@@ -1388,7 +1434,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
         terms: invoiceData.terms,
         paymentInstructions: invoiceData.paymentInstructions,
         companyInfo,
-        vehicle: useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
+        vehicle: !showVehicleInfo ? null : useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
         customer: customerData
       };
 
@@ -1437,56 +1483,6 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
               )}
               {generatingPdf ? 'Generating...' : 'Generate PDF'}
             </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
-      <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-700 border-0 shadow-xl">
-        <CardHeader className="pb-6 pt-6">
-          <div className="w-full mx-auto">
-            {/* Search Methods */}
-            <div className="space-y-8 mb-8">
-              {/* Compact Vehicle Search */}
-              <div className={`p-6 rounded-xl border-2 transition-all duration-300 ${isDarkMode
-                  ? 'bg-gradient-to-br from-slate-800 to-slate-700 border-slate-600'
-                  : 'bg-gradient-to-br from-white to-blue-50/30 border-gray-200'
-                }`}>
-                <div className="flex items-center mb-4">
-                  <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 mr-4 shadow-lg">
-                    <SearchIcon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      Create Vehicle Invoice
-                    </h3>
-                    <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
-                      Invoicing vehicles without adding them to your stock
-                    </p>
-                  </div>
-                </div>
-
-                <SearchForm
-                  onSearch={handleRegistrationSearch}
-                  isLoading={isLoading}
-                  error={error}
-                />
-              </div>
-            </div>
-
-            {/* Search Tips */}
-            {!vehicleData && !isLoading && (
-              <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-slate-800/50' : 'bg-blue-50'
-                } border ${isDarkMode ? 'border-slate-700' : 'border-blue-200'}`}>
-                <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  💡 Quick Tips
-                </h4>
-                <div className="text-sm">
-                  <div className={isDarkMode ? 'text-white' : 'text-gray-700'}>
-                    <strong>Registration:</strong> Enter UK reg (e.g., AB12 CDE) for instant vehicle data
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </CardHeader>
       </Card>
@@ -1549,6 +1545,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                 <Label htmlFor="dueDate">Due Date</Label>
                 <Input
                   id="dueDate"
+                  disabled
                   type="date"
                   value={invoiceData.dueDate}
                   onChange={(e) => setInvoiceData(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -1558,7 +1555,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
                 <Label htmlFor="paymentTerms">Payment Terms</Label>
                 <Select
                   value={invoiceData.paymentTerms}
-                  onValueChange={(value) => setInvoiceData(prev => ({ ...prev, paymentTerms: value }))}
+                  onValueChange={updateDueDates}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -2863,7 +2860,7 @@ export default function InvoiceGenerator({ dealerId }: InvoiceGeneratorProps) {
             <div key={item.id} className="p-4 border rounded-lg space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">Item {index + 1}</h4>
-                {invoiceData.items.length > 1 && (
+                {invoiceData.items.length > 0 && (
                   <Button
                     onClick={() => removeInvoiceItem(item.id)}
                     variant="ghost"
