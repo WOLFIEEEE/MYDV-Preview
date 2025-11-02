@@ -300,7 +300,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
 
     items: [{
       id: '1',
-      description: 'Vehicle Sale',
+      description: "Vehicle Purchase",
       quantity: '',
       unitPrice: '',
       discount: '',

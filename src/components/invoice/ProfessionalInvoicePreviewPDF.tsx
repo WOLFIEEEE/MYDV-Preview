@@ -930,16 +930,25 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               <Text style={styles.tableHeaderCell}>Description</Text>
               <Text style={[styles.tableHeaderCell, { textAlign: 'center', flex: 0.3 }]}>Qty</Text>
               <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.4 }]}>Unit Price</Text>
-              <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.4 }]}>Total</Text>
+              <Text style={[styles.tableHeaderCell, { textAlign: 'center', flex: 0.3 }]}>VAT%</Text>
+              <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.4 }]}>VAT Amount</Text>
+              <Text style={[styles.tableHeaderCell, { textAlign: 'right', flex: 0.4 }]}>Total (Inc VAT)</Text>
             </View>
-            {invoiceData.items.map((item, index) => (
-              <View key={index} style={styles.tableRow}>
-                <Text style={styles.tableCell}>{item.description}</Text>
-                <Text style={[styles.tableCell, { textAlign: 'center', flex: 0.3 }]}>{item.quantity}</Text>
-                <Text style={[styles.tableCell, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(item.unitPrice)}</Text>
-                <Text style={[styles.tableCellBold, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(item.total)}</Text>
-              </View>
-            ))}
+            {invoiceData.items.map((item, index) => {
+              const vatAmount = (item.total * (Number(item.vatRate) || 0)) / 100;
+              const totalWithVat = item.total + vatAmount;
+              
+              return (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={styles.tableCell}>{item.description}</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'center', flex: 0.3 }]}>{item.quantity}</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(item.unitPrice)}</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'center', flex: 0.3 }]}>{(Number(item.vatRate) || 0).toFixed(1)}%</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(vatAmount)}</Text>
+                  <Text style={[styles.tableCellBold, { textAlign: 'right', flex: 0.4 }]}>{formatCurrency(totalWithVat)}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 

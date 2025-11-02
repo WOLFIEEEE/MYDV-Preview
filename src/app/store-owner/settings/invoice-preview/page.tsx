@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { 
-  ArrowLeft, 
-  Download, 
-  Plus, 
-  X, 
+import {
+  ArrowLeft,
+  Download,
+  Plus,
+  X,
   FileText,
   Eye
 } from "lucide-react";
@@ -24,7 +24,7 @@ import Footer from '@/components/shared/Footer';
 // Dynamically import PDF viewer wrapper to avoid SSR issues
 const PDFViewerWrapper = dynamic(
   () => import('@/components/invoice/PDFViewerWrapper'),
-  { 
+  {
     ssr: false,
     loading: () => (
       <div className="flex items-center justify-center h-full">
@@ -66,6 +66,10 @@ interface Vehicle {
   vin?: string;
   colour?: string;
   displayName?: string;
+  ownershipCondition?: string
+  firstRegistrationDate?: string;
+  transmissionType?: string;
+  engineNumber?: string;
 }
 
 interface Customer {
@@ -202,8 +206,7 @@ export default function InvoicePreviewPage() {
     if (storedData) {
       try {
         const parsedData = JSON.parse(storedData);
-        console.log("🚀 ~ InvoicePreviewPage ~ parsedData:", parsedData)
-        
+
         // Ensure numeric values are properly converted
         const sanitizedData = {
           ...parsedData,
@@ -214,6 +217,7 @@ export default function InvoicePreviewPage() {
           },
           items: parsedData.items?.map((item: InvoiceItem) => ({
             ...item,
+            description: `${item.description || ''} - ${parsedData.vehicle?.registration || ''} - ${parsedData.vehicle?.derivative || ''}`,
             quantity: item.quantity === 0 || item.quantity === '0' ? '' : (item.quantity || ''),
             unitPrice: item.unitPrice === 0 || item.unitPrice === '0' ? '' : (item.unitPrice || ''),
             discount: item.discount === 0 || item.discount === '0' ? '' : (item.discount || ''),
@@ -244,10 +248,10 @@ export default function InvoicePreviewPage() {
           paidAmount: Number(parsedData.paidAmount) || 0,
           outstandingBalance: Number(parsedData.outstandingBalance) || 0
         };
-        
+
         // Auto-add payment entry if payment status is partial/paid but no payments exist
-        if ((sanitizedData.paymentStatus === 'partial' || sanitizedData.paymentStatus === 'paid') && 
-            (!sanitizedData.payments || sanitizedData.payments.length === 0)) {
+        if ((sanitizedData.paymentStatus === 'partial' || sanitizedData.paymentStatus === 'paid') &&
+          (!sanitizedData.payments || sanitizedData.payments.length === 0)) {
           const newPayment = {
             id: Date.now().toString(),
             type: 'Cash' as const,
@@ -257,7 +261,7 @@ export default function InvoicePreviewPage() {
           };
           sanitizedData.payments = [newPayment];
         }
-        
+
         setInvoiceData(sanitizedData);
       } catch (error) {
         console.error('Error parsing invoice data:', error);
@@ -298,7 +302,7 @@ export default function InvoicePreviewPage() {
 
   const updateInvoiceData = (field: string, value: string | number) => {
     if (!invoiceData) return;
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       [field]: value
@@ -307,7 +311,7 @@ export default function InvoicePreviewPage() {
 
   const updateCompanyInfo = (field: keyof CompanyInfo, value: string | number) => {
     if (!invoiceData) return;
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       companyInfo: {
@@ -319,7 +323,7 @@ export default function InvoicePreviewPage() {
 
   const updateCustomerInfo = (field: string, value: string | number) => {
     if (!invoiceData) return;
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       customer: {
@@ -331,7 +335,7 @@ export default function InvoicePreviewPage() {
 
   const updateVehicleInfo = (field: keyof Vehicle, value: string | number) => {
     if (!invoiceData) return;
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       vehicle: {
@@ -343,12 +347,12 @@ export default function InvoicePreviewPage() {
 
   const updateVatRate = (newVatRate: number) => {
     if (!invoiceData) return;
-    
+
     if (invoiceData.vatMode === 'global') {
       const subtotal = invoiceData.subtotal;
       const vatAmount = subtotal * (newVatRate / 100);
       const total = subtotal + vatAmount;
-      
+
       setInvoiceData(prev => ({
         ...prev!,
         vatRate: newVatRate,
@@ -361,7 +365,7 @@ export default function InvoicePreviewPage() {
         const itemTotal = item.total; // Already includes discount
         const itemVatAmount = itemTotal * (newVatRate / 100);
         const itemTotalWithVat = itemTotal + itemVatAmount;
-        
+
         return {
           ...item,
           vatRate: newVatRate,
@@ -369,11 +373,11 @@ export default function InvoicePreviewPage() {
           totalWithVat: itemTotalWithVat
         };
       });
-      
+
       const subtotal = updatedItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
       const totalVatAmount = updatedItems.reduce((sum, item) => sum + (Number(item.vatAmount) || 0), 0);
       const total = subtotal + totalVatAmount;
-      
+
       setInvoiceData(prev => ({
         ...prev!,
         vatRate: newVatRate,
@@ -387,16 +391,16 @@ export default function InvoicePreviewPage() {
 
   const toggleVatMode = () => {
     if (!invoiceData) return;
-    
+
     const newVatMode = invoiceData.vatMode === 'global' ? 'individual' : 'global';
-    
+
     if (newVatMode === 'individual') {
       // Convert to individual VAT mode - apply current global VAT rate to all items
       const updatedItems = invoiceData.items.map(item => {
         const itemTotal = item.total; // Already includes discount
         const itemVatAmount = itemTotal * (invoiceData.vatRate / 100);
         const itemTotalWithVat = itemTotal + itemVatAmount;
-        
+
         return {
           ...item,
           vatRate: item.vatRate || invoiceData.vatRate,
@@ -404,11 +408,11 @@ export default function InvoicePreviewPage() {
           totalWithVat: itemTotalWithVat
         };
       });
-      
+
       const subtotal = updatedItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
       const totalVatAmount = updatedItems.reduce((sum, item) => sum + (Number(item.vatAmount) || 0), 0);
       const total = subtotal + totalVatAmount;
-      
+
       setInvoiceData(prev => ({
         ...prev!,
         vatMode: newVatMode,
@@ -422,7 +426,7 @@ export default function InvoicePreviewPage() {
       const subtotal = invoiceData.subtotal;
       const vatAmount = subtotal * (invoiceData.vatRate / 100);
       const total = subtotal + vatAmount;
-      
+
       setInvoiceData(prev => ({
         ...prev!,
         vatMode: newVatMode,
@@ -434,38 +438,38 @@ export default function InvoicePreviewPage() {
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
     if (!invoiceData) return;
-    
+
     const updatedItems = [...invoiceData.items];
-    
+
     // Ensure numeric fields are properly converted
     let processedValue = value;
     if (field === 'quantity' || field === 'unitPrice' || field === 'discount' || field === 'vatRate') {
       processedValue = Number(value) || 0;
     }
-    
+
     updatedItems[index] = {
       ...updatedItems[index],
       [field]: processedValue
     };
-    
+
     // Recalculate total for the item
     if (field === 'quantity' || field === 'unitPrice' || field === 'discount' || field === 'vatRate') {
       const quantity = Number(updatedItems[index].quantity) || 1;
       const unitPrice = Number(updatedItems[index].unitPrice) || 0;
       const discount = Number(updatedItems[index].discount) || 0;
       const itemVatRate = Number(updatedItems[index].vatRate) || 0;
-      
+
       // Calculate subtotal before discount
       const itemSubtotal = quantity * unitPrice;
-      
+
       // Calculate discount amount
       const discountAmount = itemSubtotal * (discount / 100);
       updatedItems[index].discountAmount = discountAmount;
-      
+
       // Calculate final total after discount (but before VAT)
       const itemTotal = itemSubtotal - discountAmount;
       updatedItems[index].total = itemTotal;
-      
+
       // Calculate VAT for individual items if in individual mode
       if (invoiceData.vatMode === 'individual') {
         const itemVatAmount = itemTotal * (itemVatRate / 100);
@@ -473,13 +477,13 @@ export default function InvoicePreviewPage() {
         updatedItems[index].totalWithVat = itemTotal + itemVatAmount;
       }
     }
-    
+
     // Recalculate invoice totals
     const subtotal = updatedItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
-    
+
     let vatAmount: number;
     let total: number;
-    
+
     if (invoiceData.vatMode === 'individual') {
       // Sum up individual VAT amounts
       vatAmount = updatedItems.reduce((sum, item) => sum + (Number(item.vatAmount) || 0), 0);
@@ -490,7 +494,7 @@ export default function InvoicePreviewPage() {
       vatAmount = subtotal * (vatRate / 100);
       total = subtotal + vatAmount;
     }
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       items: updatedItems,
@@ -502,7 +506,7 @@ export default function InvoicePreviewPage() {
 
   const addItem = () => {
     if (!invoiceData) return;
-    
+
     const newItem: InvoiceItem = {
       description: '',
       quantity: '', // Use empty string as placeholder for easier editing
@@ -514,7 +518,7 @@ export default function InvoicePreviewPage() {
       total: 0,
       totalWithVat: 0
     };
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       items: [...prev!.items, newItem]
@@ -523,13 +527,13 @@ export default function InvoicePreviewPage() {
 
   const removeItem = (index: number) => {
     if (!invoiceData || invoiceData.items.length <= 1) return;
-    
+
     const updatedItems = invoiceData.items.filter((_, i) => i !== index);
     const subtotal = updatedItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
-    
+
     let vatAmount: number;
     let total: number;
-    
+
     if (invoiceData.vatMode === 'individual') {
       // Sum up individual VAT amounts
       vatAmount = updatedItems.reduce((sum, item) => sum + (Number(item.vatAmount) || 0), 0);
@@ -540,7 +544,7 @@ export default function InvoicePreviewPage() {
       vatAmount = subtotal * (vatRate / 100);
       total = subtotal + vatAmount;
     }
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       items: updatedItems,
@@ -553,7 +557,7 @@ export default function InvoicePreviewPage() {
   // Payment management functions
   const addPayment = () => {
     if (!invoiceData) return;
-    
+
     const newPayment: PaymentEntry = {
       id: Date.now().toString(),
       type: 'Cash',
@@ -561,7 +565,7 @@ export default function InvoicePreviewPage() {
       date: new Date().toISOString().split('T')[0],
       reference: ''
     };
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       payments: [...(prev!.payments || []), newPayment]
@@ -570,11 +574,11 @@ export default function InvoicePreviewPage() {
 
   const updatePayment = (id: string, field: keyof PaymentEntry, value: string | number) => {
     if (!invoiceData) return;
-    
-    const updatedPayments = (invoiceData.payments || []).map(payment => 
+
+    const updatedPayments = (invoiceData.payments || []).map(payment =>
       payment.id === id ? { ...payment, [field]: value } : payment
     );
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       payments: updatedPayments
@@ -583,9 +587,9 @@ export default function InvoicePreviewPage() {
 
   const removePayment = (id: string) => {
     if (!invoiceData) return;
-    
+
     const updatedPayments = (invoiceData.payments || []).filter(payment => payment.id !== id);
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       payments: updatedPayments
@@ -595,7 +599,7 @@ export default function InvoicePreviewPage() {
   // Delivery address management function
   const updateDeliveryAddress = (field: keyof DeliveryAddress, value: string | number) => {
     if (!invoiceData) return;
-    
+
     setInvoiceData(prev => ({
       ...prev!,
       deliveryAddress: {
@@ -682,7 +686,7 @@ export default function InvoicePreviewPage() {
 
       if (invoiceData.invoiceType === 'purchase' && invoiceData.deliverToType) {
         deliverToType = invoiceData.deliverToType;
-        
+
         if (invoiceData.deliverToType === 'customer') {
           const customer = invoiceData.deliverToData as Customer;
           if (customer?.firstName && customer?.lastName) {
@@ -745,7 +749,7 @@ export default function InvoicePreviewPage() {
 
       if (invoiceData.invoiceType === 'purchase' && invoiceData.purchaseFromType) {
         purchaseFromType = invoiceData.purchaseFromType;
-        
+
         if (invoiceData.purchaseFromType === 'customer') {
           const customer = invoiceData.purchaseFromData as Customer;
           if (customer?.firstName && customer?.lastName) {
@@ -799,7 +803,7 @@ export default function InvoicePreviewPage() {
         dueDate: invoiceData.dueDate,
         invoiceTitle: invoiceData.invoiceTitle || 'INVOICE',
         invoiceType: invoiceData.invoiceType || 'standard',
-        
+
         // Recipient information
         recipientType: invoiceData.recipientType,
         customerName,
@@ -812,7 +816,7 @@ export default function InvoicePreviewPage() {
         businessAddress,
         businessVatNumber,
         businessCompanyNumber,
-        
+
         // Deliver to information
         deliverToType,
         deliverToCustomerName,
@@ -825,7 +829,7 @@ export default function InvoicePreviewPage() {
         deliverToBusinessAddress,
         deliverToBusinessVatNumber,
         deliverToBusinessCompanyNumber,
-        
+
         // Purchase from information
         purchaseFromType,
         purchaseFromCustomerName,
@@ -838,7 +842,7 @@ export default function InvoicePreviewPage() {
         purchaseFromBusinessAddress,
         purchaseFromBusinessVatNumber,
         purchaseFromBusinessCompanyNumber,
-        
+
         companyInfo: invoiceData.companyInfo,
         vehicleInfo: invoiceData.vehicle,
         deliveryAddress: invoiceData.deliveryAddress,
@@ -885,12 +889,12 @@ export default function InvoicePreviewPage() {
 
   const generateFinalPDF = async () => {
     if (!invoiceData) return;
-    
+
     setGeneratingPdf(true);
     try {
       // First, save the invoice to the database
       await saveInvoiceToDatabase();
-      
+
       // Then generate the PDF
       const response = await fetch('/api/generate-invoice-pdf', {
         method: 'POST',
@@ -910,7 +914,7 @@ export default function InvoicePreviewPage() {
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
-        
+
         // Clear session storage and redirect back
         // sessionStorage.removeItem('invoicePreviewData');
         // TODO: uncomment router.push('/store-owner/settings?tab=invoice-generator');
@@ -931,12 +935,20 @@ export default function InvoicePreviewPage() {
     router.push('/store-owner/settings?tab=invoice-generator');
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   // Reusable editable field component
-  const EditableField = ({ 
-    value, 
-    onUpdate, 
-    fieldKey, 
-    type = "text", 
+  const EditableField = ({
+    value,
+    onUpdate,
+    fieldKey,
+    type = "text",
     placeholder = "Click to edit",
     className = "",
     displayValue,
@@ -952,7 +964,7 @@ export default function InvoicePreviewPage() {
     multiline?: boolean;
   }) => {
     const isEditing = editingField === fieldKey;
-    
+
     if (multiline) {
       return isEditing ? (
         <Textarea
@@ -975,7 +987,7 @@ export default function InvoicePreviewPage() {
         </div>
       );
     }
-    
+
     return isEditing ? (
       <Input
         type={type}
@@ -1025,7 +1037,7 @@ export default function InvoicePreviewPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
       <Header />
-      
+
       {/* Page Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1125,287 +1137,160 @@ export default function InvoicePreviewPage() {
                     </div>
                   )}
                   <div className="flex-1">
-                    <EditableField
-                      value={invoiceData.companyInfo?.companyName}
-                      onUpdate={(value) => updateCompanyInfo('companyName', value)}
-                      fieldKey="company-name"
-                      placeholder="Company Name"
-                      className="text-lg font-bold text-slate-800 leading-tight mb-1"
-                    />
-                    <div className="text-xs text-slate-600 space-y-0.5">
-                      <EditableField
-                        value={invoiceData.companyInfo?.addressLine1}
-                        onUpdate={(value) => updateCompanyInfo('addressLine1', value)}
-                        fieldKey="company-address1"
-                        placeholder="Address Line 1"
-                        className="block"
-                      />
-                      <EditableField
-                        value={invoiceData.companyInfo?.city}
-                        onUpdate={(value) => updateCompanyInfo('city', value)}
-                        fieldKey="company-city"
-                        placeholder="City"
-                        className="block"
-                      />
-                      <div className="flex items-center space-x-1">
-                        <EditableField
-                          value={invoiceData.companyInfo?.county}
-                          onUpdate={(value) => updateCompanyInfo('county', value)}
-                          fieldKey="company-county"
-                          placeholder="County"
-                          className="flex-1"
-                        />
-                        <EditableField
-                          value={invoiceData.companyInfo?.postcode}
-                          onUpdate={(value) => updateCompanyInfo('postcode', value)}
-                          fieldKey="company-postcode"
-                          placeholder="Postcode"
-                          className="w-16 font-semibold"
-                        />
+                    {invoiceData.companyInfo?.companyName && (
+                      <div className="text-lg font-bold text-slate-800 leading-tight mb-1">
+                        {invoiceData.companyInfo.companyName}
                       </div>
-                      <EditableField
-                        value={invoiceData.companyInfo?.phone}
-                        onUpdate={(value) => updateCompanyInfo('phone', value)}
-                        fieldKey="company-phone"
-                        placeholder="Phone Number"
-                        className="block"
-                      />
-                      <EditableField
-                        value={invoiceData.companyInfo?.email}
-                        onUpdate={(value) => updateCompanyInfo('email', value)}
-                        fieldKey="company-email"
-                        placeholder="Email Address"
-                        className="block"
-                      />
-                      <EditableField
-                        value={invoiceData.companyInfo?.vatNumber}
-                        onUpdate={(value) => updateCompanyInfo('vatNumber', value)}
-                        fieldKey="company-vat"
-                        placeholder="VAT Number"
-                        className="block font-semibold"
-                      />
+                    )}
+                    <div className="text-xs text-slate-600 space-y-0.5">
+                      {invoiceData.companyInfo?.addressLine1 && (
+                        <div>{invoiceData.companyInfo.addressLine1}</div>
+                      )}
+                      {invoiceData.companyInfo?.city && (
+                        <div>{invoiceData.companyInfo.city}</div>
+                      )}
+                      {(invoiceData.companyInfo?.county || invoiceData.companyInfo?.postcode) && (
+                        <div className="flex items-center space-x-1">
+                          {invoiceData.companyInfo?.county && (
+                            <span>{invoiceData.companyInfo.county}</span>
+                          )}
+                          {invoiceData.companyInfo?.postcode && (
+                            <span>{invoiceData.companyInfo.postcode}</span>
+                          )}
+                        </div>
+                      )}
+                      {invoiceData.companyInfo?.phone && (
+                        <div>{invoiceData.companyInfo.phone}</div>
+                      )}
+                      {invoiceData.companyInfo?.email && (
+                        <div>{invoiceData.companyInfo.email}</div>
+                      )}
+                      {invoiceData.companyInfo?.vatNumber && (
+                        <div className="font-semibold">{invoiceData.companyInfo.vatNumber}</div>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Two Column Layout for Invoice and Deliver To */}
-                <div className="grid grid-cols-2 gap-4 mt-8">
-                  {/* Invoice Details Section - Card Layout */}
-                  <Card className="shadow-lg border-slate-200">
-                    <CardHeader className="pb-6 pt-6">
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="w-5 h-5" />
-                        Invoice Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pb-6">
-                      {/* Invoice Details Table - 2 columns, 3 rows layout */}
-                      <div className="space-y-4">
-                        {/* Row 1 */}
-                        <div className="grid grid-cols-2 gap-x-6">
-                          <div className="flex flex-col">
-                            <span className="text-slate-600 text-xs font-medium mb-1">Invoice Number</span>
-                            <EditableField
-                              value={invoiceData.invoiceNumber}
-                              onUpdate={(value) => updateInvoiceData('invoiceNumber', value)}
-                              fieldKey="invoice-number"
-                              placeholder="INV-001"
-                              className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border"
-                            />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-slate-600 text-xs font-medium mb-1">Invoice Title</span>
-                            <EditableField
-                              value={invoiceData.invoiceTitle || 'INVOICE'}
-                              onUpdate={(value) => updateInvoiceData('invoiceTitle', value)}
-                              fieldKey="invoice-title"
-                              placeholder="INVOICE"
-                              className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border"
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Row 2 */}
-                        <div className="grid grid-cols-2 gap-x-6">
-                          <div className="flex flex-col">
-                            <span className="text-slate-600 text-xs font-medium mb-1">Invoice Type</span>
-                            <div className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border">
-                              {invoiceData.invoiceType === 'purchase' ? 'Purchase Invoice' : 'Standard Invoice'}
-                            </div>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-slate-600 text-xs font-medium mb-1">Invoice Date</span>
-                            <EditableField
-                              value={invoiceData.invoiceDate}
-                              onUpdate={(value) => updateInvoiceData('invoiceDate', value)}
-                              fieldKey="invoice-date"
-                              type="date"
-                              displayValue={new Date(invoiceData.invoiceDate).toLocaleDateString()}
-                              className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border"
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Row 3 */}
-                        <div className="grid grid-cols-2 gap-x-6">
-                          <div className="flex flex-col">
-                            <span className="text-slate-600 text-xs font-medium mb-1">Due Date</span>
-                            <EditableField
-                              value={invoiceData.dueDate}
-                              onUpdate={(value) => updateInvoiceData('dueDate', value)}
-                              fieldKey="due-date"
-                              type="date"
-                              displayValue={new Date(invoiceData.dueDate).toLocaleDateString()}
-                              className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border"
-                            />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-slate-600 text-xs font-medium mb-1">Payment Terms</span>
-                            <div className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border">
-                              30 Days
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                  {/* Deliver To Section */}
+                  {/* Invoice To Section */}
                   <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                     <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
-                      {invoiceData.recipientType === 'customer' ? 'Deliver To' : 
-                       invoiceData.recipientType === 'business' ? 'Business Recipient' : 
-                       'Invoice To Self'}
+                      Invoice To
                     </h3>
                     <div className="space-y-1 text-sm">
                       {invoiceData.recipientType === 'customer' ? (
                         <>
-                          <div className="flex space-x-2">
-                            <EditableField
-                              value={(invoiceData.customer as Customer)?.firstName}
-                              onUpdate={(value) => updateCustomerInfo('firstName', value)}
-                              fieldKey="customer-firstName"
-                              placeholder="First Name"
-                              className="flex-1 font-semibold"
-                            />
-                            <EditableField
-                              value={(invoiceData.customer as Customer)?.lastName}
-                              onUpdate={(value) => updateCustomerInfo('lastName', value)}
-                              fieldKey="customer-lastName"
-                              placeholder="Last Name"
-                              className="flex-1 font-semibold"
-                            />
-                          </div>
+                          {((invoiceData.customer as Customer)?.firstName || (invoiceData.customer as Customer)?.lastName) && (
+                            <div className="font-semibold text-slate-800">
+                              {(invoiceData.customer as Customer)?.firstName} {(invoiceData.customer as Customer)?.lastName}
+                            </div>
+                          )}
                         </>
                       ) : invoiceData.recipientType === 'business' ? (
                         <>
-                          <EditableField
-                            value={(invoiceData.customer as Business)?.businessName}
-                            onUpdate={(value) => updateCustomerInfo('businessName', value)}
-                            fieldKey="business-name"
-                            placeholder="Business Name"
-                            className="font-semibold"
-                          />
-                          <div className="flex space-x-2">
-                            <EditableField
-                              value={(invoiceData.customer as Business)?.vatNumber}
-                              onUpdate={(value) => updateCustomerInfo('vatNumber', value)}
-                              fieldKey="business-vat"
-                              placeholder="VAT Number"
-                              className="flex-1 text-slate-600"
-                            />
-                            <EditableField
-                              value={(invoiceData.customer as Business)?.companyNumber}
-                              onUpdate={(value) => updateCustomerInfo('companyNumber', value)}
-                              fieldKey="business-company"
-                              placeholder="Company Number"
-                              className="flex-1 text-slate-600"
-                            />
-                          </div>
+                          {(invoiceData.customer as Business)?.businessName && (
+                            <div className="font-semibold text-slate-800">
+                              {(invoiceData.customer as Business)?.businessName}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div className="text-sm text-slate-600">
                           Invoice recipient is the same as company information above.
                         </div>
                       )}
-                      
-                      {/* Common address fields for customer and business */}
-                      {invoiceData.recipientType !== 'myself' && (
-                        <>
-                          <EditableField
-                            value={invoiceData.customer?.addressLine1}
-                            onUpdate={(value) => updateCustomerInfo('addressLine1', value)}
-                            fieldKey="customer-address1"
-                            placeholder="Address Line 1"
-                            className="text-slate-600"
-                          />
-                          <div className="flex space-x-2">
-                            <EditableField
-                              value={invoiceData.customer?.city}
-                              onUpdate={(value) => updateCustomerInfo('city', value)}
-                              fieldKey="customer-city"
-                              placeholder="City"
-                              className="flex-1 text-slate-600"
-                            />
-                            <EditableField
-                              value={invoiceData.customer?.postcode}
-                              onUpdate={(value) => updateCustomerInfo('postcode', value)}
-                              fieldKey="customer-postcode"
-                              placeholder="Postcode"
-                              className="w-20 font-semibold text-slate-600"
-                            />
+
+                      {/* Address and contact fields for customer and business */}
+                      <div className="space-y-1 text-slate-600 text-xs">
+                        {invoiceData.customer?.addressLine1 && (
+                          <div>{invoiceData.customer.addressLine1}</div>
+                        )}
+                        {(invoiceData.customer?.city || invoiceData.customer?.postcode) && (
+                          <div>
+                            {invoiceData.customer?.city}{invoiceData.customer?.city && invoiceData.customer?.postcode ? ', ' : ''}{invoiceData.customer?.postcode}
                           </div>
-                        </>
-                      )}
-                      
-                      {/* Delivery Address Section */}
-                      <div className="mt-3 pt-3 border-t border-slate-200">
-                        <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Delivery Address</div>
-                        <EditableField
-                          value={invoiceData.deliveryAddress?.addressLine1}
-                          onUpdate={(value) => updateDeliveryAddress('addressLine1', value)}
-                          fieldKey="delivery-address1"
-                          placeholder="Delivery Address Line 1"
-                          className="text-slate-600"
-                        />
-                        <EditableField
-                          value={invoiceData.deliveryAddress?.addressLine2}
-                          onUpdate={(value) => updateDeliveryAddress('addressLine2', value)}
-                          fieldKey="delivery-address2"
-                          placeholder="Address Line 2 (optional)"
-                          className="text-slate-600"
-                        />
-                        <div className="flex space-x-2">
-                          <EditableField
-                            value={invoiceData.deliveryAddress?.city}
-                            onUpdate={(value) => updateDeliveryAddress('city', value)}
-                            fieldKey="delivery-city"
-                            placeholder="City"
-                            className="flex-1 text-slate-600"
-                          />
-                          <EditableField
-                            value={invoiceData.deliveryAddress?.postcode}
-                            onUpdate={(value) => updateDeliveryAddress('postcode', value)}
-                            fieldKey="delivery-postcode"
-                            placeholder="Postcode"
-                            className="w-24 text-slate-600"
-                          />
-                        </div>
-                        <EditableField
-                          value={invoiceData.deliveryAddress?.county}
-                          onUpdate={(value) => updateDeliveryAddress('county', value)}
-                          fieldKey="delivery-county"
-                          placeholder="County"
-                          className="text-slate-600"
-                        />
-                        <EditableField
-                          value={invoiceData.deliveryAddress?.country}
-                          onUpdate={(value) => updateDeliveryAddress('country', value)}
-                          fieldKey="delivery-country"
-                          placeholder="Country"
-                          className="text-slate-600"
-                        />
+                        )}
+                        {invoiceData.customer?.email && (
+                          <div className="text-xs">Email: {invoiceData.customer.email}</div>
+                        )}
+                        {invoiceData.customer?.phone && (
+                          <div className="text-xs">Phone: {invoiceData.customer.phone}</div>
+                        )}
+                        {(invoiceData.customer as Business)?.companyNumber && (
+                          <div className="text-slate-600 text-xs">
+                            Company No: {(invoiceData.customer as Business)?.companyNumber}
+                          </div>
+                        )}
+                        {(invoiceData.customer as Business)?.vatNumber && (
+                          <div className="text-slate-600 text-xs">
+                            VAT: {(invoiceData.customer as Business)?.vatNumber}
+                          </div>
+                        )}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Deliver To Section */}
+                  <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                    <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
+                      Deliver To
+                    </h3>
+                    <div className="space-y-1 text-sm">
+                      {invoiceData.deliverToType === 'customer' ? (
+                        <>
+                          {((invoiceData.deliverToData as Customer)?.firstName || (invoiceData.deliverToData as Customer)?.lastName) && (
+                            <div className="font-semibold text-slate-800">
+                              {(invoiceData.deliverToData as Customer)?.firstName} {(invoiceData.deliverToData as Customer)?.lastName}
+                            </div>
+                          )}
+                        </>
+                      ) : invoiceData.deliverToType === 'business' ? (
+                        <>
+                          {(invoiceData.deliverToData as Business)?.businessName && (
+                            <div className="font-semibold text-slate-800">
+                              {(invoiceData.deliverToData as Business)?.businessName}
+                            </div>
+                          )}
+
+
+                        </>
+                      ) : (
+                        <div className="text-sm text-slate-600">
+                          Invoice recipient is the same as company information above.
+                        </div>
+                      )}
+
+                      {/* Address fields for customer and business */}
+                      <div className="space-y-1 text-slate-600 text-xs">
+                        {invoiceData.deliverToData?.addressLine1 && (
+                          <div>{invoiceData.deliverToData.addressLine1}</div>
+                        )}
+                        {(invoiceData.deliverToData?.city || invoiceData.deliverToData?.postcode) && (
+                          <div>
+                            {invoiceData.deliverToData?.city}{invoiceData.deliverToData?.city && invoiceData.deliverToData?.postcode ? ', ' : ''}{invoiceData.deliverToData?.postcode}
+                          </div>
+                        )}
+                        {invoiceData.deliverToData?.email && (
+                          <div className="text-xs">Email: {invoiceData.deliverToData.email}</div>
+                        )}
+                        {invoiceData.deliverToData?.phone && (
+                          <div className="text-xs">Phone: {invoiceData.deliverToData.phone}</div>
+                        )}
+                        {(invoiceData.deliverToData as Business)?.companyNumber && (
+                          <div className="text-slate-600 text-xs">
+                            Company No: {(invoiceData.deliverToData as Business)?.companyNumber}
+                          </div>
+                        )}
+                        {(invoiceData.deliverToData as Business)?.vatNumber && (
+                          <div className="text-slate-600 text-xs">
+                            VAT: {(invoiceData.deliverToData as Business)?.vatNumber}
+                          </div>
+                        )}
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -1419,44 +1304,74 @@ export default function InvoicePreviewPage() {
                       PURCHASE INVOICE
                     </h1>
                   </div>
-                  
-                  {/* Invoice Details Box - Matching PDF */}
-                  <div className="bg-slate-50 p-3 mb-3 text-left">
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-slate-600">PO #</span>
-                        <span className="font-bold text-slate-800">{invoiceData.invoiceNumber.replace('INV-', '')}</span>
+
+                  {/* Invoice Details Section - Card Layout */}
+                  <Card className="shadow-lg border-slate-200 w-1/2 ml-auto mb-4">
+                    <CardHeader className="pt-6">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Invoice Details
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pb-6">
+                      {/* Invoice Details Table - 2 columns, 3 rows layout */}
+                      <div className="space-y-4">
+                        {/* Row 1 */}
+                        <div className="flex flex-col">
+                          <span className="text-slate-600 text-xs font-medium mb-1 mr-auto">PO #</span>
+                          <EditableField
+                            value={invoiceData.invoiceNumber}
+                            onUpdate={(value) => updateInvoiceData('invoiceNumber', value)}
+                            fieldKey="invoice-number"
+                            placeholder="INV-001"
+                            className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border"
+                          />
+                        </div>
+
+                        {/* Row 2 */}
+                        <div className="flex flex-col">
+                          <span className="text-slate-600 text-xs font-medium mb-1 mr-auto">Invoice Date</span>
+                          <EditableField
+                            value={invoiceData.invoiceDate}
+                            onUpdate={(value) => updateInvoiceData('invoiceDate', value)}
+                            fieldKey="invoice-date"
+                            type="date"
+                            displayValue={new Date(invoiceData.invoiceDate).toLocaleDateString()}
+                            className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border"
+                          />
+                        </div>
+
+                        {/* Row 3 */}
+                        <div className="flex flex-col">
+                          <span className="text-slate-600 text-xs font-medium mb-1 mr-auto">Due Date</span>
+                          <EditableField
+                            value={invoiceData.dueDate}
+                            onUpdate={(value) => updateInvoiceData('dueDate', value)}
+                            fieldKey="due-date"
+                            type="date"
+                            displayValue={new Date(invoiceData.dueDate).toLocaleDateString()}
+                            className="font-semibold text-slate-900 bg-slate-50 px-2 py-1 rounded border"
+                          />
+                        </div>
+
                       </div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-slate-600">Stock No.</span>
-                        <span className="font-bold text-slate-800">235</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-slate-600">Date:</span>
-                        <span className="font-bold text-slate-800">{new Date(invoiceData.invoiceDate).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-slate-600">Prepared by:</span>
-                        <span className="font-bold text-slate-800">{invoiceData.companyInfo?.companyName}</span>
-                      </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
+
 
                   {/* Purchase From Section - Matching PDF */}
                   <div className="bg-slate-50 p-3 text-right">
                     <h3 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
-                      {invoiceData.recipientType === 'customer' ? 'PURCHASE FROM' : 
-                       invoiceData.recipientType === 'business' ? 'BUSINESS' : 
-                       'COMPANY INVOICE'}
+                      PURCHASE FROM
                     </h3>
                     <div className="text-xs font-semibold text-slate-800 mb-1">
-                      {invoiceData.recipientType === 'customer' ? (
+                      {invoiceData.purchaseFromType === 'customer' ? (
                         <>
-                          {(invoiceData.customer as Customer)?.firstName} {(invoiceData.customer as Customer)?.lastName}
+                          {(invoiceData.purchaseFromData as Customer)?.firstName} {(invoiceData.purchaseFromData as Customer)?.lastName}
                         </>
-                      ) : invoiceData.recipientType === 'business' ? (
+                      ) : invoiceData.purchaseFromType === 'business' ? (
                         <>
-                          {(invoiceData.customer as Business)?.businessName}
+                          {(invoiceData.purchaseFromData as Business)?.businessName}
                         </>
                       ) : (
                         <>
@@ -1465,10 +1380,19 @@ export default function InvoicePreviewPage() {
                       )}
                     </div>
                     <div className="text-xs text-slate-600 space-y-0.5">
-                      <div>{invoiceData.customer?.addressLine1}</div>
+                      <div>{invoiceData.purchaseFromData?.addressLine1}</div>
                       <div>
-                        {invoiceData.customer?.city}, {invoiceData.customer?.postcode}
+                        {invoiceData.purchaseFromData?.city}, {invoiceData.purchaseFromData?.postcode}
                       </div>
+                      {invoiceData.purchaseFromData?.email && (
+                        <div className="text-xs">Email: {invoiceData.purchaseFromData.email}</div>
+                      )}
+                      {invoiceData.purchaseFromData?.phone && (
+                        <div className="text-xs">Phone: {invoiceData.purchaseFromData.phone}</div>
+                      )}
+                      {(invoiceData.purchaseFromType === 'business' || invoiceData.purchaseFromType === 'myself') && (invoiceData.purchaseFromData as Business)?.vatNumber && (
+                        <div className="text-xs">VAT: {(invoiceData.purchaseFromData as Business).vatNumber}</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1483,7 +1407,7 @@ export default function InvoicePreviewPage() {
                 </h2>
                 <div className="w-12 h-0.5 bg-slate-600"></div>
               </div>
-              
+
               <div className="bg-white border border-slate-200 overflow-hidden rounded-md">
                 {/* Row 1: Reg No, MOT Expiry, Variant */}
                 <div className="grid grid-cols-1 md:grid-cols-3 border-b border-slate-200">
@@ -1499,10 +1423,23 @@ export default function InvoicePreviewPage() {
                       />
                     </div>
                   </div>
-                  <div className="p-3 border-r border-slate-200">
+                  {/* TODO: fix the mapping */}
+                  {/* <div className="p-3 border-r border-slate-200">
                     <div className="flex items-start gap-1">
                       <span className="text-xs font-bold text-slate-500">MOT Expiry</span>
                       <span className="text-xs font-bold text-slate-800">03/09/2025</span>
+                    </div>
+                  </div> */}
+                  <div className="p-3 border-r border-slate-200">
+                    <div className="flex items-start gap-1">
+                      <span className="text-xs font-bold text-slate-500">Chassis/VIN No.</span>
+                      <EditableField
+                        value={invoiceData.vehicle?.vin}
+                        onUpdate={(value) => updateVehicleInfo('vin', value)}
+                        fieldKey="vehicle-vin"
+                        placeholder="VF12RFA1H49406992"
+                        className="text-xs font-bold text-slate-800"
+                      />
                     </div>
                   </div>
                   <div className="p-3">
@@ -1524,7 +1461,13 @@ export default function InvoicePreviewPage() {
                   <div className="p-3 border-r border-slate-200">
                     <div className="flex items-start gap-1">
                       <span className="text-xs font-bold text-slate-500">First Registered</span>
-                      <span className="text-xs font-bold text-slate-800">03/09/2022</span>
+                      <EditableField
+                        value={invoiceData.vehicle?.firstRegistrationDate ? formatDate(invoiceData.vehicle?.firstRegistrationDate) : ''}
+                        onUpdate={(value) => updateVehicleInfo('firstRegistrationDate', value)}
+                        fieldKey="vehicle-firstRegistrationDate"
+                        placeholder="First Registered Date"
+                        className="text-xs font-bold text-slate-800 flex-1"
+                      />
                     </div>
                   </div>
                   <div className="p-3 border-r border-slate-200">
@@ -1580,7 +1523,8 @@ export default function InvoicePreviewPage() {
                       />
                     </div>
                   </div>
-                  <div className="p-3">
+                  {/* TOOD: fix the mapping */}
+                  {/* <div className="p-3">
                     <div className="flex items-start gap-1">
                       <span className="text-xs font-bold text-slate-500">Ext. Colour</span>
                       <EditableField
@@ -1588,6 +1532,19 @@ export default function InvoicePreviewPage() {
                         onUpdate={(value) => updateVehicleInfo('colour', value)}
                         fieldKey="vehicle-colour"
                         placeholder="Colour"
+                        className="text-xs font-bold text-slate-800"
+                      />
+                    </div>
+                  </div> */}
+
+                  <div className="p-3">
+                    <div className="flex items-start gap-1">
+                      <span className="text-xs font-bold text-slate-500">Type</span>
+                      <EditableField
+                        value={invoiceData.vehicle?.ownershipCondition}
+                        onUpdate={(value) => updateVehicleInfo('ownershipCondition', value)}
+                        fieldKey="vehicle-ownershipCondition"
+                        placeholder="Ownership Condition"
                         className="text-xs font-bold text-slate-800"
                       />
                     </div>
@@ -1599,13 +1556,25 @@ export default function InvoicePreviewPage() {
                   <div className="p-3 border-r border-slate-200">
                     <div className="flex items-start gap-1">
                       <span className="text-xs font-bold text-slate-500">Body Type</span>
-                      <span className="text-xs font-bold text-slate-800">Saloon</span>
+                      <EditableField
+                        value={invoiceData.vehicle?.bodyType}
+                        onUpdate={(value) => updateVehicleInfo('bodyType', value)}
+                        fieldKey="body-type"
+                        placeholder="Body Type"
+                        className="text-xs font-bold text-slate-800"
+                      />
                     </div>
                   </div>
                   <div className="p-3 border-r border-slate-200">
                     <div className="flex items-start gap-1">
                       <span className="text-xs font-bold text-slate-500">Transmission</span>
-                      <span className="text-xs font-bold text-slate-800">AUTO 7 GEARS</span>
+                      <EditableField
+                        value={invoiceData.vehicle?.transmissionType}
+                        onUpdate={(value) => updateVehicleInfo('transmissionType', value)}
+                        fieldKey="transmission-type"
+                        placeholder="Transmission Type"
+                        className="text-xs font-bold text-slate-800"
+                      />
                     </div>
                   </div>
                   <div className="p-3">
@@ -1629,35 +1598,13 @@ export default function InvoicePreviewPage() {
                   <div className="p-3 border-r border-slate-200">
                     <div className="flex items-start gap-1">
                       <span className="text-xs font-bold text-slate-500">Engine No.</span>
-                      <span className="text-xs font-bold text-slate-800">DNFB108955</span>
-                    </div>
-                  </div>
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Chassis/VIN No.</span>
                       <EditableField
-                        value={invoiceData.vehicle?.vin}
-                        onUpdate={(value) => updateVehicleInfo('vin', value)}
-                        fieldKey="vehicle-vin"
-                        placeholder="VF12RFA1H49406992"
+                        value={invoiceData.vehicle?.engineNumber}
+                        onUpdate={(value) => updateVehicleInfo('engineNumber', value)}
+                        fieldKey="engine-number"
+                        placeholder="Engine Number"
                         className="text-xs font-bold text-slate-800"
                       />
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Stock No.</span>
-                      <span className="text-xs font-bold text-slate-800">235</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 6: Type */}
-                <div className="grid grid-cols-1">
-                  <div className="p-3">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Type</span>
-                      <span className="text-xs font-bold text-slate-800">Used</span>
                     </div>
                   </div>
                 </div>
@@ -1700,7 +1647,7 @@ export default function InvoicePreviewPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white border border-slate-200 overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-slate-50">
@@ -1708,13 +1655,9 @@ export default function InvoicePreviewPage() {
                       <th className="px-4 py-3 text-left text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Description</th>
                       <th className="px-4 py-3 text-center w-16 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Qty</th>
                       <th className="px-4 py-3 text-right w-24 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Unit Price</th>
-                      {invoiceData.discountMode === 'individual' && (
-                        <th className="px-4 py-3 text-center w-20 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Discount %</th>
-                      )}
-                      {invoiceData.vatMode === 'individual' && (
-                        <th className="px-4 py-3 text-center w-16 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>VAT %</th>
-                      )}
-                      <th className="px-4 py-3 text-right w-24 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Total</th>
+                      <th className="px-4 py-3 text-center w-16 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>VAT %</th>
+                      <th className="px-4 py-3 text-right w-20 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>VAT Amount</th>
+                      <th className="px-4 py-3 text-right w-24 text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Total (Inc VAT)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1728,12 +1671,12 @@ export default function InvoicePreviewPage() {
                               onBlur={() => setEditingField(null)}
                               onKeyDown={(e) => e.key === 'Enter' && setEditingField(null)}
                               autoFocus
-                              className="border-blue-300"
+                              className="border-blue-300 !uppercase"
                             />
                           ) : (
                             <div
                               onClick={() => setEditingField(`description-${index}`)}
-                              className="cursor-pointer hover:bg-blue-50 p-2 rounded min-h-[2rem] flex items-center"
+                              className="cursor-pointer hover:bg-blue-50 p-2 rounded min-h-[2rem] flex items-center !uppercase"
                             >
                               {item.description || 'Click to edit description'}
                             </div>
@@ -1806,87 +1749,40 @@ export default function InvoicePreviewPage() {
                             )}
                           </td>
                         )}
-                        {invoiceData.vatMode === 'individual' && (
-                          <td className="px-4 py-3 text-center">
-                            {editingField === `vatRate-${index}` ? (
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={item.vatRate === 0 ? '' : item.vatRate}
-                                onChange={(e) => updateItem(index, 'vatRate', parseFloat(e.target.value) || 0)}
-                                onBlur={() => setEditingField(null)}
-                                onKeyDown={(e) => e.key === 'Enter' && setEditingField(null)}
-                                autoFocus
-                                className="border-blue-300 text-center"
-                                placeholder="20"
-                              />
-                            ) : (
-                              <div
-                                onClick={() => setEditingField(`vatRate-${index}`)}
-                                className="cursor-pointer hover:bg-blue-50 p-2 rounded min-h-[2rem] flex items-center justify-center"
-                              >
-                                {(Number(item.vatRate) || 0).toFixed(1)}%
-                              </div>
-                            )}
-                          </td>
-                        )}
+                        <td className="px-4 py-3 text-center">
+                          {editingField === `vatRate-${index}` ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={item.vatRate === 0 ? '' : item.vatRate}
+                              onChange={(e) => updateItem(index, 'vatRate', parseFloat(e.target.value) || 0)}
+                              onBlur={() => setEditingField(null)}
+                              onKeyDown={(e) => e.key === 'Enter' && setEditingField(null)}
+                              autoFocus
+                              className="border-blue-300 text-center"
+                              placeholder="20"
+                            />
+                          ) : (
+                            <div
+                              onClick={() => setEditingField(`vatRate-${index}`)}
+                              className="cursor-pointer hover:bg-blue-50 p-2 rounded min-h-[2rem] flex items-center justify-center"
+                            >
+                              {(Number(item.vatRate) || 0).toFixed(1)}%
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="text-right font-medium text-slate-700">
+                            £{(Number(item.vatAmount) || 0).toFixed(2)}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-right font-medium">
                           <div className="text-right">
-                            {(() => {
-                              // Calculate discount amounts for better logic
-                              const originalPrice = (Number(item.quantity) || 1) * (Number(item.unitPrice) || 0);
-                              const individualDiscountAmount = Number(item.discountAmount) || 0;
-                              const globalDiscountAmount = invoiceData.discountMode === 'global' && invoiceData.totalDiscount && invoiceData.totalDiscount > 0 
-                                ? originalPrice * (invoiceData.globalDiscountType === 'percentage' 
-                                    ? (Number(invoiceData.globalDiscountValue) || 0) / 100
-                                    : (Number(invoiceData.totalDiscount) || 0) / (Number(invoiceData.subtotal) || 1))
-                                : 0;
-                              
-                              const hasIndividualDiscount = invoiceData.discountMode === 'individual' && individualDiscountAmount > 0.01;
-                              const hasGlobalDiscount = invoiceData.discountMode === 'global' && globalDiscountAmount > 0.01;
-                              const hasAnyDiscount = hasIndividualDiscount || hasGlobalDiscount;
-                              
-                              return (
-                                <>
-                                  {/* Show original price only if there's a meaningful discount */}
-                                  {hasAnyDiscount && (
-                                    <div className="text-xs text-red-600 line-through">
-                                      £{originalPrice.toFixed(2)}
-                                    </div>
-                                  )}
-                                  
-                                  <div className="font-medium">
-                                    £{(Number(item.total) || 0).toFixed(2)}
-                                    {invoiceData.vatMode === 'individual' && item.vatAmount && item.vatAmount > 0 && (
-                                      <span className="text-xs text-gray-500 block">
-                                        +VAT: £{(Number(item.vatAmount) || 0).toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Show discount savings only if meaningful */}
-                                  {hasIndividualDiscount && (
-                                    <div className="text-xs text-green-600">
-                                      Saved: £{individualDiscountAmount.toFixed(2)}
-                                    </div>
-                                  )}
-                                  
-                                  {hasGlobalDiscount && (
-                                    <div className="text-xs text-green-600">
-                                      Discount: -£{globalDiscountAmount.toFixed(2)}
-                                    </div>
-                                  )}
-                                  
-                                  {invoiceData.vatMode === 'individual' && item.vatAmount && item.vatAmount > 0 && (
-                                    <div className="text-xs font-semibold text-blue-600">
-                                      Total: £{(Number(item.totalWithVat) || 0).toFixed(2)}
-                                    </div>
-                                  )}
-                                </>
-                              );
-                            })()}
-                            
+                            <div className="font-medium text-slate-900">
+                              £{(Number(item.totalWithVat) || 0).toFixed(2)}
+                            </div>
+
                             {/* Small remove icon */}
                             {invoiceData.items.length > 1 && (
                               <button
@@ -1921,28 +1817,28 @@ export default function InvoicePreviewPage() {
                         <span className="text-xs font-semibold text-slate-600" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Subtotal:</span>
                         <span className="text-xs font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>£{(Number(invoiceData.subtotal) || 0).toFixed(2)}</span>
                       </div>
-                      {(invoiceData.totalDiscount && invoiceData.totalDiscount > 0) && (
+                      {(invoiceData.totalDiscount && invoiceData.totalDiscount > 0) ? (
                         <div className="flex justify-between py-2 text-red-600 border-b border-slate-200">
                           <span className="font-semibold" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
-                            Discount {invoiceData.discountMode === 'global' 
-                              ? `(${invoiceData.globalDiscountType === 'percentage' 
-                                  ? `${invoiceData.globalDiscountValue}%` 
-                                  : `£${invoiceData.globalDiscountValue}`})` 
+                            Discount {invoiceData.discountMode === 'global'
+                              ? `(${invoiceData.globalDiscountType === 'percentage'
+                                ? `${invoiceData.globalDiscountValue}%`
+                                : `£${invoiceData.globalDiscountValue}`})`
                               : '(Item-wise)'}:
                           </span>
                           <span className="font-bold" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>-£{(Number(invoiceData.totalDiscount) || 0).toFixed(2)}</span>
                         </div>
-                      )}
-                      {(invoiceData.totalDiscount && invoiceData.totalDiscount > 0) && (
+                      ) : null}
+                      {(invoiceData.totalDiscount && invoiceData.totalDiscount > 0) ? (
                         <div className="flex justify-between py-2 border-b border-slate-200">
                           <span className="font-semibold text-slate-700" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>Subtotal after discount:</span>
                           <span className="font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>£{(Number(invoiceData.subtotalAfterDiscount) || 0).toFixed(2)}</span>
                         </div>
-                      )}
+                      ) : null}
                       <div className="flex justify-between items-center py-2 border-b border-slate-200">
                         <div className="flex items-center space-x-2">
                           <span className="font-semibold text-slate-700" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>VAT</span>
-                          {invoiceData.vatMode === 'global' && (
+                          {/* {invoiceData.vatMode === 'global' && (
                             <>
                               <span className="text-slate-600">(</span>
                               <EditableField
@@ -1955,10 +1851,10 @@ export default function InvoicePreviewPage() {
                               />
                               <span className="text-slate-600">%):</span>
                             </>
-                          )}
-                          {invoiceData.vatMode === 'individual' && (
+                          )} */}
+                          {/* {invoiceData.vatMode === 'individual' && (
                             <span className="text-slate-600">(Individual):</span>
-                          )}
+                          )} */}
                         </div>
                         <span className="font-bold text-slate-800" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>£{(Number(invoiceData.vatAmount) || 0).toFixed(2)}</span>
                       </div>
@@ -1992,8 +1888,8 @@ export default function InvoicePreviewPage() {
                             <div className="flex justify-between font-semibold">
                               <span>Outstanding Balance:</span>
                               <span className={
-                                (invoiceData.total - (invoiceData.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)) > 0 
-                                  ? 'text-red-600' 
+                                (invoiceData.total - (invoiceData.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)) > 0
+                                  ? 'text-red-600'
                                   : 'text-green-600'
                               }>
                                 £{Math.max(0, invoiceData.total - (invoiceData.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)).toFixed(2)}
@@ -2066,7 +1962,7 @@ export default function InvoicePreviewPage() {
                           </div>
                         ))}
                       </div>
-                      
+
                       {/* Add Payment Button */}
                       <Button
                         variant="outline"
@@ -2076,7 +1972,7 @@ export default function InvoicePreviewPage() {
                         <Plus className="h-4 w-4 mr-2" />
                         Add Payment
                       </Button>
-                      
+
                       {/* Payment Summary */}
                       {(invoiceData.payments || []).length > 0 && (
                         <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
@@ -2175,7 +2071,7 @@ export default function InvoicePreviewPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       <Footer />
     </div>
   );

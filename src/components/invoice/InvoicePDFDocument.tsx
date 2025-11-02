@@ -488,7 +488,8 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
   };
 
   const formatCurrency = (amount: number) => {
-    return `£${(amount || 0).toFixed(2)}`;
+    // return `£${(amount || 0).toFixed(2)}`;
+    return `£${(amount || 0)}`;
   };
 
   // Support both server-mapped parties (deliverTo/purchaseFrom) and client preview fields (deliverToData/purchaseFromData)
@@ -760,87 +761,60 @@ const InvoicePDFDocument: React.FC<InvoicePDFDocumentProps> = ({ invoiceData }) 
           <View style={styles.table}>
             {/* Table Header */}
             <View style={styles.tableRow}>
-              <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColHeaderDescriptionSmall : styles.tableColHeaderDescription}>
+              <View style={styles.tableColHeaderDescriptionSmall}>
                 <Text style={styles.tableCellHeader}>Description</Text>
               </View>
-              <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColHeaderSmall : styles.tableColHeader}>
+              <View style={styles.tableColHeaderSmall}>
                 <Text style={styles.tableCellHeader}>Qty</Text>
               </View>
-              <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColHeaderSmall : styles.tableColHeader}>
+              <View style={styles.tableColHeaderSmall}>
                 <Text style={styles.tableCellHeader}>Unit Price</Text>
               </View>
-              {invoiceData.discountMode === 'individual' && (
-                <View style={styles.tableColHeaderSmall}>
-                  <Text style={styles.tableCellHeader}>Discount %</Text>
-                </View>
-              )}
-              {invoiceData.vatMode === 'individual' && (
-                <View style={styles.tableColHeaderSmall}>
-                  <Text style={styles.tableCellHeader}>VAT %</Text>
-                </View>
-              )}
-              <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColHeaderSmall : styles.tableColHeader}>
-                <Text style={styles.tableCellHeader}>Total</Text>
+              <View style={styles.tableColHeaderSmall}>
+                <Text style={styles.tableCellHeader}>VAT %</Text>
+              </View>
+              <View style={styles.tableColHeaderSmall}>
+                <Text style={styles.tableCellHeader}>VAT Amount</Text>
+              </View>
+              <View style={styles.tableColHeaderSmall}>
+                <Text style={styles.tableCellHeader}>Total (Inc VAT)</Text>
               </View>
             </View>
             
             {/* Table Rows */}
-            {invoiceData.items.map((item, index) => (
-              <View style={styles.tableRow} key={index}>
-                <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColDescriptionSmall : styles.tableColDescription}>
-                  <Text style={styles.tableCell}>{item.description}</Text>
-                </View>
-                <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColSmall : styles.tableCol}>
-                  <Text style={styles.tableCellCenter}>{item.quantity}</Text>
-                </View>
-                <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColSmall : styles.tableCol}>
-                  <Text style={styles.tableCellRight}>{formatCurrency(item.unitPrice)}</Text>
-                </View>
-                {invoiceData.discountMode === 'individual' && (
+            {invoiceData.items.map((item, index) => {
+              const vatAmount = (item.total * (Number(item.vatRate) || 0)) / 100;
+              const totalWithVat = item.total + vatAmount;
+              
+              return (
+                <View style={styles.tableRow} key={index}>
+                  <View style={styles.tableColDescriptionSmall}>
+                    <Text style={styles.tableCell}>{item.description}</Text>
+                  </View>
+                  <View style={styles.tableColSmall}>
+                    <Text style={styles.tableCellCenter}>{item.quantity}</Text>
+                  </View>
+                  <View style={styles.tableColSmall}>
+                    <Text style={styles.tableCellRight}>{formatCurrency(item.unitPrice)}</Text>
+                  </View>
                   <View style={styles.tableColSmall}>
                     <Text style={styles.tableCellCenter}>
-                      {item.discount ? `${item.discount.toFixed(1)}%` : '0.0%'}
+                      {(Number(item.vatRate) || 0).toFixed(1)}%
                     </Text>
                   </View>
-                )}
-                {invoiceData.vatMode === 'individual' && (
                   <View style={styles.tableColSmall}>
-                    <Text style={styles.tableCellCenter}>
-                      {item.vatRate ? `${item.vatRate.toFixed(1)}%` : '0.0%'}
+                    <Text style={styles.tableCellRight}>
+                      {formatCurrency(vatAmount)}
                     </Text>
                   </View>
-                )}
-                <View style={(invoiceData.vatMode === 'individual' || invoiceData.discountMode === 'individual') ? styles.tableColSmall : styles.tableCol}>
-                  <Text style={styles.tableCellRight}>
-                    {formatCurrency(item.total)}
-                    {/* Individual discount breakdown */}
-                    {invoiceData.discountMode === 'individual' && item.discountAmount && item.discountAmount > 0 && (
-                      <Text style={styles.vatSubtext}>
-                        {"\n"}Discount: -{formatCurrency(item.discountAmount)}
-                      </Text>
-                    )}
-                    {/* Global discount breakdown per item */}
-                    {invoiceData.discountMode === 'global' && invoiceData.totalDiscount && invoiceData.totalDiscount > 0 && (
-                      <Text style={styles.vatSubtext}>
-                        {"\n"}Discount: -{formatCurrency(
-                          (item.quantity * item.unitPrice) * 
-                          (invoiceData.globalDiscountType === 'percentage' 
-                            ? (invoiceData.globalDiscountValue || 0) / 100
-                            : (invoiceData.totalDiscount || 0) / (invoiceData.subtotal || 1)
-                          )
-                        )}
-                      </Text>
-                    )}
-                    {invoiceData.vatMode === 'individual' && item.vatAmount && item.vatAmount > 0 && (
-                      <Text style={styles.vatSubtext}>
-                        {"\n"}+VAT: {formatCurrency(item.vatAmount)}
-                        {"\n"}Total: {formatCurrency(item.totalWithVat || 0)}
-                      </Text>
-                    )}
-                  </Text>
+                  <View style={styles.tableColSmall}>
+                    <Text style={styles.tableCellRight}>
+                      {formatCurrency(totalWithVat)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 

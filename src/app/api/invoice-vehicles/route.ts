@@ -41,15 +41,19 @@ export async function GET(request: NextRequest) {
         forecourtPriceGBP: stockCache.forecourtPriceGBP,
         lifecycleState: stockCache.lifecycleState,
         ownershipCondition: stockCache.ownershipCondition,
+        vehicleData: stockCache.vehicleData as any,
+        dvlaDataRaw: stockCache.dvlaDataRaw as any,
+        motExpiryDate: stockCache.motExpiryDate,
         // Note: extendedData field might not exist in current schema
       })
       .from(stockCache)
       .where(eq(stockCache.dealerId, dealerId!))
       .orderBy(desc(stockCache.lastFetchedFromAutoTrader));
 
+      // TODO: fix color mapping from dvla and mot date
+
     // Process vehicles to format data
     const processedVehicles = vehicles.map(vehicle => {
-      let colour = null;
       
       // Color information would need to be extracted from other sources
       // as extendedData field is not available in current schema
@@ -67,10 +71,14 @@ export async function GET(request: NextRequest) {
         mileage: vehicle.odometerReadingMiles || null,
         odometerReadingMiles: vehicle.odometerReadingMiles || null,
         vin: vehicle.vin || '',
-        colour: colour,
+        colour: vehicle.dvlaDataRaw?.colour || '',
+        motExpiry: vehicle.motExpiryDate || '',
         price: vehicle.forecourtPriceGBP || null,
         lifecycleState: vehicle.lifecycleState || '',
         ownershipCondition: vehicle.ownershipCondition || '',
+        firstRegistrationDate: vehicle.vehicleData?.firstRegistrationDate || null,
+        transmissionType: vehicle.vehicleData?.transmissionType || null,
+        engineNumber: vehicle.vehicleData?.engineNumber || null,
         // Create a display name for the dropdown
         displayName: `${vehicle.registration || 'No Reg'} - ${vehicle.make} ${vehicle.model} ${vehicle.derivative || ''}`.trim(),
       };
