@@ -153,6 +153,10 @@ interface InvoicePreviewData {
   invoiceTitle?: string; // Make invoice title editable
   invoiceType?: 'purchase' | 'standard'; // Invoice type
   recipientType?: 'customer' | 'business' | 'myself'; // Recipient type
+  deliverTo?: 'customer' | 'business' | 'myself'; // Deliver to type (for purchase invoices)
+  purchaseFrom?: 'customer' | 'business' | 'myself'; // Purchase from type (for purchase invoices)
+  deliverToType?: 'customer' | 'business' | 'myself'; // Deliver to type
+  purchaseFromType?: 'customer' | 'business' | 'myself'; // Purchase from type
   items: InvoiceItem[];
   subtotal: number;
   vatRate: number; // Global VAT rate (used when vatMode is 'global')
@@ -171,13 +175,17 @@ interface InvoicePreviewData {
   paidAmount?: number; // Calculated paid amount
   outstandingBalance?: number; // Remaining balance
   payments?: PaymentEntry[]; // Multiple payment entries
-  deliveryAddress?: DeliveryAddress; // Delivery address for purchase orders
+  deliveryAddress?: DeliveryAddress; // Delivery address for purchase orders (legacy)
+  deliveryAddressDeliverTo?: DeliveryAddress; // Delivery address for deliver to
+  deliveryAddressPurchaseFrom?: DeliveryAddress; // Delivery address for purchase from
   notes: string;
   terms: string;
   paymentInstructions: string;
   companyInfo: CompanyInfo | null;
   vehicle: Vehicle | null;
   customer: Customer | Business | null; // This can now hold customer or business data
+  deliverToData?: Customer | Business | null; // Deliver to customer or business data
+  purchaseFromData?: Customer | Business | null; // Purchase from customer or business data
 }
 
 export default function InvoicePreviewPage() {
@@ -601,11 +609,17 @@ export default function InvoicePreviewPage() {
     if (!invoiceData) return;
 
     try {
-      // Prepare customer data based on recipient type
+      // Prepare recipient data based on recipient type
       let customerName = '';
       let customerEmail = '';
       let customerPhone = '';
       let customerAddress = null;
+      let businessName = '';
+      let businessEmail = '';
+      let businessPhone = '';
+      let businessAddress = null;
+      let businessVatNumber = '';
+      let businessCompanyNumber = '';
 
       if (invoiceData.recipientType === 'customer') {
         const customer = invoiceData.customer as Customer;
@@ -624,10 +638,12 @@ export default function InvoicePreviewPage() {
         } : null;
       } else if (invoiceData.recipientType === 'business') {
         const business = invoiceData.customer as Business;
-        customerName = business?.businessName || '';
-        customerEmail = business?.email || '';
-        customerPhone = business?.phone || '';
-        customerAddress = business ? {
+        businessName = business?.businessName || '';
+        businessEmail = business?.email || '';
+        businessPhone = business?.phone || '';
+        businessVatNumber = business?.vatNumber || '';
+        businessCompanyNumber = business?.companyNumber || '';
+        businessAddress = business ? {
           addressLine1: business.addressLine1,
           addressLine2: business.addressLine2,
           city: business.city,
@@ -636,10 +652,12 @@ export default function InvoicePreviewPage() {
           country: business.country
         } : null;
       } else if (invoiceData.recipientType === 'myself') {
-        customerName = invoiceData.companyInfo?.companyName || '';
-        customerEmail = invoiceData.companyInfo?.email || '';
-        customerPhone = invoiceData.companyInfo?.phone || '';
-        customerAddress = invoiceData.companyInfo ? {
+        businessName = invoiceData.companyInfo?.companyName || '';
+        businessEmail = invoiceData.companyInfo?.email || '';
+        businessPhone = invoiceData.companyInfo?.phone || '';
+        businessVatNumber = invoiceData.companyInfo?.vatNumber || '';
+        businessCompanyNumber = invoiceData.companyInfo?.companyNumber || '';
+        businessAddress = invoiceData.companyInfo ? {
           addressLine1: invoiceData.companyInfo.addressLine1,
           addressLine2: invoiceData.companyInfo.addressLine2,
           city: invoiceData.companyInfo.city,
@@ -649,16 +667,178 @@ export default function InvoicePreviewPage() {
         } : null;
       }
 
+      // Prepare deliver to data
+      let deliverToType = null;
+      let deliverToCustomerName = '';
+      let deliverToCustomerEmail = '';
+      let deliverToCustomerPhone = '';
+      let deliverToCustomerAddress = null;
+      let deliverToBusinessName = '';
+      let deliverToBusinessEmail = '';
+      let deliverToBusinessPhone = '';
+      let deliverToBusinessAddress = null;
+      let deliverToBusinessVatNumber = '';
+      let deliverToBusinessCompanyNumber = '';
+
+      if (invoiceData.invoiceType === 'purchase' && invoiceData.deliverToType) {
+        deliverToType = invoiceData.deliverToType;
+        
+        if (invoiceData.deliverToType === 'customer') {
+          const customer = invoiceData.deliverToData as Customer;
+          if (customer?.firstName && customer?.lastName) {
+            deliverToCustomerName = `${customer.firstName} ${customer.lastName}`.trim();
+          }
+          deliverToCustomerEmail = customer?.email || '';
+          deliverToCustomerPhone = customer?.phone || '';
+          deliverToCustomerAddress = customer ? {
+            addressLine1: customer.addressLine1,
+            addressLine2: customer.addressLine2,
+            city: customer.city,
+            county: customer.county,
+            postcode: customer.postcode,
+            country: customer.country
+          } : invoiceData.deliveryAddressDeliverTo;
+        } else if (invoiceData.deliverToType === 'business') {
+          const business = invoiceData.deliverToData as Business;
+          deliverToBusinessName = business?.businessName || '';
+          deliverToBusinessEmail = business?.email || '';
+          deliverToBusinessPhone = business?.phone || '';
+          deliverToBusinessVatNumber = business?.vatNumber || '';
+          deliverToBusinessCompanyNumber = business?.companyNumber || '';
+          deliverToBusinessAddress = business ? {
+            addressLine1: business.addressLine1,
+            addressLine2: business.addressLine2,
+            city: business.city,
+            county: business.county,
+            postcode: business.postcode,
+            country: business.country
+          } : invoiceData.deliveryAddressDeliverTo;
+        } else if (invoiceData.deliverToType === 'myself') {
+          deliverToBusinessName = invoiceData.companyInfo?.companyName || '';
+          deliverToBusinessEmail = invoiceData.companyInfo?.email || '';
+          deliverToBusinessPhone = invoiceData.companyInfo?.phone || '';
+          deliverToBusinessVatNumber = invoiceData.companyInfo?.vatNumber || '';
+          deliverToBusinessCompanyNumber = invoiceData.companyInfo?.companyNumber || '';
+          deliverToBusinessAddress = invoiceData.companyInfo ? {
+            addressLine1: invoiceData.companyInfo.addressLine1,
+            addressLine2: invoiceData.companyInfo.addressLine2,
+            city: invoiceData.companyInfo.city,
+            county: invoiceData.companyInfo.county,
+            postcode: invoiceData.companyInfo.postcode,
+            country: invoiceData.companyInfo.country
+          } : null;
+        }
+      }
+
+      // Prepare purchase from data
+      let purchaseFromType = null;
+      let purchaseFromCustomerName = '';
+      let purchaseFromCustomerEmail = '';
+      let purchaseFromCustomerPhone = '';
+      let purchaseFromCustomerAddress = null;
+      let purchaseFromBusinessName = '';
+      let purchaseFromBusinessEmail = '';
+      let purchaseFromBusinessPhone = '';
+      let purchaseFromBusinessAddress = null;
+      let purchaseFromBusinessVatNumber = '';
+      let purchaseFromBusinessCompanyNumber = '';
+
+      if (invoiceData.invoiceType === 'purchase' && invoiceData.purchaseFromType) {
+        purchaseFromType = invoiceData.purchaseFromType;
+        
+        if (invoiceData.purchaseFromType === 'customer') {
+          const customer = invoiceData.purchaseFromData as Customer;
+          if (customer?.firstName && customer?.lastName) {
+            purchaseFromCustomerName = `${customer.firstName} ${customer.lastName}`.trim();
+          }
+          purchaseFromCustomerEmail = customer?.email || '';
+          purchaseFromCustomerPhone = customer?.phone || '';
+          purchaseFromCustomerAddress = customer ? {
+            addressLine1: customer.addressLine1,
+            addressLine2: customer.addressLine2,
+            city: customer.city,
+            county: customer.county,
+            postcode: customer.postcode,
+            country: customer.country
+          } : invoiceData.deliveryAddressPurchaseFrom;
+        } else if (invoiceData.purchaseFromType === 'business') {
+          const business = invoiceData.purchaseFromData as Business;
+          purchaseFromBusinessName = business?.businessName || '';
+          purchaseFromBusinessEmail = business?.email || '';
+          purchaseFromBusinessPhone = business?.phone || '';
+          purchaseFromBusinessVatNumber = business?.vatNumber || '';
+          purchaseFromBusinessCompanyNumber = business?.companyNumber || '';
+          purchaseFromBusinessAddress = business ? {
+            addressLine1: business.addressLine1,
+            addressLine2: business.addressLine2,
+            city: business.city,
+            county: business.county,
+            postcode: business.postcode,
+            country: business.country
+          } : invoiceData.deliveryAddressPurchaseFrom;
+        } else if (invoiceData.purchaseFromType === 'myself') {
+          purchaseFromBusinessName = invoiceData.companyInfo?.companyName || '';
+          purchaseFromBusinessEmail = invoiceData.companyInfo?.email || '';
+          purchaseFromBusinessPhone = invoiceData.companyInfo?.phone || '';
+          purchaseFromBusinessVatNumber = invoiceData.companyInfo?.vatNumber || '';
+          purchaseFromBusinessCompanyNumber = invoiceData.companyInfo?.companyNumber || '';
+          purchaseFromBusinessAddress = invoiceData.companyInfo ? {
+            addressLine1: invoiceData.companyInfo.addressLine1,
+            addressLine2: invoiceData.companyInfo.addressLine2,
+            city: invoiceData.companyInfo.city,
+            county: invoiceData.companyInfo.county,
+            postcode: invoiceData.companyInfo.postcode,
+            country: invoiceData.companyInfo.country
+          } : null;
+        }
+      }
+
       const saveData = {
         invoiceNumber: invoiceData.invoiceNumber,
         invoiceDate: invoiceData.invoiceDate,
         dueDate: invoiceData.dueDate,
         invoiceTitle: invoiceData.invoiceTitle || 'INVOICE',
         invoiceType: invoiceData.invoiceType || 'standard',
+        
+        // Recipient information
+        recipientType: invoiceData.recipientType,
         customerName,
         customerEmail,
         customerPhone,
         customerAddress,
+        businessName,
+        businessEmail,
+        businessPhone,
+        businessAddress,
+        businessVatNumber,
+        businessCompanyNumber,
+        
+        // Deliver to information
+        deliverToType,
+        deliverToCustomerName,
+        deliverToCustomerEmail,
+        deliverToCustomerPhone,
+        deliverToCustomerAddress,
+        deliverToBusinessName,
+        deliverToBusinessEmail,
+        deliverToBusinessPhone,
+        deliverToBusinessAddress,
+        deliverToBusinessVatNumber,
+        deliverToBusinessCompanyNumber,
+        
+        // Purchase from information
+        purchaseFromType,
+        purchaseFromCustomerName,
+        purchaseFromCustomerEmail,
+        purchaseFromCustomerPhone,
+        purchaseFromCustomerAddress,
+        purchaseFromBusinessName,
+        purchaseFromBusinessEmail,
+        purchaseFromBusinessPhone,
+        purchaseFromBusinessAddress,
+        purchaseFromBusinessVatNumber,
+        purchaseFromBusinessCompanyNumber,
+        
         companyInfo: invoiceData.companyInfo,
         vehicleInfo: invoiceData.vehicle,
         deliveryAddress: invoiceData.deliveryAddress,

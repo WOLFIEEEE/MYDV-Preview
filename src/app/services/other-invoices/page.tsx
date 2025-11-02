@@ -34,7 +34,7 @@ export default function OtherInvoicesPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<CustomInvoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch invoices

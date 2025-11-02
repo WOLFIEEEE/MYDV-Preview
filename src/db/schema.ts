@@ -2610,11 +2610,46 @@ export const customInvoices = pgTable("custom_invoices", {
   invoiceTitle: varchar("invoice_title", { length: 255 }).default('INVOICE'),
   invoiceType: varchar("invoice_type", { length: 50 }).default('standard').notNull(),
   
-  // Customer Information
+  // Recipient Information (invoice to)
+  recipientType: varchar("recipient_type", { length: 20 }).default('customer'), // 'customer' | 'business' | 'myself'
   customerName: varchar("customer_name", { length: 255 }),
   customerEmail: varchar("customer_email", { length: 255 }),
   customerPhone: varchar("customer_phone", { length: 50 }),
   customerAddress: jsonb("customer_address"),
+  
+  // Business Recipient Information (when recipientType is 'business')
+  businessName: varchar("business_name", { length: 255 }),
+  businessEmail: varchar("business_email", { length: 255 }),
+  businessPhone: varchar("business_phone", { length: 50 }),
+  businessAddress: jsonb("business_address"),
+  businessVatNumber: varchar("business_vat_number", { length: 50 }),
+  businessCompanyNumber: varchar("business_company_number", { length: 50 }),
+  
+  // Deliver To Information (for purchase invoices)
+  deliverToType: varchar("deliver_to_type", { length: 20 }), // 'customer' | 'business' | 'myself'
+  deliverToCustomerName: varchar("deliver_to_customer_name", { length: 255 }),
+  deliverToCustomerEmail: varchar("deliver_to_customer_email", { length: 255 }),
+  deliverToCustomerPhone: varchar("deliver_to_customer_phone", { length: 50 }),
+  deliverToCustomerAddress: jsonb("deliver_to_customer_address"),
+  deliverToBusinessName: varchar("deliver_to_business_name", { length: 255 }),
+  deliverToBusinessEmail: varchar("deliver_to_business_email", { length: 255 }),
+  deliverToBusinessPhone: varchar("deliver_to_business_phone", { length: 50 }),
+  deliverToBusinessAddress: jsonb("deliver_to_business_address"),
+  deliverToBusinessVatNumber: varchar("deliver_to_business_vat_number", { length: 50 }),
+  deliverToBusinessCompanyNumber: varchar("deliver_to_business_company_number", { length: 50 }),
+  
+  // Purchase From Information (for purchase invoices)
+  purchaseFromType: varchar("purchase_from_type", { length: 20 }), // 'customer' | 'business' | 'myself'
+  purchaseFromCustomerName: varchar("purchase_from_customer_name", { length: 255 }),
+  purchaseFromCustomerEmail: varchar("purchase_from_customer_email", { length: 255 }),
+  purchaseFromCustomerPhone: varchar("purchase_from_customer_phone", { length: 50 }),
+  purchaseFromCustomerAddress: jsonb("purchase_from_customer_address"),
+  purchaseFromBusinessName: varchar("purchase_from_business_name", { length: 255 }),
+  purchaseFromBusinessEmail: varchar("purchase_from_business_email", { length: 255 }),
+  purchaseFromBusinessPhone: varchar("purchase_from_business_phone", { length: 50 }),
+  purchaseFromBusinessAddress: jsonb("purchase_from_business_address"),
+  purchaseFromBusinessVatNumber: varchar("purchase_from_business_vat_number", { length: 50 }),
+  purchaseFromBusinessCompanyNumber: varchar("purchase_from_business_company_number", { length: 50 }),
   
   // Company Information (can override default)
   companyInfo: jsonb("company_info"),
@@ -2622,7 +2657,7 @@ export const customInvoices = pgTable("custom_invoices", {
   // Vehicle Information (optional)
   vehicleInfo: jsonb("vehicle_info"),
   
-  // Delivery Address (for purchase invoices)
+  // Delivery Address (for purchase invoices - legacy field, keeping for backward compatibility)
   deliveryAddress: jsonb("delivery_address"),
   
   // Invoice Items

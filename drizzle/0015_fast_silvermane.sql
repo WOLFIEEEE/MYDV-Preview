@@ -1,0 +1,29 @@
+ALTER TABLE "custom_invoices" ADD COLUMN "recipient_type" varchar(20) DEFAULT 'customer';--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "business_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "business_email" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "business_phone" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "business_address" jsonb;--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "business_vat_number" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "business_company_number" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_type" varchar(20);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_customer_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_customer_email" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_customer_phone" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_customer_address" jsonb;--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_business_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_business_email" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_business_phone" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_business_address" jsonb;--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_business_vat_number" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "deliver_to_business_company_number" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_type" varchar(20);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_customer_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_customer_email" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_customer_phone" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_customer_address" jsonb;--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_business_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_business_email" varchar(255);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_business_phone" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_business_address" jsonb;--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_business_vat_number" varchar(50);--> statement-breakpoint
+ALTER TABLE "custom_invoices" ADD COLUMN "purchase_from_business_company_number" varchar(50);

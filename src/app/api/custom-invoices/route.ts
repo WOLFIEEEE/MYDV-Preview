@@ -124,10 +124,48 @@ export async function POST(request: NextRequest) {
         dueDate: body.dueDate,
         invoiceTitle: body.invoiceTitle || 'INVOICE',
         invoiceType: body.invoiceType || 'standard',
+        
+        // Recipient information
+        recipientType: body.recipientType || 'customer',
         customerName: body.customerName,
         customerEmail: body.customerEmail,
         customerPhone: body.customerPhone,
         customerAddress: body.customerAddress,
+        
+        // Business recipient information
+        businessName: body.businessName,
+        businessEmail: body.businessEmail,
+        businessPhone: body.businessPhone,
+        businessAddress: body.businessAddress,
+        businessVatNumber: body.businessVatNumber,
+        businessCompanyNumber: body.businessCompanyNumber,
+        
+        // Deliver to information
+        deliverToType: body.deliverToType,
+        deliverToCustomerName: body.deliverToCustomerName,
+        deliverToCustomerEmail: body.deliverToCustomerEmail,
+        deliverToCustomerPhone: body.deliverToCustomerPhone,
+        deliverToCustomerAddress: body.deliverToCustomerAddress,
+        deliverToBusinessName: body.deliverToBusinessName,
+        deliverToBusinessEmail: body.deliverToBusinessEmail,
+        deliverToBusinessPhone: body.deliverToBusinessPhone,
+        deliverToBusinessAddress: body.deliverToBusinessAddress,
+        deliverToBusinessVatNumber: body.deliverToBusinessVatNumber,
+        deliverToBusinessCompanyNumber: body.deliverToBusinessCompanyNumber,
+        
+        // Purchase from information
+        purchaseFromType: body.purchaseFromType,
+        purchaseFromCustomerName: body.purchaseFromCustomerName,
+        purchaseFromCustomerEmail: body.purchaseFromCustomerEmail,
+        purchaseFromCustomerPhone: body.purchaseFromCustomerPhone,
+        purchaseFromCustomerAddress: body.purchaseFromCustomerAddress,
+        purchaseFromBusinessName: body.purchaseFromBusinessName,
+        purchaseFromBusinessEmail: body.purchaseFromBusinessEmail,
+        purchaseFromBusinessPhone: body.purchaseFromBusinessPhone,
+        purchaseFromBusinessAddress: body.purchaseFromBusinessAddress,
+        purchaseFromBusinessVatNumber: body.purchaseFromBusinessVatNumber,
+        purchaseFromBusinessCompanyNumber: body.purchaseFromBusinessCompanyNumber,
+        
         companyInfo: body.companyInfo,
         vehicleInfo: body.vehicleInfo,
         deliveryAddress: body.deliveryAddress,
