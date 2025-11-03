@@ -1331,7 +1331,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="standard">Standard Invoice</SelectItem>
-                            <SelectItem value="purchase">Purchase Invoice (with delivery)</SelectItem>
+                            <SelectItem value="purchase">Purchase Invoice</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

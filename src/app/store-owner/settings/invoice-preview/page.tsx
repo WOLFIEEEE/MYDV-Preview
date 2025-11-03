@@ -933,7 +933,8 @@ export default function InvoicePreviewPage() {
 
   const goBack = () => {
     sessionStorage.removeItem('invoicePreviewData');
-    router.push('/store-owner/settings?tab=invoice-generator');
+    router.push('/services/other-invoices');
+    // router.push('/store-owner/settings?tab=invoice-generator');
   };
 
   const formatDate = (dateString: string) => {
@@ -1063,7 +1064,7 @@ export default function InvoicePreviewPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <Button
+              {/* <Button
                 onClick={() => setShowPdfPreview(!showPdfPreview)}
                 variant="outline"
                 className="flex items-center space-x-2"
@@ -1071,7 +1072,7 @@ export default function InvoicePreviewPage() {
               >
                 <Eye className="h-4 w-4" />
                 <span>{showPdfPreview ? 'Hide PDF Preview' : 'Show PDF Preview'}</span>
-              </Button>
+              </Button> */}
               <Button
                 onClick={generateFinalPDF}
                 disabled={generatingPdf}
@@ -1304,7 +1305,8 @@ export default function InvoicePreviewPage() {
                 <div className="text-right w-full">
                   <div className="bg-white text-slate-800 p-4 mb-4">
                     <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
-                      PURCHASE INVOICE
+                      {invoiceData.invoiceTitle ||
+                      (invoiceData.invoiceType === 'purchase' ? 'PURCHASE' : '') + ' INVOICE'}
                     </h1>
                   </div>
 
@@ -1321,7 +1323,7 @@ export default function InvoicePreviewPage() {
                       <div className="space-y-4">
                         {/* Row 1 */}
                         <div className="flex flex-col">
-                          <span className="text-slate-600 text-xs font-medium mb-1 mr-auto">PO #</span>
+                          <span className="text-slate-600 text-xs font-medium mb-1 mr-auto">{invoiceData.invoiceType === 'purchase' ? 'PO' : 'Invoice'} #</span>
                           <EditableField
                             value={invoiceData.invoiceNumber}
                             onUpdate={(value) => updateInvoiceData('invoiceNumber', value)}

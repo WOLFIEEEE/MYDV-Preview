@@ -48,6 +48,7 @@ interface Customer {
 
 // Extended interface to support different recipient types
 interface ExtendedInvoiceData extends Omit<ComprehensiveInvoiceData, 'customer'> {
+  invoiceTitle?: string;
   recipientType?: 'customer' | 'business' | 'myself';
   customer: Customer | Business;
   // Optional parties for purchase invoices
@@ -746,14 +747,16 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
           <View style={styles.rightColumn}>
             <View style={styles.purchaseInvoiceHeader}>
               <Text style={styles.purchaseInvoiceTitle}>
-                {(invoiceData as any).invoiceType === 'purchase' ? 'PURCHASE INVOICE' : 'INVOICE'}
+                {/* {(invoiceData as any).invoiceType === 'purchase' ? 'PURCHASE INVOICE' : 'INVOICE'} */}
+                {invoiceData.invoiceTitle ||
+                      ((invoiceData as any).invoiceType === 'purchase' ? 'PURCHASE' : '') + ' INVOICE'}
               </Text>
             </View>
 
             {/* Consolidated Invoice Details Box */}
             <View style={styles.invoiceDetailsBox}>
               <View style={styles.invoiceDetailsRow}>
-                <Text style={styles.invoiceDetailsLabel}>PO #:</Text>
+                <Text style={styles.invoiceDetailsLabel}>{(invoiceData as any).invoiceType === 'purchase' ? 'PO' : 'Invoice'} #:</Text>
                 <Text style={styles.invoiceDetailsValue}>{invoiceData.invoiceNumber}</Text>
               </View>
               <View style={styles.invoiceDetailsRow}>
