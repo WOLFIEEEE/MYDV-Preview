@@ -217,7 +217,7 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): any 
     customer: createCustomerData(),
     
     // Vehicle Information
-    vehicle: {
+    vehicle: previewData?.vehicle ? {
       registration: previewData.vehicle?.registration || '',
       make: previewData.vehicle?.make || '',
       model: previewData.vehicle?.model || '',
@@ -232,7 +232,7 @@ function mapInvoicePreviewToComprehensive(previewData: InvoicePreviewData): any 
       colour: previewData.vehicle?.colour || '',
       fuelType: previewData.vehicle?.fuelType || '',
       transmissionType: previewData.vehicle?.transmissionType || '',
-    },
+    } : null,
     
     // Financial Information
     pricing: {
@@ -471,7 +471,6 @@ export async function POST(request: NextRequest) {
       saleType: comprehensiveData.saleType,
       invoiceType: comprehensiveData.invoiceType,
       customerName: comprehensiveData.customer?.firstName ? `${comprehensiveData.customer.firstName} ${comprehensiveData.customer.lastName}` : (comprehensiveData.customer?.businessName || ''),
-      vehicleReg: comprehensiveData.vehicle.registration,
       salePrice: comprehensiveData.pricing.salePrice,
       deliverTo: comprehensiveData.deliverTo?.businessName || `${comprehensiveData.deliverTo?.firstName || ''} ${comprehensiveData.deliverTo?.lastName || ''}`,
       purchaseFrom: comprehensiveData.purchaseFrom?.businessName || `${comprehensiveData.purchaseFrom?.firstName || ''} ${comprehensiveData.purchaseFrom?.lastName || ''}`,
@@ -489,7 +488,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Create filename
-    const filename = `${comprehensiveData.invoiceNumber}_${comprehensiveData.vehicle.registration || 'INVOICE'}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const filename = `${comprehensiveData.invoiceNumber}_${comprehensiveData?.vehicle?.registration || 'INVOICE'}_${new Date().toISOString().split('T')[0]}.pdf`;
 
     // Return PDF as response
     return new NextResponse(pdfBuffer as BodyInit, {

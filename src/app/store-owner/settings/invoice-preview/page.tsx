@@ -217,7 +217,7 @@ export default function InvoicePreviewPage() {
           },
           items: parsedData.items?.map((item: InvoiceItem) => ({
             ...item,
-            description: `${item.description || ''} - ${parsedData.vehicle?.registration || ''} - ${parsedData.vehicle?.derivative || ''}`,
+            description: `${item.description || ''}${parsedData.vehicle?.registration ? ` - ${parsedData.vehicle?.registration}`  : ''}${parsedData.vehicle?.derivative ? ` - ${parsedData.vehicle?.derivative}` : ''}`,
             quantity: item.quantity === 0 || item.quantity === '0' ? '' : (item.quantity || ''),
             unitPrice: item.unitPrice === 0 || item.unitPrice === '0' ? '' : (item.unitPrice || ''),
             discount: item.discount === 0 || item.discount === '0' ? '' : (item.discount || ''),
@@ -1235,7 +1235,8 @@ export default function InvoicePreviewPage() {
                   </div>
 
                   {/* Deliver To Section */}
-                  <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                  {invoiceData.invoiceType === 'purchase' && (
+                    <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                     <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
                       Deliver To
                     </h3>
@@ -1293,7 +1294,8 @@ export default function InvoicePreviewPage() {
                       </div>
 
                     </div>
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1361,257 +1363,261 @@ export default function InvoicePreviewPage() {
 
 
                   {/* Purchase From Section - Matching PDF */}
-                  <div className="bg-slate-50 p-3 text-right">
-                    <h3 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
-                      PURCHASE FROM
-                    </h3>
-                    <div className="text-xs font-semibold text-slate-800 mb-1">
-                      {invoiceData.purchaseFromType === 'customer' ? (
-                        <>
-                          {(invoiceData.purchaseFromData as Customer)?.firstName} {(invoiceData.purchaseFromData as Customer)?.lastName}
-                        </>
-                      ) : invoiceData.purchaseFromType === 'business' ? (
-                        <>
-                          {(invoiceData.purchaseFromData as Business)?.businessName}
-                        </>
-                      ) : (
-                        <>
-                          {invoiceData.companyInfo?.companyName}
-                        </>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-600 space-y-0.5">
-                      <div>{invoiceData.purchaseFromData?.addressLine1}</div>
-                      <div>
-                        {invoiceData.purchaseFromData?.city}, {invoiceData.purchaseFromData?.postcode}
+                  {invoiceData.invoiceType === 'purchase' && (
+                    <div className="bg-slate-50 p-3 text-right">
+                      <h3 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
+                        PURCHASE FROM
+                      </h3>
+                      <div className="text-xs font-semibold text-slate-800 mb-1">
+                        {invoiceData.purchaseFromType === 'customer' ? (
+                          <>
+                            {(invoiceData.purchaseFromData as Customer)?.firstName} {(invoiceData.purchaseFromData as Customer)?.lastName}
+                          </>
+                        ) : invoiceData.purchaseFromType === 'business' ? (
+                          <>
+                            {(invoiceData.purchaseFromData as Business)?.businessName}
+                          </>
+                        ) : (
+                          <>
+                            {invoiceData.companyInfo?.companyName}
+                          </>
+                        )}
                       </div>
-                      {invoiceData.purchaseFromData?.email && (
-                        <div className="text-xs">Email: {invoiceData.purchaseFromData.email}</div>
-                      )}
-                      {invoiceData.purchaseFromData?.phone && (
-                        <div className="text-xs">Phone: {invoiceData.purchaseFromData.phone}</div>
-                      )}
-                      {(invoiceData.purchaseFromType === 'business' || invoiceData.purchaseFromType === 'myself') && (invoiceData.purchaseFromData as Business)?.vatNumber && (
-                        <div className="text-xs">VAT: {(invoiceData.purchaseFromData as Business).vatNumber}</div>
-                      )}
+                      <div className="text-xs text-slate-600 space-y-0.5">
+                        <div>{invoiceData.purchaseFromData?.addressLine1}</div>
+                        <div>
+                          {invoiceData.purchaseFromData?.city}, {invoiceData.purchaseFromData?.postcode}
+                        </div>
+                        {invoiceData.purchaseFromData?.email && (
+                          <div className="text-xs">Email: {invoiceData.purchaseFromData.email}</div>
+                        )}
+                        {invoiceData.purchaseFromData?.phone && (
+                          <div className="text-xs">Phone: {invoiceData.purchaseFromData.phone}</div>
+                        )}
+                        {(invoiceData.purchaseFromType === 'business' || invoiceData.purchaseFromType === 'myself') && (invoiceData.purchaseFromData as Business)?.vatNumber && (
+                          <div className="text-xs">VAT: {(invoiceData.purchaseFromData as Business).vatNumber}</div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Full Width Vehicle Details Grid - Matching PDF Table Layout */}
-            <div className="p-6 lg:p-8 bg-white border-b border-slate-200">
-              <div className="mb-4">
-                <h2 className="text-base font-bold text-slate-800 mb-2 flex items-center" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
-                  Vehicle Details
-                </h2>
-                <div className="w-12 h-0.5 bg-slate-600"></div>
+            {invoiceData?.vehicle && (
+              <div className="p-6 lg:p-8 bg-white border-b border-slate-200">
+                <div className="mb-4">
+                  <h2 className="text-base font-bold text-slate-800 mb-2 flex items-center" style={{ fontFamily: '"Century Gothic", "CenturyGothic", "AppleGothic", sans-serif' }}>
+                    Vehicle Details
+                  </h2>
+                  <div className="w-12 h-0.5 bg-slate-600"></div>
+                </div>
+
+                <div className="bg-white border border-slate-200 overflow-hidden rounded-md">
+                  {/* Row 1: Reg No, MOT Expiry, Variant */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 border-b border-slate-200">
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Reg No.</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.registration}
+                          onUpdate={(value) => updateVehicleInfo('registration', value)}
+                          fieldKey="vehicle-registration"
+                          placeholder="Registration"
+                          className="text-xs font-bold text-slate-800 uppercase"
+                        />
+                      </div>
+                    </div>
+                    {/* TODO: fix the mapping */}
+                    {/* <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">MOT Expiry</span>
+                        <span className="text-xs font-bold text-slate-800">03/09/2025</span>
+                      </div>
+                    </div> */}
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Chassis/VIN No.</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.vin}
+                          onUpdate={(value) => updateVehicleInfo('vin', value)}
+                          fieldKey="vehicle-vin"
+                          placeholder="VF12RFA1H49406992"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Variant</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.derivative}
+                          onUpdate={(value) => updateVehicleInfo('derivative', value)}
+                          fieldKey="vehicle-derivative"
+                          placeholder="0.9 TCe ENERGY Dynamique MediaNav Euro 5 (s/s) 5dr"
+                          className="text-xs font-bold text-slate-800 flex-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 2: First Registered, Make, Model */}
+                  <div className="grid grid-cols-3 border-b border-slate-200">
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">First Registered</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.firstRegistrationDate ? formatDate(invoiceData.vehicle?.firstRegistrationDate) : ''}
+                          onUpdate={(value) => updateVehicleInfo('firstRegistrationDate', value)}
+                          fieldKey="vehicle-firstRegistrationDate"
+                          placeholder="First Registered Date"
+                          className="text-xs font-bold text-slate-800 flex-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Make</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.make}
+                          onUpdate={(value) => updateVehicleInfo('make', value)}
+                          fieldKey="vehicle-make"
+                          placeholder="Vehicle Make"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Model</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.model}
+                          onUpdate={(value) => updateVehicleInfo('model', value)}
+                          fieldKey="vehicle-model"
+                          placeholder="Vehicle Model"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Build Year, Fuel Type, Ext. Colour */}
+                  <div className="grid grid-cols-3 border-b border-slate-200">
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Build Year</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.year}
+                          onUpdate={(value) => updateVehicleInfo('year', value)}
+                          fieldKey="vehicle-year"
+                          type="number"
+                          placeholder="2022"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Fuel Type</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.fuelType}
+                          onUpdate={(value) => updateVehicleInfo('fuelType', value)}
+                          fieldKey="vehicle-fuel"
+                          placeholder="Fuel Type"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                    {/* TOOD: fix the mapping */}
+                    {/* <div className="p-3">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Ext. Colour</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.colour}
+                          onUpdate={(value) => updateVehicleInfo('colour', value)}
+                          fieldKey="vehicle-colour"
+                          placeholder="Colour"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div> */}
+
+                    <div className="p-3">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Type</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.ownershipCondition}
+                          onUpdate={(value) => updateVehicleInfo('ownershipCondition', value)}
+                          fieldKey="vehicle-ownershipCondition"
+                          placeholder="Ownership Condition"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Body Type, Transmission, Odometer */}
+                  <div className="grid grid-cols-3 border-b border-slate-200">
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Body Type</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.bodyType}
+                          onUpdate={(value) => updateVehicleInfo('bodyType', value)}
+                          fieldKey="body-type"
+                          placeholder="Body Type"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Transmission</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.transmissionType}
+                          onUpdate={(value) => updateVehicleInfo('transmissionType', value)}
+                          fieldKey="transmission-type"
+                          placeholder="Transmission Type"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Odometer</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.mileage}
+                          onUpdate={(value) => updateVehicleInfo('mileage', value)}
+                          fieldKey="vehicle-mileage"
+                          type="number"
+                          placeholder="40500"
+                          displayValue={invoiceData.vehicle?.mileage ? `${parseInt(String(invoiceData.vehicle.mileage)).toLocaleString()} MLS` : undefined}
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 5: Engine No., Chassis/VIN No., Stock No. */}
+                  <div className="grid grid-cols-3 border-b border-slate-200">
+                    <div className="p-3 border-r border-slate-200">
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs font-bold text-slate-500">Engine No.</span>
+                        <EditableField
+                          value={invoiceData.vehicle?.engineNumber}
+                          onUpdate={(value) => updateVehicleInfo('engineNumber', value)}
+                          fieldKey="engine-number"
+                          placeholder="Engine Number"
+                          className="text-xs font-bold text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
               </div>
-
-              <div className="bg-white border border-slate-200 overflow-hidden rounded-md">
-                {/* Row 1: Reg No, MOT Expiry, Variant */}
-                <div className="grid grid-cols-1 md:grid-cols-3 border-b border-slate-200">
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Reg No.</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.registration}
-                        onUpdate={(value) => updateVehicleInfo('registration', value)}
-                        fieldKey="vehicle-registration"
-                        placeholder="Registration"
-                        className="text-xs font-bold text-slate-800 uppercase"
-                      />
-                    </div>
-                  </div>
-                  {/* TODO: fix the mapping */}
-                  {/* <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">MOT Expiry</span>
-                      <span className="text-xs font-bold text-slate-800">03/09/2025</span>
-                    </div>
-                  </div> */}
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Chassis/VIN No.</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.vin}
-                        onUpdate={(value) => updateVehicleInfo('vin', value)}
-                        fieldKey="vehicle-vin"
-                        placeholder="VF12RFA1H49406992"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Variant</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.derivative}
-                        onUpdate={(value) => updateVehicleInfo('derivative', value)}
-                        fieldKey="vehicle-derivative"
-                        placeholder="0.9 TCe ENERGY Dynamique MediaNav Euro 5 (s/s) 5dr"
-                        className="text-xs font-bold text-slate-800 flex-1"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 2: First Registered, Make, Model */}
-                <div className="grid grid-cols-3 border-b border-slate-200">
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">First Registered</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.firstRegistrationDate ? formatDate(invoiceData.vehicle?.firstRegistrationDate) : ''}
-                        onUpdate={(value) => updateVehicleInfo('firstRegistrationDate', value)}
-                        fieldKey="vehicle-firstRegistrationDate"
-                        placeholder="First Registered Date"
-                        className="text-xs font-bold text-slate-800 flex-1"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Make</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.make}
-                        onUpdate={(value) => updateVehicleInfo('make', value)}
-                        fieldKey="vehicle-make"
-                        placeholder="Vehicle Make"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Model</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.model}
-                        onUpdate={(value) => updateVehicleInfo('model', value)}
-                        fieldKey="vehicle-model"
-                        placeholder="Vehicle Model"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 3: Build Year, Fuel Type, Ext. Colour */}
-                <div className="grid grid-cols-3 border-b border-slate-200">
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Build Year</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.year}
-                        onUpdate={(value) => updateVehicleInfo('year', value)}
-                        fieldKey="vehicle-year"
-                        type="number"
-                        placeholder="2022"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Fuel Type</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.fuelType}
-                        onUpdate={(value) => updateVehicleInfo('fuelType', value)}
-                        fieldKey="vehicle-fuel"
-                        placeholder="Fuel Type"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                  {/* TOOD: fix the mapping */}
-                  {/* <div className="p-3">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Ext. Colour</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.colour}
-                        onUpdate={(value) => updateVehicleInfo('colour', value)}
-                        fieldKey="vehicle-colour"
-                        placeholder="Colour"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div> */}
-
-                  <div className="p-3">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Type</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.ownershipCondition}
-                        onUpdate={(value) => updateVehicleInfo('ownershipCondition', value)}
-                        fieldKey="vehicle-ownershipCondition"
-                        placeholder="Ownership Condition"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 4: Body Type, Transmission, Odometer */}
-                <div className="grid grid-cols-3 border-b border-slate-200">
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Body Type</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.bodyType}
-                        onUpdate={(value) => updateVehicleInfo('bodyType', value)}
-                        fieldKey="body-type"
-                        placeholder="Body Type"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Transmission</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.transmissionType}
-                        onUpdate={(value) => updateVehicleInfo('transmissionType', value)}
-                        fieldKey="transmission-type"
-                        placeholder="Transmission Type"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Odometer</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.mileage}
-                        onUpdate={(value) => updateVehicleInfo('mileage', value)}
-                        fieldKey="vehicle-mileage"
-                        type="number"
-                        placeholder="40500"
-                        displayValue={invoiceData.vehicle?.mileage ? `${parseInt(String(invoiceData.vehicle.mileage)).toLocaleString()} MLS` : undefined}
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 5: Engine No., Chassis/VIN No., Stock No. */}
-                <div className="grid grid-cols-3 border-b border-slate-200">
-                  <div className="p-3 border-r border-slate-200">
-                    <div className="flex items-start gap-1">
-                      <span className="text-xs font-bold text-slate-500">Engine No.</span>
-                      <EditableField
-                        value={invoiceData.vehicle?.engineNumber}
-                        onUpdate={(value) => updateVehicleInfo('engineNumber', value)}
-                        fieldKey="engine-number"
-                        placeholder="Engine Number"
-                        className="text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
+            )}
 
             {/* Professional Items Table - Matching PDF */}
             <div className="p-6 lg:p-8">

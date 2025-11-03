@@ -681,8 +681,25 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
               </View>
             </View>
 
-            {/* Two Column Layout for Invoice To and Deliver To */}
+            {/* Two Column Layout for Invoice To and Deliver To OR Company Details and Invoice To for standard invoices */}
             <View style={styles.invoiceDeliverRow}>
+              {/* Company Details Section - only for standard invoices */}
+              {(invoiceData as any).invoiceType !== 'purchase' && (
+                <View style={styles.invoiceDeliverBox}>
+                  <Text style={styles.sectionTitle}>Company Details</Text>
+                  <Text style={styles.customerName}>{invoiceData.companyInfo.name}</Text>
+                  <View style={styles.customerAddress}>
+                    <Text>{invoiceData.companyInfo.address.street}</Text>
+                    <Text>{invoiceData.companyInfo.address.city} {invoiceData.companyInfo.address.postCode}</Text>
+                    {/* Contact information */}
+                    {invoiceData.companyInfo.contact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {invoiceData.companyInfo.contact.email}</Text>)}
+                    {invoiceData.companyInfo.contact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {invoiceData.companyInfo.contact.phone}</Text>)}
+                    {invoiceData.companyInfo.vatNumber && (<Text style={{ fontSize: 7, color: '#666666' }}>VAT: {invoiceData.companyInfo.vatNumber}</Text>)}
+                    {invoiceData.companyInfo.registrationNumber && (<Text style={{ fontSize: 7, color: '#666666' }}>Company No: {invoiceData.companyInfo.registrationNumber}</Text>)}
+                  </View>
+                </View>
+              )}
+
               {/* Invoice To Section */}
               <View style={styles.invoiceDeliverBox}>
                 <Text style={styles.sectionTitle}>Invoice To</Text>
@@ -693,18 +710,18 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
                   {/* Contact information for all recipient types */}
                   {recipientContact.email && (<Text style={{ fontSize: 7, color: '#666666' }}>Email: {recipientContact.email}</Text>)}
                   {recipientContact.phone && (<Text style={{ fontSize: 7, color: '#666666' }}>Phone: {recipientContact.phone}</Text>)}
+                  {/* VAT and Company Number for business/myself recipients */}
+                  {(invoiceData.recipientType === 'business' || invoiceData.recipientType === 'myself') && businessInfo && (
+                    <>
+                      {businessInfo.vatNumber && (
+                        <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {businessInfo.vatNumber}</Text>
+                      )}
+                      {businessInfo.companyNumber && (
+                        <Text style={{ fontSize: 7, color: '#666666' }}>Company No: {businessInfo.companyNumber}</Text>
+                      )}
+                    </>
+                  )}
                 </View>
-                {/* Additional business information */}
-                {(invoiceData.recipientType === 'business' || invoiceData.recipientType === 'myself') && businessInfo && (
-                  <View style={[styles.customerAddress, { marginTop: 4 }]}>
-                    {businessInfo.vatNumber && (
-                      <Text style={{ fontSize: 7, color: '#666666' }}>VAT: {businessInfo.vatNumber}</Text>
-                    )}
-                    {businessInfo.companyNumber && (
-                      <Text style={{ fontSize: 7, color: '#666666' }}>Company No: {businessInfo.companyNumber}</Text>
-                    )}
-                  </View>
-                )}
               </View>
 
               {/* Deliver To Section - only for purchase invoices */}
@@ -780,126 +797,128 @@ export default function ProfessionalInvoicePreviewPDF({ invoiceData }: Professio
         </View>
 
         {/* Full Width Vehicle Details Grid */}
-        <View style={styles.vehicleSection}>
-          <View style={styles.vehicleSectionHeader}>
-            <Text style={styles.vehicleTitle}>Vehicle Details</Text>
-            <View style={styles.vehicleTitleIcon} />
+        {invoiceData?.vehicle && (
+          <View style={styles.vehicleSection}>
+            <View style={styles.vehicleSectionHeader}>
+              <Text style={styles.vehicleTitle}>Vehicle Details</Text>
+              <View style={styles.vehicleTitleIcon} />
+            </View>
+
+            <View style={styles.vehicleTable}>
+              {/* First Row - 3 Columns */}
+              <View style={styles.vehicleTableRow}>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Reg No.</Text>
+                    <Text style={styles.vehicleTableValueHighlight}>{invoiceData.vehicle.registration}</Text>
+                  </View>
+                </View>
+                {/* <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>MOT Expiry</Text>
+                    <Text style={styles.vehicleTableValue}>03/09/2025</Text>
+                  </View>
+                </View> */}
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Chassis/VIN No.</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.vin || 'VF12RFA1H49406992'}</Text>
+                  </View>
+                </View>
+                <View style={styles.vehicleTableCellLast}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Variant</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.derivative || '0.9 TCe ENERGY Dynamique MediaNav Euro 5 (s/s) 5dr'}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Second Row - 3 Columns */}
+              <View style={styles.vehicleTableRow}>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>First Registered</Text>
+                    <Text style={styles.vehicleTableValue}>{formatDate(invoiceData.vehicle.firstRegDate) || '03/09/2022'}</Text>
+                  </View>
+                </View>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Make</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.make}</Text>
+                  </View>
+                </View>
+                <View style={styles.vehicleTableCellLast}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Model</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.model}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Third Row - 3 Columns */}
+              <View style={styles.vehicleTableRow}>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Build Year</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.firstRegDate ? new Date(invoiceData.vehicle.firstRegDate).getFullYear() : '2022'}</Text>
+                  </View>
+                </View>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Fuel Type</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.fuelType}</Text>
+                  </View>
+                </View>
+                {/* <View style={styles.vehicleTableCellLast}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Ext. Colour</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.colour || 'N/A'}</Text>
+                  </View>
+                </View> */}
+                <View style={styles.vehicleTableCellLast}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Type</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.ownershipCondition}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Fourth Row - 3 Columns */}
+              <View style={styles.vehicleTableRow}>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Body Type</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.bodyType}</Text>
+                  </View>
+                </View>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Transmission</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.transmissionType}</Text>
+                  </View>
+                </View>
+                <View style={styles.vehicleTableCellLast}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Odometer</Text>
+                    <Text style={styles.vehicleTableValue}>
+                      {invoiceData.vehicle.mileage ? `${parseInt(invoiceData.vehicle.mileage).toLocaleString()} MLS` : '40,500 MLS'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Fifth Row - 3 Columns */}
+              <View style={styles.vehicleTableRow}>
+                <View style={styles.vehicleTableCell}>
+                  <View style={styles.vehicleTableCellContent}>
+                    <Text style={styles.vehicleTableLabel}>Engine No.</Text>
+                    <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.engineNumber || 'DNFB108955'}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
           </View>
-
-          <View style={styles.vehicleTable}>
-            {/* First Row - 3 Columns */}
-            <View style={styles.vehicleTableRow}>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Reg No.</Text>
-                  <Text style={styles.vehicleTableValueHighlight}>{invoiceData.vehicle.registration}</Text>
-                </View>
-              </View>
-              {/* <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>MOT Expiry</Text>
-                  <Text style={styles.vehicleTableValue}>03/09/2025</Text>
-                </View>
-              </View> */}
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Chassis/VIN No.</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.vin || 'VF12RFA1H49406992'}</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleTableCellLast}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Variant</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.derivative || '0.9 TCe ENERGY Dynamique MediaNav Euro 5 (s/s) 5dr'}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Second Row - 3 Columns */}
-            <View style={styles.vehicleTableRow}>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>First Registered</Text>
-                  <Text style={styles.vehicleTableValue}>{formatDate(invoiceData.vehicle.firstRegDate) || '03/09/2022'}</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Make</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.make}</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleTableCellLast}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Model</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.model}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Third Row - 3 Columns */}
-            <View style={styles.vehicleTableRow}>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Build Year</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.firstRegDate ? new Date(invoiceData.vehicle.firstRegDate).getFullYear() : '2022'}</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Fuel Type</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.fuelType}</Text>
-                </View>
-              </View>
-              {/* <View style={styles.vehicleTableCellLast}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Ext. Colour</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.colour || 'N/A'}</Text>
-                </View>
-              </View> */}
-              <View style={styles.vehicleTableCellLast}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Type</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.ownershipCondition}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Fourth Row - 3 Columns */}
-            <View style={styles.vehicleTableRow}>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Body Type</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.bodyType}</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Transmission</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.transmissionType}</Text>
-                </View>
-              </View>
-              <View style={styles.vehicleTableCellLast}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Odometer</Text>
-                  <Text style={styles.vehicleTableValue}>
-                    {invoiceData.vehicle.mileage ? `${parseInt(invoiceData.vehicle.mileage).toLocaleString()} MLS` : '40,500 MLS'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Fifth Row - 3 Columns */}
-            <View style={styles.vehicleTableRow}>
-              <View style={styles.vehicleTableCell}>
-                <View style={styles.vehicleTableCellContent}>
-                  <Text style={styles.vehicleTableLabel}>Engine No.</Text>
-                  <Text style={styles.vehicleTableValue}>{invoiceData.vehicle.engineNumber || 'DNFB108955'}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
+        )}
 
         {/* Professional Items Table */}
         <View style={styles.itemsSection}>

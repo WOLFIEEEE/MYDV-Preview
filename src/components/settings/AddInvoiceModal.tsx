@@ -240,7 +240,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
   const [filteredCustomersPurchaseFrom, setFilteredCustomersPurchaseFrom] = useState<Customer[]>([]);
   const [filteredBusinessesPurchaseFrom, setFilteredBusinessesPurchaseFrom] = useState<Business[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [showVehicleInfo, setShowVehicleInfo] = useState(true); //TODO: use option to select vehicle only
+  const [showVehicleInfo, setShowVehicleInfo] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showBusinessForm, setShowBusinessForm] = useState(false);
 
@@ -318,7 +318,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
     globalDiscountAmount: 0,
 
     // VAT Settings
-    vatMode: 'global',
+    vatMode: 'individual',
     globalVatRate: 20,
 
     // Payment Settings
@@ -1084,7 +1084,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
         purchaseFromBusinessCompanyNumber,
         
         companyInfo,
-        vehicleInfo: (!showVehicleInfo || invoiceData.invoiceType === 'standard') ? null : useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
+        vehicleInfo: !showVehicleInfo ? null : useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
         deliveryAddress: invoiceData.deliveryAddress,
         items: invoiceData.items,
         subtotal: Number(invoiceData.subtotal) || 0,
@@ -1226,7 +1226,7 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
         terms: invoiceData.terms,
         paymentInstructions: invoiceData.paymentInstructions,
         companyInfo,
-        vehicle: (!showVehicleInfo || invoiceData.invoiceType === 'standard') ? null : useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
+        vehicle: !showVehicleInfo ? null : useVehicleDatabase ? invoiceData.selectedVehicle : invoiceData.customVehicle,
         customer: customerData,
         deliverToData,
         deliverToType: invoiceData.deliverTo,
@@ -1407,234 +1407,232 @@ export default function InvoiceGeneratorModal({ dealerId, isOpen, onClose }: Inv
               </div>
 
               {/* Vehicle Selection */}
-              {invoiceData.invoiceType === 'purchase' && (
-                <Card className="shadow-lg border-slate-200 dark:border-slate-700">
-                  <CardHeader className="pb-6 pt-6">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Car className="w-5 h-5" />
-                        Vehicle Information
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={useVehicleDatabase ? "default" : "secondary"}>
-                          {useVehicleDatabase ? "Database" : "Custom"}
-                        </Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setUseVehicleDatabase(!useVehicleDatabase)}
-                        >
-                          {useVehicleDatabase ? "Use Custom" : "Use Database"}
-                        </Button>
-                      </div>
+              <Card className="shadow-lg border-slate-200 dark:border-slate-700">
+                <CardHeader className="pb-6 pt-6">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Car className="w-5 h-5" />
+                      Vehicle Information
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={useVehicleDatabase ? "default" : "secondary"}>
+                        {useVehicleDatabase ? "Database" : "Custom"}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setUseVehicleDatabase(!useVehicleDatabase)}
+                      >
+                        {useVehicleDatabase ? "Use Custom" : "Use Database"}
+                      </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pb-6">
-                    {/* <div className="flex items-center space-x-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="includeVehicleInfo"
-                          checked={showVehicleInfo}
-                          onChange={(e) => setShowVehicleInfo(e.target.checked)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <Label htmlFor="includeVehicleInfo" className="text-sm font-medium cursor-pointer text-slate-900 dark:text-slate-100">
-                          Include Vehicle Information in Invoice
-                        </Label>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                          Add vehicle details and specifications to the invoice
-                        </p>
-                      </div>
-                    </div> */}
-                    {showVehicleInfo && (
-                      <div>
-                        {useVehicleDatabase ? (
-                          <div className="space-y-4">
-                            <div>
-                              <Label htmlFor="vehicleSearch">Search Vehicle from Inventory</Label>
-                              <div className="relative">
-                                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                                <Input
-                                  id="vehicleSearch"
-                                  placeholder="Search by registration, make, model, or derivative..."
-                                  value={vehicleSearchQuery}
-                                  onChange={(e) => setVehicleSearchQuery(e.target.value)}
-                                  className="pl-10"
-                                />
-                              </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4 pb-6">
+                  <div className="flex items-center space-x-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="includeVehicleInfo"
+                        checked={showVehicleInfo}
+                        onChange={(e) => setShowVehicleInfo(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor="includeVehicleInfo" className="text-sm font-medium cursor-pointer text-slate-900 dark:text-slate-100">
+                        Include Vehicle Information in Invoice
+                      </Label>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Add vehicle details and specifications to the invoice
+                      </p>
+                    </div>
+                  </div>
+                  {showVehicleInfo && (
+                    <div>
+                      {useVehicleDatabase ? (
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="vehicleSearch">Search Vehicle from Inventory</Label>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                              <Input
+                                id="vehicleSearch"
+                                placeholder="Search by registration, make, model, or derivative..."
+                                value={vehicleSearchQuery}
+                                onChange={(e) => setVehicleSearchQuery(e.target.value)}
+                                className="pl-10"
+                              />
                             </div>
+                          </div>
 
-                            {vehicleSearchQuery && (
-                              <div className="max-h-60 overflow-y-auto border rounded-lg">
-                                {filteredVehicles.length > 0 ? (
-                                  filteredVehicles.map((vehicle) => (
-                                    <div
-                                      key={vehicle.stockId}
-                                      onClick={() => {
-                                        handleVehicleSelect(vehicle.stockId);
-                                        setVehicleSearchQuery("");
-                                      }}
-                                      className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 transition-colors"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <div className="font-medium text-sm">
-                                            {vehicle.registration} - {vehicle.make} {vehicle.model}
-                                          </div>
-                                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                                            {vehicle.year || vehicle.yearOfManufacture} • {vehicle.fuelType} • {vehicle.derivative}
-                                          </div>
+                          {vehicleSearchQuery && (
+                            <div className="max-h-60 overflow-y-auto border rounded-lg">
+                              {filteredVehicles.length > 0 ? (
+                                filteredVehicles.map((vehicle) => (
+                                  <div
+                                    key={vehicle.stockId}
+                                    onClick={() => {
+                                      handleVehicleSelect(vehicle.stockId);
+                                      setVehicleSearchQuery("");
+                                    }}
+                                    className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 transition-colors"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="font-medium text-sm">
+                                          {vehicle.registration} - {vehicle.make} {vehicle.model}
                                         </div>
-                                        <div className="text-right">
-                                          <div className="font-semibold text-sm">
-                                            £{(vehicle.price || vehicle.forecourtPriceGBP || 0).toLocaleString()}
-                                          </div>
-                                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                                            {(vehicle.mileage || vehicle.odometerReadingMiles || 0).toLocaleString()} miles
-                                          </div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                                          {vehicle.year || vehicle.yearOfManufacture} • {vehicle.fuelType} • {vehicle.derivative}
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="font-semibold text-sm">
+                                          £{(vehicle.price || vehicle.forecourtPriceGBP || 0).toLocaleString()}
+                                        </div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                                          {(vehicle.mileage || vehicle.odometerReadingMiles || 0).toLocaleString()} miles
                                         </div>
                                       </div>
                                     </div>
-                                  ))
-                                ) : (
-                                  <div className="p-4 text-center text-slate-500 dark:text-slate-400">
-                                    No vehicles found matching &quot;{vehicleSearchQuery}&quot;
                                   </div>
-                                )}
-                              </div>
-                            )}
-
-                            {!vehicleSearchQuery && vehicles.length > 0 && (
-                              <div className="text-sm text-slate-500 dark:text-slate-400">
-                                {vehicles.length} vehicles available. Start typing to search...
-                              </div>
-                            )}
-
-                            {invoiceData.selectedVehicle && (
-                              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                                  <div><strong>Registration:</strong> {invoiceData.selectedVehicle.registration}</div>
-                                  <div><strong>Make:</strong> {invoiceData.selectedVehicle.make}</div>
-                                  <div><strong>Model:</strong> {invoiceData.selectedVehicle.model}</div>
-                                  <div><strong>Year:</strong> {invoiceData.selectedVehicle.yearOfManufacture}</div>
-                                  <div><strong>Fuel:</strong> {invoiceData.selectedVehicle.fuelType}</div>
-                                  <div><strong>Mileage:</strong> {invoiceData.selectedVehicle.odometerReadingMiles?.toLocaleString()} miles</div>
+                                ))
+                              ) : (
+                                <div className="p-4 text-center text-slate-500 dark:text-slate-400">
+                                  No vehicles found matching &quot;{vehicleSearchQuery}&quot;
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="customRegistration">Registration</Label>
-                              <Input
-                                id="customRegistration"
-                                value={invoiceData.customVehicle.registration}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, registration: e.target.value }
-                                }))}
-                              />
+                              )}
                             </div>
-                            <div>
-                              <Label htmlFor="customMake">Make</Label>
-                              <Input
-                                id="customMake"
-                                value={invoiceData.customVehicle.make}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, make: e.target.value }
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="customModel">Model</Label>
-                              <Input
-                                id="customModel"
-                                value={invoiceData.customVehicle.model}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, model: e.target.value }
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="customDerivative">Derivative</Label>
-                              <Input
-                                id="customDerivative"
-                                value={invoiceData.customVehicle.derivative}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, derivative: e.target.value }
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="customYear">Year</Label>
-                              <Input
-                                id="customYear"
-                                value={invoiceData.customVehicle.year}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, year: e.target.value }
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="customFuelType">Fuel Type</Label>
-                              <Input
-                                id="customFuelType"
-                                value={invoiceData.customVehicle.fuelType}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, fuelType: e.target.value }
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="customBodyType">Body Type</Label>
-                              <Input
-                                id="customBodyType"
-                                value={invoiceData.customVehicle.bodyType}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, bodyType: e.target.value }
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="customVin">VIN</Label>
-                              <Input
-                                id="customVin"
-                                value={invoiceData.customVehicle.vin}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, vin: e.target.value }
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="customMileage">Mileage</Label>
-                              <Input
-                                id="customMileage"
-                                value={invoiceData.customVehicle.mileage}
-                                onChange={(e) => setInvoiceData(prev => ({
-                                  ...prev,
-                                  customVehicle: { ...prev.customVehicle, mileage: e.target.value }
-                                }))}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          )}
 
-                  </CardContent>
-                </Card>
-              )}
+                          {!vehicleSearchQuery && vehicles.length > 0 && (
+                            <div className="text-sm text-slate-500 dark:text-slate-400">
+                              {vehicles.length} vehicles available. Start typing to search...
+                            </div>
+                          )}
+
+                          {invoiceData.selectedVehicle && (
+                            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                <div><strong>Registration:</strong> {invoiceData.selectedVehicle.registration}</div>
+                                <div><strong>Make:</strong> {invoiceData.selectedVehicle.make}</div>
+                                <div><strong>Model:</strong> {invoiceData.selectedVehicle.model}</div>
+                                <div><strong>Year:</strong> {invoiceData.selectedVehicle.yearOfManufacture}</div>
+                                <div><strong>Fuel:</strong> {invoiceData.selectedVehicle.fuelType}</div>
+                                <div><strong>Mileage:</strong> {invoiceData.selectedVehicle.odometerReadingMiles?.toLocaleString()} miles</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="customRegistration">Registration</Label>
+                            <Input
+                              id="customRegistration"
+                              value={invoiceData.customVehicle.registration}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, registration: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customMake">Make</Label>
+                            <Input
+                              id="customMake"
+                              value={invoiceData.customVehicle.make}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, make: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customModel">Model</Label>
+                            <Input
+                              id="customModel"
+                              value={invoiceData.customVehicle.model}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, model: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customDerivative">Derivative</Label>
+                            <Input
+                              id="customDerivative"
+                              value={invoiceData.customVehicle.derivative}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, derivative: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customYear">Year</Label>
+                            <Input
+                              id="customYear"
+                              value={invoiceData.customVehicle.year}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, year: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customFuelType">Fuel Type</Label>
+                            <Input
+                              id="customFuelType"
+                              value={invoiceData.customVehicle.fuelType}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, fuelType: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customBodyType">Body Type</Label>
+                            <Input
+                              id="customBodyType"
+                              value={invoiceData.customVehicle.bodyType}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, bodyType: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customVin">VIN</Label>
+                            <Input
+                              id="customVin"
+                              value={invoiceData.customVehicle.vin}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, vin: e.target.value }
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="customMileage">Mileage</Label>
+                            <Input
+                              id="customMileage"
+                              value={invoiceData.customVehicle.mileage}
+                              onChange={(e) => setInvoiceData(prev => ({
+                                ...prev,
+                                customVehicle: { ...prev.customVehicle, mileage: e.target.value }
+                              }))}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </CardContent>
+              </Card>
 
               {/* Recipient Type Selection */}
               <Card className="shadow-lg border-slate-200 dark:border-slate-700">
