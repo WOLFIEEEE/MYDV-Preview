@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { dealers, stockCache, userAssignments, companySettings } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray, or } from 'drizzle-orm';
 import JSZip from 'jszip';
 import { rateLimiter, getClientIdentifier } from '@/lib/rateLimiter';
 
@@ -154,8 +154,8 @@ function escapeCsvValue(value: unknown): string {
   return str;
 }
 
-// Generate Dealers.csv content (CF247 format)
-function generateDealersCsv(vehiclesData: VehicleData[], selectedDealerInfo: DealerInfo | null = null, userCompanyInfo: UserCompanyInfo = {}): string {
+// Generate Dealers.csv content (CF247 format) with support for multiple dealers
+function generateDealersCsv(vehiclesData: VehicleData[], dealersInfoMap: Map<string, DealerInfo>, userCompanyInfo: UserCompanyInfo = {}): string {
   const headers = [
     'DealerId',
     'DealerName',
@@ -171,38 +171,51 @@ function generateDealersCsv(vehiclesData: VehicleData[], selectedDealerInfo: Dea
     'WebsiteURL'
   ];
 
-  const firstVehicle = vehiclesData[0];
-  const advertiserData = firstVehicle?.advertiserData || {};
-  const location = advertiserData.location || {};
-  
-  const addressLineOne = location.addressLineOne || '';
-  const addressParts = addressLineOne.split(' ');
-  const buildingNumber = addressParts[0] && !isNaN(Number(addressParts[0])) ? addressParts[0] : '';
-  const streetName = addressParts.slice(1).join(' ') || '';
-  
-  const dealerMetadata = selectedDealerInfo?.metadata || {};
-  const dealerAddress = dealerMetadata.address || {};
-  
-  const dealerRow = [
-    advertiserData.advertiserId || '',
-    advertiserData.name || selectedDealerInfo?.name || '',
-    dealerAddress.buildingName || '',
-    buildingNumber || dealerAddress.buildingNumber || '',
-    streetName || dealerAddress.streetName || '',
-    dealerAddress.locality || '',
-    location.town || dealerAddress.town || '',
-    location.county || dealerAddress.county || '',
-    location.postCode || dealerAddress.postcode || '',
-    advertiserData.phone || dealerMetadata.phone || '',
-    selectedDealerInfo?.email || userCompanyInfo.email || '',
-    advertiserData.website || dealerMetadata.websiteUrl || ''
-  ].map(escapeCsvValue);
+  // Group vehicles by advertiserId to get unique dealers
+  const uniqueDealers = new Map<string, VehicleData>();
+  vehiclesData.forEach(vehicle => {
+    const advertiserId = vehicle.advertiserId;
+    if (advertiserId && !uniqueDealers.has(advertiserId)) {
+      uniqueDealers.set(advertiserId, vehicle);
+    }
+  });
 
-  return [headers.join(','), dealerRow.join(',')].join('\n');
+  // Generate a row for each unique dealer
+  const dealerRows = Array.from(uniqueDealers.values()).map(vehicle => {
+    const advertiserData = vehicle.advertiserData || {};
+    const location = advertiserData.location || {};
+    
+    const addressLineOne = location.addressLineOne || '';
+    const addressParts = addressLineOne.split(' ');
+    const buildingNumber = addressParts[0] && !isNaN(Number(addressParts[0])) ? addressParts[0] : '';
+    const streetName = addressParts.slice(1).join(' ') || '';
+    
+    // Get dealer info from the map using dealerId
+    const selectedDealerInfo = dealersInfoMap.get(vehicle.dealerId);
+    const dealerMetadata = selectedDealerInfo?.metadata || {};
+    const dealerAddress = dealerMetadata.address || {};
+    
+    return [
+      advertiserData.advertiserId || '',
+      advertiserData.name || selectedDealerInfo?.name || '',
+      dealerAddress.buildingName || '',
+      buildingNumber || dealerAddress.buildingNumber || '',
+      streetName || dealerAddress.streetName || '',
+      dealerAddress.locality || '',
+      location.town || dealerAddress.town || '',
+      location.county || dealerAddress.county || '',
+      location.postCode || dealerAddress.postcode || '',
+      advertiserData.phone || dealerMetadata.phone || '',
+      selectedDealerInfo?.email || userCompanyInfo.email || '',
+      advertiserData.website || dealerMetadata.websiteUrl || ''
+    ].map(escapeCsvValue);
+  });
+
+  return [headers.join(','), ...dealerRows.map(row => row.join(','))].join('\n');
 }
 
 // Generate Vehicles.csv content (CF247 format)
-function generateVehiclesCsv(vehiclesData: VehicleData[], selectedDealerInfo: DealerInfo | null = null): string {
+function generateVehiclesCsv(vehiclesData: VehicleData[], dealersInfoMap: Map<string, DealerInfo>): string {
   const headers = [
     'VehicleId',
     'DealerId', 
@@ -259,6 +272,8 @@ function generateVehiclesCsv(vehiclesData: VehicleData[], selectedDealerInfo: De
     const vatQualifying = vatStatus === 'Ex VAT' || vatStatus === 'Inc VAT' ? 'Y' : 'N';
     const priceIncludesVat = vatStatus === 'Inc VAT' ? 'Y' : 'N';
     
+    // Get dealer info for this vehicle from the map
+    const selectedDealerInfo = dealersInfoMap.get(vehicle.dealerId) || null;
     const vehicleUrl = generateDeepLinkUrl(vehicle, selectedDealerInfo);
     
     const extractPrice = (priceObj: number | { amountGBP?: number } | null | undefined): number | null => {
@@ -313,8 +328,8 @@ function generateVehiclesCsv(vehiclesData: VehicleData[], selectedDealerInfo: De
   return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
 }
 
-// Generate AA Cars dealers.csv content
-function generateAACarsDealersCsv(vehiclesData: VehicleData[], selectedDealerInfo: DealerInfo | null = null, userCompanyInfo: UserCompanyInfo = {}): string {
+// Generate AA Cars dealers.csv content with support for multiple dealers
+function generateAACarsDealersCsv(vehiclesData: VehicleData[], dealersInfoMap: Map<string, DealerInfo>, userCompanyInfo: UserCompanyInfo = {}): string {
   const headers = [
     'feed_id',
     'dealername',
@@ -324,43 +339,55 @@ function generateAACarsDealersCsv(vehiclesData: VehicleData[], selectedDealerInf
     'email'
   ];
 
-  const firstVehicle = vehiclesData[0];
-  const advertiserData = firstVehicle?.advertiserData || {};
-  const location = advertiserData.location || {};
-  
-  const addressLineOne = location.addressLineOne || '';
-  const dealerMetadata = selectedDealerInfo?.metadata || {};
-  const dealerAddress = dealerMetadata.address || {};
-  
-  const addressParts = [];
-  if (dealerAddress.buildingName) addressParts.push(dealerAddress.buildingName);
-  if (dealerAddress.buildingNumber) addressParts.push(dealerAddress.buildingNumber);
-  if (dealerAddress.streetName) addressParts.push(dealerAddress.streetName);
-  if (dealerAddress.locality) addressParts.push(dealerAddress.locality);
-  if (location.town || dealerAddress.town) addressParts.push(location.town || dealerAddress.town);
-  
-  const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : addressLineOne;
-  
-  const companyName = selectedDealerInfo?.companyName || advertiserData.name || selectedDealerInfo?.name || 'Unknown';
-  const dealerId = advertiserData.advertiserId || selectedDealerInfo?.id || 'unknown';
-  
-  const firstWord = companyName.split(' ')[0].toLowerCase();
-  const feedId = `${firstWord}_${dealerId}`;
-  
-  const dealerRow = [
-    feedId,
-    selectedDealerInfo?.companyName || advertiserData.name || selectedDealerInfo?.name || '',
-    fullAddress,
-    location.postCode || dealerAddress.postcode || '',
-    advertiserData.phone || dealerMetadata.phone || '',
-    selectedDealerInfo?.email || userCompanyInfo.email || ''
-  ].map(escapeCsvValue);
+  // Group vehicles by advertiserId to get unique dealers
+  const uniqueDealers = new Map<string, VehicleData>();
+  vehiclesData.forEach(vehicle => {
+    const advertiserId = vehicle.advertiserId;
+    if (advertiserId && !uniqueDealers.has(advertiserId)) {
+      uniqueDealers.set(advertiserId, vehicle);
+    }
+  });
 
-  return [headers.join(','), dealerRow.join(',')].join('\n');
+  // Generate a row for each unique dealer
+  const dealerRows = Array.from(uniqueDealers.values()).map(vehicle => {
+    const advertiserData = vehicle.advertiserData || {};
+    const location = advertiserData.location || {};
+    
+    const addressLineOne = location.addressLineOne || '';
+    const selectedDealerInfo = dealersInfoMap.get(vehicle.dealerId);
+    const dealerMetadata = selectedDealerInfo?.metadata || {};
+    const dealerAddress = dealerMetadata.address || {};
+    
+    const addressParts = [];
+    if (dealerAddress.buildingName) addressParts.push(dealerAddress.buildingName);
+    if (dealerAddress.buildingNumber) addressParts.push(dealerAddress.buildingNumber);
+    if (dealerAddress.streetName) addressParts.push(dealerAddress.streetName);
+    if (dealerAddress.locality) addressParts.push(dealerAddress.locality);
+    if (location.town || dealerAddress.town) addressParts.push(location.town || dealerAddress.town);
+    
+    const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : addressLineOne;
+    
+    const companyName = selectedDealerInfo?.companyName || advertiserData.name || selectedDealerInfo?.name || 'Unknown';
+    const dealerId = advertiserData.advertiserId || selectedDealerInfo?.id || 'unknown';
+    
+    const firstWord = companyName.split(' ')[0].toLowerCase();
+    const feedId = `${firstWord}_${dealerId}`;
+    
+    return [
+      feedId,
+      selectedDealerInfo?.companyName || advertiserData.name || selectedDealerInfo?.name || '',
+      fullAddress,
+      location.postCode || dealerAddress.postcode || '',
+      advertiserData.phone || dealerMetadata.phone || '',
+      selectedDealerInfo?.email || userCompanyInfo.email || ''
+    ].map(escapeCsvValue);
+  });
+
+  return [headers.join(','), ...dealerRows.map(row => row.join(','))].join('\n');
 }
 
 // Generate AA Cars aacars.csv content
-function generateAACarsStockCsv(vehiclesData: VehicleData[], selectedDealerInfo: DealerInfo | null = null): string {
+function generateAACarsStockCsv(vehiclesData: VehicleData[], dealersInfoMap: Map<string, DealerInfo>): string {
   const headers = [
     'feedid',
     'vehicleid',
@@ -408,6 +435,8 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[], selectedDealerInfo:
     }
     
     const advertiserData = vehicle.advertiserData || {};
+    // Get dealer info for this vehicle from the map
+    const selectedDealerInfo = dealersInfoMap.get(vehicle.dealerId);
     const companyName = selectedDealerInfo?.companyName || advertiserData.name || 'Unknown';
     const dealerId = advertiserData.advertiserId || vehicle.dealerId;
     
@@ -430,7 +459,7 @@ function generateAACarsStockCsv(vehiclesData: VehicleData[], selectedDealerInfo:
     const retailAdverts = (advertsData as { retailAdverts?: { vatStatus?: string; vatable?: string } }).retailAdverts || {};
     const plusVat = retailAdverts.vatStatus === 'vat_qualifying' ? 'Y' : 'N';
     
-    const vehicleUrl = generateDeepLinkUrl(vehicle, selectedDealerInfo);
+    const vehicleUrl = generateDeepLinkUrl(vehicle, selectedDealerInfo || null);
     
     const engineCapacityCC = (vehicleData as { engineCapacityCC?: number }).engineCapacityCC;
     const engineSizeCC = engineCapacityCC ? `${engineCapacityCC}cc` : '';
@@ -496,7 +525,8 @@ export async function GET() {
           'Content-Type': 'application/json'
         },
         body: {
-          dealerId: 'required - dealer ID (UUID) or advertiser ID (string)',
+          dealerId: 'optional - single dealer ID (UUID) or advertiser ID (string) - deprecated, use dealerIds',
+          dealerIds: 'required - array of dealer IDs (UUIDs) or advertiser IDs (strings)',
           format: 'required - "car_24" or "aa" (aliases: "cf247", "aacars")'
         },
         response: {
@@ -560,15 +590,22 @@ export async function POST(request: NextRequest) {
 
     // 3. Parse request body
     const body = await request.json();
-    const { dealerId, format } = body;
+    const { dealerId, dealerIds, format } = body;
 
-    // Validate required fields
-    if (!dealerId) {
+    // Support both single dealerId (deprecated) and dealerIds array
+    let targetDealerIds: string[] = [];
+    
+    if (dealerIds && Array.isArray(dealerIds) && dealerIds.length > 0) {
+      targetDealerIds = dealerIds;
+    } else if (dealerId) {
+      // Backward compatibility with single dealerId
+      targetDealerIds = [dealerId];
+    } else {
       return NextResponse.json(
         { 
           success: false,
-          error: 'dealerId is required',
-          details: 'Please provide a dealerId (UUID) or advertiserId (string) in the request body'
+          error: 'dealerIds is required',
+          details: 'Please provide dealerIds array with dealer IDs (UUIDs) or advertiser IDs (strings) in the request body'
         },
         { status: 400 }
       );
@@ -603,23 +640,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Fetch vehicles data - ONLY FORECOURT vehicles
-    let vehiclesData;
+    // 4. Fetch vehicles data - ONLY FORECOURT vehicles from all specified dealers
+    // Separate UUIDs and advertiser IDs
+    const uuidDealerIds = targetDealerIds.filter(id => isValidUUID(id));
+    const advertiserIds = targetDealerIds.filter(id => !isValidUUID(id));
     
-    // dealerId is now required - check if it's a UUID (dealer ID) or an advertiser ID
-    if (isValidUUID(dealerId)) {
-      // Query by dealerId (UUID)
+    let vehiclesData: any[] = [];
+    
+    // Build query conditions based on what IDs we have
+    if (uuidDealerIds.length > 0 && advertiserIds.length > 0) {
+      // Both types of IDs
       vehiclesData = await db.select().from(stockCache).where(
         and(
-          eq(stockCache.dealerId, dealerId),
+          or(
+            inArray(stockCache.dealerId, uuidDealerIds),
+            inArray(stockCache.advertiserId, advertiserIds)
+          ),
           eq(stockCache.lifecycleState, 'FORECOURT')
         )
       );
-    } else {
-      // Query by advertiserId (string like "10031798")
+    } else if (uuidDealerIds.length > 0) {
+      // Only UUID dealer IDs
       vehiclesData = await db.select().from(stockCache).where(
         and(
-          eq(stockCache.advertiserId, dealerId),
+          inArray(stockCache.dealerId, uuidDealerIds),
+          eq(stockCache.lifecycleState, 'FORECOURT')
+        )
+      );
+    } else if (advertiserIds.length > 0) {
+      // Only advertiser IDs
+      vehiclesData = await db.select().from(stockCache).where(
+        and(
+          inArray(stockCache.advertiserId, advertiserIds),
           eq(stockCache.lifecycleState, 'FORECOURT')
         )
       );
@@ -630,52 +682,54 @@ export async function POST(request: NextRequest) {
         { 
           success: false,
           error: 'No vehicles found',
-          details: dealerId 
-            ? `No FORECOURT vehicles found for dealer ID: ${dealerId}`
-            : 'No FORECOURT vehicles found in the system'
+          details: `No FORECOURT vehicles found for dealer IDs: ${targetDealerIds.join(', ')}`
         },
         { status: 404 }
       );
     }
 
-    // 5. Fetch dealer information
-    let selectedDealerInfo = null;
-    // If dealerId was an advertiserId, get the actual dealerId from the first vehicle
-    // Otherwise use the provided dealerId (if it's a UUID)
-    const targetDealerId = isValidUUID(dealerId) 
-      ? dealerId 
-      : vehiclesData[0]?.dealerId;
+    // 5. Fetch dealer information for all unique dealers in the vehicles data
+    const uniqueDealerIds = new Set<string>();
+    vehiclesData.forEach(vehicle => {
+      if (vehicle.dealerId) {
+        uniqueDealerIds.add(vehicle.dealerId);
+      }
+    });
+
+    const dealersInfoMap = new Map<string, DealerInfo>();
     
-    if (targetDealerId) {
-      const dealerData = await db.select().from(dealers).where(eq(dealers.id, targetDealerId));
+    for (const dealerIdItem of Array.from(uniqueDealerIds)) {
+      const dealerData = await db.select().from(dealers).where(eq(dealers.id, dealerIdItem));
       const dealer = dealerData[0];
       
       if (dealer) {
-        const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, targetDealerId)).limit(1);
-        const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, targetDealerId)).limit(1);
+        const userAssignment = await db.select().from(userAssignments).where(eq(userAssignments.dealerId, dealerIdItem)).limit(1);
+        const companySetting = await db.select().from(companySettings).where(eq(companySettings.dealerId, dealerIdItem)).limit(1);
         
-        selectedDealerInfo = {
+        dealersInfoMap.set(dealerIdItem, {
           ...dealer,
-          companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || null,
-          websiteUrl: companySetting[0]?.contactWebsite || null
-        };
+          companyName: userAssignment[0]?.companyName || companySetting[0]?.companyName || undefined,
+          websiteUrl: companySetting[0]?.contactWebsite || undefined
+        } as DealerInfo);
       }
     }
 
     // 6. Generate export files
     const zip = new JSZip();
-    const userCompanyInfo = { email: selectedDealerInfo?.email || '' };
+    // Get email from first dealer if available
+    const firstDealerInfo = Array.from(dealersInfoMap.values())[0];
+    const userCompanyInfo = { email: firstDealerInfo?.email || '' };
 
     if (normalizedFormat === 'aacars') {
       // AA Cars format
       const dealersCsv = generateAACarsDealersCsv(
         vehiclesData as unknown as VehicleData[], 
-        selectedDealerInfo as unknown as DealerInfo, 
+        dealersInfoMap as unknown as Map<string, DealerInfo>, 
         userCompanyInfo
       );
       const vehiclesCsv = generateAACarsStockCsv(
         vehiclesData as unknown as VehicleData[], 
-        selectedDealerInfo as unknown as DealerInfo
+        dealersInfoMap as unknown as Map<string, DealerInfo>
       );
       
       zip.file('dealers.csv', dealersCsv);
@@ -684,12 +738,12 @@ export async function POST(request: NextRequest) {
       // CF247 format
       const dealersCsv = generateDealersCsv(
         vehiclesData as unknown as VehicleData[], 
-        selectedDealerInfo as unknown as DealerInfo, 
+        dealersInfoMap as unknown as Map<string, DealerInfo>, 
         userCompanyInfo
       );
       const vehiclesCsv = generateVehiclesCsv(
         vehiclesData as unknown as VehicleData[], 
-        selectedDealerInfo as unknown as DealerInfo
+        dealersInfoMap as unknown as Map<string, DealerInfo>
       );
       
       zip.file('Dealers.csv', dealersCsv);
