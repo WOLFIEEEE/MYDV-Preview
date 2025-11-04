@@ -59,7 +59,8 @@ export default clerkMiddleware(async (auth, req) => {
       '/api/webhooks',
       '/api/stock-images/upload', // Allow stock-images upload for QR code functionality
       '/api/vehicle-documents/upload', // Allow vehicle-documents upload for QR code functionality
-      '/api/stock/' // Allow basic stock info for QR code functionality (covers /api/stock/[stockId]/basic-info)
+      '/api/stock/', // Allow basic stock info for QR code functionality (covers /api/stock/[stockId]/basic-info)
+      '/api/public/export' // Allow public export API with token authentication and rate limiting
     ];
     const isPublicApi = publicApiRoutes.some(route => req.nextUrl.pathname.startsWith(route));
     
