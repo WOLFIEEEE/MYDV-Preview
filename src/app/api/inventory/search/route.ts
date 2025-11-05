@@ -3,6 +3,7 @@ import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { stockCache, dealers } from '@/db/schema';
 import { eq, and, ilike } from 'drizzle-orm';
+import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,34 +26,44 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get dealer ID (handle both store owners and team members)
-    const userMetadata = user.publicMetadata;
-    const userType = userMetadata?.userType as string;
-    const storeOwnerId = userMetadata?.storeOwnerId as string;
+    // Get advertiserId from store config (supports team member credential delegation)
+    const userEmail = user.emailAddresses[0]?.emailAddress || '';
+    const configResult = await getStoreConfigForUser(user.id, userEmail);
     
-    let dealerId: string;
+    if (!configResult.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: configResult.error || 'Store configuration not found' 
+      }, { status: 404 });
+    }
 
-    if (userType === 'team_member' && storeOwnerId) {
-      dealerId = storeOwnerId;
-    } else {
-      const dealerResult = await db
-        .select({ id: dealers.id })
-        .from(dealers)
-        .where(eq(dealers.clerkUserId, user.id))
-        .limit(1);
-
-      if (dealerResult.length === 0) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Dealer record not found' 
-        }, { status: 404 });
+    // Extract advertiserId from store config
+    const userStoreConfig = configResult.storeConfig;
+    let advertiserId = userStoreConfig.primaryAdvertisementId || userStoreConfig.advertisementId;
+    
+    // Handle JSON array format if needed
+    if (userStoreConfig.advertisementId && !advertiserId) {
+      try {
+        const adIds = JSON.parse(userStoreConfig.advertisementId);
+        if (Array.isArray(adIds) && adIds.length > 0) {
+          advertiserId = adIds[0];
+        } else if (typeof adIds === 'string') {
+          advertiserId = adIds;
+        }
+      } catch (e) {
+        console.log('⚠️ Could not parse advertisementId JSON, using primary:', e);
       }
+    }
 
-      dealerId = dealerResult[0].id;
+    if (!advertiserId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Advertiser ID not found in store configuration' 
+      }, { status: 404 });
     }
 
     // Build search conditions based on provided parameters
-    let searchConditions = [eq(stockCache.dealerId, dealerId)];
+    let searchConditions = [eq(stockCache.advertiserId, advertiserId)];
 
     if (stockId) {
       // Exact match for stockId
