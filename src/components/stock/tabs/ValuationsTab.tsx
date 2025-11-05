@@ -21,43 +21,58 @@ export default function ValuationsTab({ stockData }: ValuationsTabProps) {
     }).format(price);
   };
 
-  const ValuationCard = ({ title, data }: { title: string; data: any }) => (
-    <div className={`p-6 rounded-lg ${
-      isDarkMode ? 'bg-gray-800' : 'bg-white'
-    } shadow-sm`}>
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
-      
-      {data.retail?.amountGBP && (
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-500 dark:text-white mb-1">Retail Value</h4>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {formatPrice(data.retail.amountGBP)}
-          </div>
-        </div>
-      )}
+  // Helper function to get amount from any of the possible fields
+  const getAmount = (valueObj: any): number | null => {
+    if (!valueObj || typeof valueObj !== 'object') return null;
+    
+    // Try amountGBP first, then amountNoVatGBP, then amountExcludingVatGBP
+    return valueObj.amountGBP ?? valueObj.amountNoVatGBP ?? valueObj.amountExcludingVatGBP ?? null;
+  };
 
-      <div className="grid grid-cols-2 gap-4">
-        {data.trade?.amountGBP && (
-          <div>
-            <div className="text-sm font-medium text-gray-500 dark:text-white">Trade Value</div>
-            <div className="text-lg font-semibold">{formatPrice(data.trade.amountGBP)}</div>
+  const ValuationCard = ({ title, data }: { title: string; data: any }) => {
+    const retailAmount = getAmount(data.retail);
+    const tradeAmount = getAmount(data.trade);
+    const partExchangeAmount = getAmount(data.partExchange);
+    const privateAmount = getAmount(data.private);
+
+    return (
+      <div className={`p-6 rounded-lg ${
+        isDarkMode ? 'bg-gray-800' : 'bg-white'
+      } shadow-sm`}>
+        <h3 className="text-lg font-semibold mb-4">{title}</h3>
+        
+        {retailAmount !== null && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-500 dark:text-white mb-1">Retail Value</h4>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {formatPrice(retailAmount)}
+            </div>
           </div>
         )}
-        {data.partExchange?.amountGBP && (
-          <div>
-            <div className="text-sm font-medium text-gray-500 dark:text-white">Part Exchange Value</div>
-            <div className="text-lg font-semibold">{formatPrice(data.partExchange.amountGBP)}</div>
-          </div>
-        )}
-        {data.private?.amountGBP && (
-          <div>
-            <div className="text-sm font-medium text-gray-500 dark:text-white">Private Value</div>
-            <div className="text-lg font-semibold">{formatPrice(data.private.amountGBP)}</div>
-          </div>
-        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          {tradeAmount !== null && (
+            <div>
+              <div className="text-sm font-medium text-gray-500 dark:text-white">Trade Value</div>
+              <div className="text-lg font-semibold">{formatPrice(tradeAmount)}</div>
+            </div>
+          )}
+          {partExchangeAmount !== null && (
+            <div>
+              <div className="text-sm font-medium text-gray-500 dark:text-white">Part Exchange Value</div>
+              <div className="text-lg font-semibold">{formatPrice(partExchangeAmount)}</div>
+            </div>
+          )}
+          {privateAmount !== null && (
+            <div>
+              <div className="text-sm font-medium text-gray-500 dark:text-white">Private Value</div>
+              <div className="text-lg font-semibold">{formatPrice(privateAmount)}</div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 h-full">

@@ -642,86 +642,118 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
             </div>
 
             {/* Market Average Valuations */}
-            {stockData?.valuations?.marketAverage && (
-              <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
-                <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Market Average
-                </h4>
-                <div className="grid grid-cols-3 gap-2">
-                  {stockData.valuations.marketAverage.retail?.amountGBP && (
-                    <div className="text-center">
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Retail
+            {stockData?.valuations?.marketAverage && (() => {
+              // Helper function to get amount from any of the possible fields
+              const getAmount = (valueObj: any): number | null => {
+                if (!valueObj || typeof valueObj !== 'object') return null;
+                return valueObj.amountGBP ?? valueObj.amountNoVatGBP ?? valueObj.amountExcludingVatGBP ?? null;
+              };
+
+              const retailAmount = getAmount(stockData.valuations.marketAverage.retail);
+              const tradeAmount = getAmount(stockData.valuations.marketAverage.trade);
+              const partExchangeAmount = getAmount(stockData.valuations.marketAverage.partExchange);
+
+              if (retailAmount === null && tradeAmount === null && partExchangeAmount === null) {
+                return null;
+              }
+
+              return (
+                <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
+                  <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Market Average
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {retailAmount !== null && (
+                      <div className="text-center">
+                        <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Retail
+                        </div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {formatPrice(retailAmount)}
+                        </div>
                       </div>
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        {formatPrice(stockData.valuations.marketAverage.retail.amountGBP)}
+                    )}
+                    {tradeAmount !== null && (
+                      <div className="text-center">
+                        <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Trade
+                        </div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {formatPrice(tradeAmount)}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {stockData.valuations.marketAverage.trade?.amountGBP && (
-                    <div className="text-center">
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Trade
+                    )}
+                    {partExchangeAmount !== null && (
+                      <div className="text-center">
+                        <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Part Ex
+                        </div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {formatPrice(partExchangeAmount)}
+                        </div>
                       </div>
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        {formatPrice(stockData.valuations.marketAverage.trade.amountGBP)}
-                      </div>
-                    </div>
-                  )}
-                  {stockData.valuations.marketAverage.partExchange?.amountGBP && (
-                    <div className="text-center">
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Part Ex
-                      </div>
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        {formatPrice(stockData.valuations.marketAverage.partExchange.amountGBP)}
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Adjusted Valuations */}
-            {stockData?.valuations?.adjusted && (
-              <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
-                <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Adjusted Valuations
-                </h4>
-                <div className="grid grid-cols-3 gap-2">
-                  {stockData.valuations.adjusted.retail?.amountGBP && (
-                    <div className="text-center">
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Retail
+            {stockData?.valuations?.adjusted && (() => {
+              // Helper function to get amount from any of the possible fields
+              const getAmount = (valueObj: any): number | null => {
+                if (!valueObj || typeof valueObj !== 'object') return null;
+                return valueObj.amountGBP ?? valueObj.amountNoVatGBP ?? valueObj.amountExcludingVatGBP ?? null;
+              };
+
+              const retailAmount = getAmount(stockData.valuations.adjusted.retail);
+              const tradeAmount = getAmount(stockData.valuations.adjusted.trade);
+              const partExchangeAmount = getAmount(stockData.valuations.adjusted.partExchange);
+
+              if (retailAmount === null && tradeAmount === null && partExchangeAmount === null) {
+                return null;
+              }
+
+              return (
+                <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-gray-900/50 border-gray-700/50' : 'bg-gray-50/50 border-gray-200/70'} backdrop-blur-sm`}>
+                  <h4 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Adjusted Valuations
+                  </h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {retailAmount !== null && (
+                      <div className="text-center">
+                        <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Retail
+                        </div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {formatPrice(retailAmount)}
+                        </div>
                       </div>
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        {formatPrice(stockData.valuations.adjusted.retail.amountGBP)}
+                    )}
+                    {tradeAmount !== null && (
+                      <div className="text-center">
+                        <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Trade
+                        </div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {formatPrice(tradeAmount)}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {stockData.valuations.adjusted.trade?.amountGBP && (
-                    <div className="text-center">
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Trade
+                    )}
+                    {partExchangeAmount !== null && (
+                      <div className="text-center">
+                        <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Part Ex
+                        </div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          {formatPrice(partExchangeAmount)}
+                        </div>
                       </div>
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        {formatPrice(stockData.valuations.adjusted.trade.amountGBP)}
-                      </div>
-                    </div>
-                  )}
-                  {stockData.valuations.adjusted.partExchange?.amountGBP && (
-                    <div className="text-center">
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Part Ex
-                      </div>
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        {formatPrice(stockData.valuations.adjusted.partExchange.amountGBP)}
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Description */}

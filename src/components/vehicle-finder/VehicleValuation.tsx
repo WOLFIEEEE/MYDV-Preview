@@ -14,21 +14,53 @@ interface VehicleValuationProps {
     year?: string;
     mileage?: string;
     // Valuation data from AutoTrader API
+    // Can be either:
+    // 1. Direct structure: { retail: {...}, trade: {...}, etc. }
+    // 2. Nested structure: { marketAverage: { retail: {...}, trade: {...}, etc. } }
     valuations?: {
+      // Direct structure
       retail?: {
-        amountGBP: number;
+        amountGBP?: number | null;
+        amountNoVatGBP?: number | null;
         amountExcludingVatGBP?: number | null;
       };
       partExchange?: {
-        amountGBP: number;
+        amountGBP?: number | null;
+        amountNoVatGBP?: number | null;
         amountExcludingVatGBP?: number | null;
       };
       trade?: {
-        amountGBP: number;
+        amountGBP?: number | null;
+        amountNoVatGBP?: number | null;
         amountExcludingVatGBP?: number | null;
       };
       private?: {
-        amountGBP: number;
+        amountGBP?: number | null;
+        amountNoVatGBP?: number | null;
+        amountExcludingVatGBP?: number | null;
+      };
+      // Nested structure (marketAverage)
+      marketAverage?: {
+        retail?: {
+          amountGBP?: number | null;
+          amountNoVatGBP?: number | null;
+          amountExcludingVatGBP?: number | null;
+        };
+        partExchange?: {
+          amountGBP?: number | null;
+          amountNoVatGBP?: number | null;
+          amountExcludingVatGBP?: number | null;
+        };
+        trade?: {
+          amountGBP?: number | null;
+          amountNoVatGBP?: number | null;
+          amountExcludingVatGBP?: number | null;
+        };
+        private?: {
+          amountGBP?: number | null;
+          amountNoVatGBP?: number | null;
+          amountExcludingVatGBP?: number | null;
+        };
       };
     };
     // Alternative structure if valuations are normalized
@@ -42,6 +74,14 @@ interface VehicleValuationProps {
 export default function VehicleValuation({ vehicleData }: VehicleValuationProps) {
   const { isDarkMode } = useTheme();
 
+  // Helper function to get amount from any of the possible fields
+  const getAmount = (valueObj: any): number | null => {
+    if (!valueObj || typeof valueObj !== 'object') return null;
+    
+    // Try amountGBP first, then amountNoVatGBP, then amountExcludingVatGBP
+    return valueObj.amountGBP ?? valueObj.amountNoVatGBP ?? valueObj.amountExcludingVatGBP ?? null;
+  };
+
   // Extract valuation values from either structure
   const getValuationValues = () => {
     console.log('🔍 VehicleValuation - Checking valuation data:', {
@@ -51,17 +91,34 @@ export default function VehicleValuation({ vehicleData }: VehicleValuationProps)
       rawValuations: vehicleData.valuations
     });
 
-    // Check for AutoTrader API structure first
+    // Check for AutoTrader API structure first (could be marketAverage or direct structure)
     if (vehicleData.valuations) {
-      const values = {
-        retailValue: vehicleData.valuations.retail?.amountGBP || 0,
-        privateValue: vehicleData.valuations.private?.amountGBP || 0,
-        partExchangeValue: vehicleData.valuations.partExchange?.amountGBP || 0,
-        tradeValue: vehicleData.valuations.trade?.amountGBP || 0,
-      };
+      // Check if it's the nested structure with marketAverage
+      if (vehicleData.valuations.marketAverage) {
+        const marketAvg = vehicleData.valuations.marketAverage;
+        const values = {
+          retailValue: getAmount(marketAvg.retail) ?? 0,
+          privateValue: getAmount(marketAvg.private) ?? 0,
+          partExchangeValue: getAmount(marketAvg.partExchange) ?? 0,
+          tradeValue: getAmount(marketAvg.trade) ?? 0,
+        };
+        
+        console.log('💰 Extracted valuation values from marketAverage:', values);
+        return values;
+      }
       
-      console.log('💰 Extracted valuation values:', values);
-      return values;
+      // Check if it's the direct structure (retail, trade, partExchange, private directly)
+      if (vehicleData.valuations.retail || vehicleData.valuations.trade || vehicleData.valuations.partExchange || vehicleData.valuations.private) {
+        const values = {
+          retailValue: getAmount(vehicleData.valuations.retail) ?? 0,
+          privateValue: getAmount(vehicleData.valuations.private) ?? 0,
+          partExchangeValue: getAmount(vehicleData.valuations.partExchange) ?? 0,
+          tradeValue: getAmount(vehicleData.valuations.trade) ?? 0,
+        };
+        
+        console.log('💰 Extracted valuation values from direct structure:', values);
+        return values;
+      }
     }
     
     // Check for normalized structure
