@@ -643,9 +643,26 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
 
             {/* Market Average Valuations */}
             {stockData?.valuations?.marketAverage && (() => {
-              // Helper function to get amount from any of the possible fields
+              // Get VAT status from adverts - check forecourtPriceVatStatus first, then retailAdverts.vatStatus
+              const vatStatus = stockData?.adverts?.forecourtPriceVatStatus || 
+                                stockData?.adverts?.retailAdverts?.vatStatus || 
+                                null;
+
+              // Helper function to get amount based on VAT status
               const getAmount = (valueObj: any): number | null => {
                 if (!valueObj || typeof valueObj !== 'object') return null;
+                
+                // If VAT status is "No VAT", use amountNoVatGBP
+                if (vatStatus === 'No VAT' && valueObj.amountNoVatGBP !== null && valueObj.amountNoVatGBP !== undefined) {
+                  return valueObj.amountNoVatGBP;
+                }
+                
+                // If VAT status is "Ex VAT", use amountExcludingVatGBP
+                if (vatStatus === 'Ex VAT' && valueObj.amountExcludingVatGBP !== null && valueObj.amountExcludingVatGBP !== undefined) {
+                  return valueObj.amountExcludingVatGBP;
+                }
+                
+                // Otherwise, use amountGBP (or fallback to others if amountGBP is null)
                 return valueObj.amountGBP ?? valueObj.amountNoVatGBP ?? valueObj.amountExcludingVatGBP ?? null;
               };
 
@@ -700,9 +717,26 @@ export default function OverviewTab({ stockData, stockId, onOpenDocuments, moveT
 
             {/* Adjusted Valuations */}
             {stockData?.valuations?.adjusted && (() => {
-              // Helper function to get amount from any of the possible fields
+              // Get VAT status from adverts - check forecourtPriceVatStatus first, then retailAdverts.vatStatus
+              const vatStatus = stockData?.adverts?.forecourtPriceVatStatus || 
+                                stockData?.adverts?.retailAdverts?.vatStatus || 
+                                null;
+
+              // Helper function to get amount based on VAT status
               const getAmount = (valueObj: any): number | null => {
                 if (!valueObj || typeof valueObj !== 'object') return null;
+                
+                // If VAT status is "No VAT", use amountNoVatGBP
+                if (vatStatus === 'No VAT' && valueObj.amountNoVatGBP !== null && valueObj.amountNoVatGBP !== undefined) {
+                  return valueObj.amountNoVatGBP;
+                }
+                
+                // If VAT status is "Ex VAT", use amountExcludingVatGBP
+                if (vatStatus === 'Ex VAT' && valueObj.amountExcludingVatGBP !== null && valueObj.amountExcludingVatGBP !== undefined) {
+                  return valueObj.amountExcludingVatGBP;
+                }
+                
+                // Otherwise, use amountGBP (or fallback to others if amountGBP is null)
                 return valueObj.amountGBP ?? valueObj.amountNoVatGBP ?? valueObj.amountExcludingVatGBP ?? null;
               };
 

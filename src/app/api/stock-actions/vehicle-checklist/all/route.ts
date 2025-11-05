@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { vehicleChecklist, dealers, teamMembers } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getDealerIdForUser } from '@/lib/dealerHelper';
+import { calculateChecklistCompletion } from '@/lib/stockActionsDb';
 
 export async function GET() {
   try {
@@ -31,10 +32,20 @@ export async function GET() {
       .where(eq(vehicleChecklist.dealerId, dealerId))
       .orderBy(desc(vehicleChecklist.createdAt));
 
+    // Recalculate completion percentage for each checklist to ensure accuracy
+    const checklistsWithRecalculatedCompletion = allChecklists.map(checklist => {
+      const completionPercentage = calculateChecklistCompletion(checklist);
+      return {
+        ...checklist,
+        completionPercentage,
+        isComplete: completionPercentage === 100
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      data: allChecklists,
-      count: allChecklists.length
+      data: checklistsWithRecalculatedCompletion,
+      count: checklistsWithRecalculatedCompletion.length
     });
 
   } catch (error) {
