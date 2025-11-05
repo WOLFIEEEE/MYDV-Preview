@@ -39,7 +39,8 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
     fundingAmount: '',
     fundingSourceId: '',
     businessAmount: '',
-    vatScheme: stockData?.advertsData?.vatScheme || stockData?.advertsData?.forecourtPriceVatStatus || stockData?.adverts?.retailAdverts?.vatStatus || 'no_vat'
+    vatScheme: stockData?.advertsData?.vatScheme || stockData?.adverts?.retailAdverts?.vatStatus || 'no_vat',
+    forecourtPriceVatStatus: stockData?.advertsData?.forecourtPriceVatStatus || 'no_vat'
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +67,8 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
               fundingAmount: data.fundingAmount || '',
               fundingSourceId: data.fundingSourceId || '',
               businessAmount: data.businessAmount || '',
-              vatScheme: data.vatScheme || stockData?.advertsData?.vatScheme || stockData?.advertsData?.forecourtPriceVatStatus || stockData?.adverts?.retailAdverts?.vatStatus || 'no_vat'
+              vatScheme: data.vatScheme || stockData?.advertsData?.vatScheme || stockData?.advertsData?.forecourtPriceVatStatus || stockData?.adverts?.retailAdverts?.vatStatus || 'no_vat',
+              forecourtPriceVatStatus: data.forecourtPriceVatStatus || stockData?.advertsData?.forecourtPriceVatStatus || 'no_vat'
             });
           } else {
             setFormData(prev => {
@@ -101,8 +103,10 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
   }, [stockData?.metadata?.stockId]);
 
   const getVatQualificationStatus = (vatScheme: string | null): string => {
-    if (!vatScheme || vatScheme === null || vatScheme === 'no_vat') return 'Non-Qualifying';
-    return 'Qualifying';
+    if (vatScheme && (vatScheme === 'includes' || vatScheme === 'excludes')) return 'Vat Qualifying';
+    return 'Marginal';
+    // if (!vatScheme || vatScheme === null || vatScheme === 'no_vat') return 'Marginal';
+    // return 'Qualifying';
   };
 
   const handleInputChange = (field: string, value: string | null) => {
@@ -220,7 +224,8 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
       fundingAmount: '',
       fundingSourceId: '',
       businessAmount: '',
-      vatScheme: 'no_vat'
+      vatScheme: 'no_vat',
+      forecourtPriceVatStatus: "no_vat"
     });
   };
 
@@ -420,8 +425,8 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                       <input
                         type="text"
                         value={formData.vatScheme ? 
-                          formData.vatScheme === 'includes' ? 'Inc VAT' : 
-                          formData.vatScheme === 'excludes' ? 'Ex VAT' : 
+                          formData.forecourtPriceVatStatus === 'includes' || formData.forecourtPriceVatStatus === 'inc_vat' ? 'Inc VAT' : 
+                          formData.forecourtPriceVatStatus === 'excludes' || formData.forecourtPriceVatStatus === 'ex_vat' ? 'Ex VAT' : 
                           'No VAT'
                           : 'No VAT'
                         }

@@ -309,8 +309,10 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
   };
 
   const getVatQualificationStatus = (vatScheme: string | null): string => {
-    if (!vatScheme || vatScheme === 'no_vat') return 'Non-Qualifying';
-    return 'Qualifying';
+    if (vatScheme && (vatScheme === 'includes' || vatScheme === 'excludes')) return 'Vat Qualifying';
+    return 'Marginal';
+    // if (!vatScheme || vatScheme === 'no_vat') return 'Non-Qualifying';
+    // return 'Qualifying';
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
