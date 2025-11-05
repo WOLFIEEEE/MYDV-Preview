@@ -63,6 +63,7 @@ interface EnhancedAddToStockButtonProps {
     forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
+    description2?: string;
   } | null;
   vehicleImages?: File[];
   selectedFeatures?: Array<{
@@ -322,8 +323,9 @@ export default function EnhancedAddToStockButton({
         mileage: parseInt(vehicleData.mileage.replace(/[^0-9]/g, '') || '0'),
         forecourtPrice: advertData?.forecourtPrice ? parseFloat(advertData.forecourtPrice.replace(/[^0-9.]/g, '')) : undefined,
         forecourtPriceVatStatus: advertData?.forecourtPriceVatStatus || "No VAT",
-        attentionGrabber: advertData?.attentionGrabber || "Available Now",
-        description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle with full service history.`,
+        attentionGrabber: advertData?.attentionGrabber || undefined,
+        description: advertData?.description || undefined,
+        description2: advertData?.description2 || undefined,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
         stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}${vehicleData.registration?.replace(/[^A-Z0-9]/g, '').substring(-3)}`
       };
@@ -339,8 +341,9 @@ export default function EnhancedAddToStockButton({
         colour: vehicleData.color,
         forecourtPrice: advertData?.forecourtPrice ? parseFloat(advertData.forecourtPrice.replace(/[^0-9.]/g, '')) : undefined,
         forecourtPriceVatStatus: advertData?.forecourtPriceVatStatus || "No VAT",
-        attentionGrabber: advertData?.attentionGrabber || "Available Now",
-        description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle with full service history.`,
+        attentionGrabber: advertData?.attentionGrabber || undefined,
+        description: advertData?.description || undefined,
+        description2: advertData?.description2 || undefined,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
         stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}${vehicleData.registration?.replace(/[^A-Z0-9]/g, '').substring(-3) || 'NEW'}`
       };
@@ -353,8 +356,9 @@ export default function EnhancedAddToStockButton({
         mileage: parseInt(vehicleData.mileage.replace(/[^0-9]/g, '') || '0'),
         forecourtPrice: advertData?.forecourtPrice ? parseFloat(advertData.forecourtPrice.replace(/[^0-9.]/g, '')) : undefined,
         forecourtPriceVatStatus: advertData?.forecourtPriceVatStatus || "No VAT",
-        attentionGrabber: advertData?.attentionGrabber || "Available Now",
-        description: advertData?.description || `${vehicleData.year} ${vehicleData.make} ${vehicleData.model} - Excellent condition vehicle.`,
+        attentionGrabber: advertData?.attentionGrabber || undefined,
+        description: advertData?.description || undefined,
+        description2: advertData?.description2 || undefined,
         lifecycleState: hasAdvertData ? "FORECOURT" : "DUE_IN",
         stockReference: `${vehicleData.make?.substring(0, 3).toUpperCase()}${vehicleData.model?.substring(0, 3).toUpperCase()}NEW`
       };

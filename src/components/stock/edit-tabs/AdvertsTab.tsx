@@ -389,18 +389,20 @@ export default function AdvertsTab({ stockData, stockId, onSave }: AdvertsTabPro
                   type="text"
                   value={formData.attentionGrabber}
                   onChange={(e) => handleInputChange('attentionGrabber', e.target.value)}
-                  maxLength={100}
+                  maxLength={30}
                   className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 ${
                     isDarkMode
                       ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
                       : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
                   }`}
                 />
-                <p className={`text-xs mt-1 ${
-                  isDarkMode ? 'text-white' : 'text-gray-500'
-                }`}>
-                  Maximum 100 characters
-                </p>
+                <div className="flex justify-between items-center mt-1">
+                  <small className={`text-xs ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    {formData.attentionGrabber.length}/30 characters
+                  </small>
+                </div>
               </div>
 
               <div>
@@ -408,35 +410,63 @@ export default function AdvertsTab({ stockData, stockId, onSave }: AdvertsTabPro
                   isDarkMode ? 'text-white' : 'text-gray-700'
                 }`}>
                   Description
+                  <span className={`ml-2 text-xs font-normal ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    (First paragraph - appears before feature list)
+                  </span>
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder="Enter vehicle description here... Line breaks will be shown as \n or \n\n"
+                  maxLength={4000}
                   rows={6}
-                  className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 ${
+                  className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 resize-vertical ${
                     isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                      ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-400'
+                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-500'
                   }`}
                 />
+                <div className="flex justify-between items-center mt-2">
+                  <small className={`text-xs ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    {formData.description.length}/4000 characters
+                  </small>
+                </div>
               </div>
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${
                   isDarkMode ? 'text-white' : 'text-gray-700'
                 }`}>
-                  Extended Vehicle Description
+                  Description 2
+                  <span className={`ml-2 text-xs font-normal ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    (Second paragraph - appears after feature list)
+                  </span>
                 </label>
                 <textarea
                   value={formData.description2}
                   onChange={(e) => handleInputChange('description2', e.target.value)}
+                  placeholder="Enter additional vehicle description here... Line breaks will be shown as \n or \n\n"
+                  maxLength={4000}
                   rows={6}
-                  className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 ${
+                  className={`w-full px-3 py-2 border rounded-md transition-colors duration-200 resize-vertical ${
                     isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                      ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-400'
+                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-500'
                   }`}
                 />
+                <div className="flex justify-between items-center mt-2">
+                  <small className={`text-xs ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    {formData.description2.length}/4000 characters
+                  </small>
+                </div>
               </div>
             </div>
           </Card>

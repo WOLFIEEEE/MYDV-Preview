@@ -13,12 +13,14 @@ interface AdvertDataProps {
     forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
+    description2?: string;
   }) => void;
   initialData?: {
     forecourtPrice?: string;
     forecourtPriceVatStatus?: string;
     attentionGrabber?: string;
     description?: string;
+    description2?: string;
   };
 }
 
@@ -33,7 +35,8 @@ export default function AdvertData({
     forecourtPrice: initialData?.forecourtPrice || "",
     forecourtPriceVatStatus: initialData?.forecourtPriceVatStatus || "No VAT",
     attentionGrabber: initialData?.attentionGrabber || "",
-    description: initialData?.description || ""
+    description: initialData?.description || "",
+    description2: initialData?.description2 || ""
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -162,12 +165,18 @@ export default function AdvertData({
                     value={formData.attentionGrabber}
                     onChange={(e) => handleInputChange('attentionGrabber', e.target.value)}
                     placeholder="e.g. Low Mileage, One Owner"
+                    maxLength={30}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       isDarkMode 
                         ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400' 
                         : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                     }`}
                   />
+                  <div className="flex justify-between items-center mt-1">
+                    <small className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {formData.attentionGrabber.length}/30 characters
+                    </small>
+                  </div>
                 </div>
                 
                 <div>
@@ -189,7 +198,7 @@ export default function AdvertData({
                     }`}
                   />
                   <div className="flex justify-between items-center mt-2">
-                    <small className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                    <small className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       {formData.description.length}/4000 characters
                     </small>
                   </div>

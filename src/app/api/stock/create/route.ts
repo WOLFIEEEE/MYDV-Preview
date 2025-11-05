@@ -26,6 +26,7 @@ interface VehicleFinderFlow {
   forecourtPriceVatStatus?: string;
   attentionGrabber?: string;
   description?: string;
+  description2?: string;
   lifecycleState?: string;
   stockReference?: string;
   imageIds?: string[];
@@ -58,6 +59,7 @@ interface TaxonomyFlow {
   forecourtPriceVatStatus?: string;
   attentionGrabber?: string;
   description?: string;
+  description2?: string;
     lifecycleState?: string;
   stockReference?: string;
   imageIds?: string[];
@@ -332,6 +334,7 @@ interface AutoTraderStockPayload {
       vatStatus?: string;
       attentionGrabber?: string;
       description?: string;
+      description2?: string;
       autotraderAdvert?: {
         status: string;
       };
@@ -827,8 +830,9 @@ export async function POST(request: NextRequest) {
             amountGBP: requestData.forecourtPrice
           },
           vatStatus: requestData.forecourtPriceVatStatus || 'No VAT',
-          attentionGrabber: requestData.attentionGrabber || 'Available Now',
-          description: requestData.description || `${vehicleData.make} ${vehicleData.model} - Excellent condition`,
+          attentionGrabber: requestData.attentionGrabber || undefined,
+          description: requestData.description || undefined,
+          description2: requestData.description2 || undefined,
           autotraderAdvert: {
             status: requestData.channelStatus?.autotraderAdvert ? 'PUBLISHED' : 'NOT_PUBLISHED'
           },
