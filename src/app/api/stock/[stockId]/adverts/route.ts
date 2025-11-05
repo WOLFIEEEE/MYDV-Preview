@@ -503,34 +503,91 @@ export async function PATCH(
       if (autoTraderResponseData) {
         // Overwrite adverts data from AutoTrader response (source of truth)
         if (autoTraderResponseData.adverts) {
-          cacheUpdates.advertsData = autoTraderResponseData.adverts;
+          const updatedAdverts = autoTraderResponseData.adverts as Record<string, unknown>;
+          cacheUpdates.advertsData = updatedAdverts;
+          
+          // CRITICAL: Update flattened pricing columns used by My Stock table and Overview tab
+          // Extract pricing from the response
+          const forecourtPrice = (updatedAdverts.forecourtPrice as { amountGBP?: number })?.amountGBP;
+          const retailAdverts = updatedAdverts.retailAdverts as Record<string, unknown> | undefined;
+          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number })?.amountGBP : undefined;
+          
+          if (forecourtPrice !== undefined) {
+            cacheUpdates.forecourtPriceGBP = forecourtPrice.toString();
+            console.log(`✅ Updated forecourtPriceGBP: £${forecourtPrice}`);
+          }
+          
+          if (totalPrice !== undefined) {
+            cacheUpdates.totalPriceGBP = totalPrice.toString();
+            console.log(`✅ Updated totalPriceGBP: £${totalPrice}`);
+          }
+          
           console.log('✅ Updated advertsData from AutoTrader response (overwritten)');
         }
 
         // Overwrite metadata from AutoTrader response if available
         if (autoTraderResponseData.metadata) {
-          cacheUpdates.metadataRaw = autoTraderResponseData.metadata;
+          const updatedMetadata = autoTraderResponseData.metadata as Record<string, unknown>;
+          cacheUpdates.metadataRaw = updatedMetadata;
+          
+          // Update flattened lifecycleState column
+          if (updatedMetadata.lifecycleState) {
+            cacheUpdates.lifecycleState = updatedMetadata.lifecycleState as string;
+            console.log(`✅ Updated lifecycleState: ${updatedMetadata.lifecycleState}`);
+          }
+          
           console.log('✅ Updated metadataRaw from AutoTrader response (overwritten)');
         } else if (payload.metadata) {
           // If response doesn't include metadata but we updated it, merge with original
           const originalMeta = (originalMetadata || {}) as Record<string, unknown>;
           const payloadMeta = (payload.metadata || {}) as Record<string, unknown>;
           cacheUpdates.metadataRaw = deepMerge(originalMeta, payloadMeta);
+          
+          // Update flattened lifecycleState column
+          if (payloadMeta.lifecycleState) {
+            cacheUpdates.lifecycleState = payloadMeta.lifecycleState as string;
+            console.log(`✅ Updated lifecycleState: ${payloadMeta.lifecycleState}`);
+          }
+          
           console.log('✅ Updated metadataRaw with payload (merged)');
         }
       } else {
-        // Fallback: if no response data, use deep merge with original data
+        // Fallback: if no response data, use deep merge with original data and extract pricing
         console.warn('⚠️ No AutoTrader response data available, falling back to merge');
         if (payload.adverts) {
           const originalAdverts = (originalAdvertsData || {}) as Record<string, unknown>;
           const payloadAdverts = (payload.adverts || {}) as Record<string, unknown>;
-          cacheUpdates.advertsData = deepMerge(originalAdverts, payloadAdverts);
+          const mergedAdverts = deepMerge(originalAdverts, payloadAdverts);
+          cacheUpdates.advertsData = mergedAdverts;
+          
+          // Extract and update flattened pricing columns from merged data
+          const forecourtPrice = (mergedAdverts.forecourtPrice as { amountGBP?: number })?.amountGBP;
+          const retailAdverts = mergedAdverts.retailAdverts as Record<string, unknown> | undefined;
+          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number })?.amountGBP : undefined;
+          
+          if (forecourtPrice !== undefined) {
+            cacheUpdates.forecourtPriceGBP = forecourtPrice.toString();
+            console.log(`✅ Updated forecourtPriceGBP (fallback): £${forecourtPrice}`);
+          }
+          
+          if (totalPrice !== undefined) {
+            cacheUpdates.totalPriceGBP = totalPrice.toString();
+            console.log(`✅ Updated totalPriceGBP (fallback): £${totalPrice}`);
+          }
+          
           console.log('✅ Updated advertsData with deep merge (fallback)');
         }
         if (payload.metadata) {
           const originalMeta = (originalMetadata || {}) as Record<string, unknown>;
           const payloadMeta = (payload.metadata || {}) as Record<string, unknown>;
           cacheUpdates.metadataRaw = deepMerge(originalMeta, payloadMeta);
+          
+          // Update flattened lifecycleState column
+          if (payloadMeta.lifecycleState) {
+            cacheUpdates.lifecycleState = payloadMeta.lifecycleState as string;
+            console.log(`✅ Updated lifecycleState (fallback): ${payloadMeta.lifecycleState}`);
+          }
+          
           console.log('✅ Updated metadataRaw with deep merge (fallback)');
         }
       }
