@@ -508,16 +508,16 @@ export async function PATCH(
           
           // CRITICAL: Update flattened pricing columns used by My Stock table and Overview tab
           // Extract pricing from the response
-          const forecourtPrice = (updatedAdverts.forecourtPrice as { amountGBP?: number })?.amountGBP;
+          const forecourtPrice = (updatedAdverts.forecourtPrice as { amountGBP?: number | null })?.amountGBP;
           const retailAdverts = updatedAdverts.retailAdverts as Record<string, unknown> | undefined;
-          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number })?.amountGBP : undefined;
+          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number | null })?.amountGBP : undefined;
           
-          if (forecourtPrice !== undefined) {
+          if (forecourtPrice !== undefined && forecourtPrice !== null) {
             cacheUpdates.forecourtPriceGBP = forecourtPrice.toString();
             console.log(`✅ Updated forecourtPriceGBP: £${forecourtPrice}`);
           }
           
-          if (totalPrice !== undefined) {
+          if (totalPrice !== undefined && totalPrice !== null) {
             cacheUpdates.totalPriceGBP = totalPrice.toString();
             console.log(`✅ Updated totalPriceGBP: £${totalPrice}`);
           }
@@ -561,16 +561,16 @@ export async function PATCH(
           cacheUpdates.advertsData = mergedAdverts;
           
           // Extract and update flattened pricing columns from merged data
-          const forecourtPrice = (mergedAdverts.forecourtPrice as { amountGBP?: number })?.amountGBP;
+          const forecourtPrice = (mergedAdverts.forecourtPrice as { amountGBP?: number | null })?.amountGBP;
           const retailAdverts = mergedAdverts.retailAdverts as Record<string, unknown> | undefined;
-          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number })?.amountGBP : undefined;
+          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number | null })?.amountGBP : undefined;
           
-          if (forecourtPrice !== undefined) {
+          if (forecourtPrice !== undefined && forecourtPrice !== null) {
             cacheUpdates.forecourtPriceGBP = forecourtPrice.toString();
             console.log(`✅ Updated forecourtPriceGBP (fallback): £${forecourtPrice}`);
           }
           
-          if (totalPrice !== undefined) {
+          if (totalPrice !== undefined && totalPrice !== null) {
             cacheUpdates.totalPriceGBP = totalPrice.toString();
             console.log(`✅ Updated totalPriceGBP (fallback): £${totalPrice}`);
           }
