@@ -65,6 +65,35 @@ interface AdvertsUpdateRequest {
   };
 }
 
+/**
+ * Deep merge utility function to merge nested objects properly
+ * This ensures nested objects like retailAdverts are merged instead of overwritten
+ */
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const output = { ...target };
+  
+  if (isObject(target) && isObject(source)) {
+    Object.keys(source).forEach(key => {
+      const sourceValue = source[key];
+      const targetValue = target[key];
+      
+      if (isObject(sourceValue) && isObject(targetValue) && !Array.isArray(sourceValue) && !Array.isArray(targetValue)) {
+        // Recursively merge nested objects
+        output[key] = deepMerge(targetValue as Record<string, unknown>, sourceValue as Record<string, unknown>);
+      } else {
+        // Overwrite primitive values or arrays
+        output[key] = sourceValue;
+      }
+    });
+  }
+  
+  return output;
+}
+
+function isObject(item: unknown): item is Record<string, unknown> {
+  return item !== null && typeof item === 'object' && !Array.isArray(item);
+}
+
 function validateAdvertsUpdateRequest(body: unknown): { isValid: boolean; error?: string } {
   if (!body || typeof body !== 'object') {
     return { isValid: false, error: 'Request body is required' };
@@ -404,6 +433,15 @@ export async function PATCH(
       return NextResponse.json(createErrorResponse(errorResponse), { status: errorResponse.httpStatus });
     }
 
+    // Get the updated stock data from AutoTrader PATCH response
+    let autoTraderResponseData: { adverts?: unknown; metadata?: unknown } | null = null;
+    try {
+      autoTraderResponseData = await autoTraderResponse.json() as { adverts?: unknown; metadata?: unknown } | null;
+      console.log('✅ AutoTrader PATCH response received');
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse AutoTrader response:', parseError);
+    }
+
     // Sync VAT status from listing details to purchase information
     try {
       const vatStatusUpdated = requestBody.adverts?.forecourtPriceVatStatus || requestBody.adverts?.retailAdverts?.vatStatus;
@@ -455,22 +493,52 @@ export async function PATCH(
       // Don't fail the request if VAT sync fails
     }
 
-    // Update cache if successful
+    // Update cache with AutoTrader response data (overwrite, don't merge)
+    // Use the response from AutoTrader PATCH as the source of truth
     try {
       const cacheUpdates: Record<string, unknown> = {
         updatedAt: new Date()
       };
 
-      if (payload.adverts) {
-        cacheUpdates.advertsData = { ...originalAdvertsData, ...payload.adverts };
-      }
-      if (payload.metadata) {
-        cacheUpdates.metadataRaw = { ...originalMetadata, ...payload.metadata };
+      if (autoTraderResponseData) {
+        // Overwrite adverts data from AutoTrader response (source of truth)
+        if (autoTraderResponseData.adverts) {
+          cacheUpdates.advertsData = autoTraderResponseData.adverts;
+          console.log('✅ Updated advertsData from AutoTrader response (overwritten)');
+        }
+
+        // Overwrite metadata from AutoTrader response if available
+        if (autoTraderResponseData.metadata) {
+          cacheUpdates.metadataRaw = autoTraderResponseData.metadata;
+          console.log('✅ Updated metadataRaw from AutoTrader response (overwritten)');
+        } else if (payload.metadata) {
+          // If response doesn't include metadata but we updated it, merge with original
+          const originalMeta = (originalMetadata || {}) as Record<string, unknown>;
+          const payloadMeta = (payload.metadata || {}) as Record<string, unknown>;
+          cacheUpdates.metadataRaw = deepMerge(originalMeta, payloadMeta);
+          console.log('✅ Updated metadataRaw with payload (merged)');
+        }
+      } else {
+        // Fallback: if no response data, use deep merge with original data
+        console.warn('⚠️ No AutoTrader response data available, falling back to merge');
+        if (payload.adverts) {
+          const originalAdverts = (originalAdvertsData || {}) as Record<string, unknown>;
+          const payloadAdverts = (payload.adverts || {}) as Record<string, unknown>;
+          cacheUpdates.advertsData = deepMerge(originalAdverts, payloadAdverts);
+          console.log('✅ Updated advertsData with deep merge (fallback)');
+        }
+        if (payload.metadata) {
+          const originalMeta = (originalMetadata || {}) as Record<string, unknown>;
+          const payloadMeta = (payload.metadata || {}) as Record<string, unknown>;
+          cacheUpdates.metadataRaw = deepMerge(originalMeta, payloadMeta);
+          console.log('✅ Updated metadataRaw with deep merge (fallback)');
+        }
       }
 
       await StockCacheService.updateStockCache(stockId, cacheUpdates);
+      console.log(`✅ Stock cache updated successfully for stockId: ${stockId}`);
     } catch (cacheError) {
-      console.warn('Failed to update stock cache:', cacheError);
+      console.warn('⚠️ Failed to update stock cache:', cacheError);
       // Don't fail the request if cache update fails
     }
 

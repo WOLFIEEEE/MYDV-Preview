@@ -15,25 +15,63 @@ interface AdvertsTabProps {
 export default function AdvertsTab({ stockData, stockId }: AdvertsTabProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
-  const adverts = stockData.adverts || {};
+  // Handle both adverts and advertsData (from cache) structures
+  const adverts = stockData.adverts || stockData.advertsData || {};
   const retailAdverts = adverts.retailAdverts || {};
+  const metadata = stockData.metadata || stockData.metadataRaw || {};
 
+  // VAT Status: prefer retailAdverts.vatStatus, fallback to forecourtPriceVatStatus
+  const vatStatus = retailAdverts.vatStatus || adverts.forecourtPriceVatStatus || null;
+
+  // Pricing Information
   const pricingItems = [
-    { label: 'Price on Application', value: retailAdverts.priceOnApplication ? 'Yes' : 'No' },
+    { label: 'Forecourt Price', value: adverts.forecourtPrice?.amountGBP || null, type: 'currency' as const },
+    { label: 'Price on Application', value: retailAdverts.priceOnApplication ? 'Yes' : 'No', type: 'boolean' as const },
     { label: 'Supplied Price', value: retailAdverts.suppliedPrice?.amountGBP || null, type: 'currency' as const },
     { label: 'Total Price', value: retailAdverts.totalPrice?.amountGBP || null, type: 'currency' as const },
     { label: 'Admin Fee', value: retailAdverts.adminFee?.amountGBP || null, type: 'currency' as const },
     { label: 'Manufacturer RRP', value: retailAdverts.manufacturerRRP?.amountGBP || null, type: 'currency' as const },
-    { label: 'VAT Status', value: retailAdverts.vatStatus || null },
+    { label: 'VAT Status', value: vatStatus },
     { label: 'Price Indicator Rating', value: retailAdverts.priceIndicatorRating || null },
   ];
 
-  const advertStatusItems = [
+  // Listing Information
+  const listingItems = [
+    { label: 'Lifecycle State', value: metadata.lifecycleState || null },
+    { label: 'Reservation Status', value: adverts.reservationStatus || null },
+    { label: 'Attention Grabber', value: retailAdverts.attentionGrabber || adverts.attentionGrabber || null },
+  ];
+
+  // Description Information
+  const descriptionItems = [
+    { label: 'Description', value: retailAdverts.description || null },
+    { label: 'Description 2', value: retailAdverts.description2 || null },
+  ];
+
+  // Retail Advert Status (Channels)
+  const retailAdvertStatusItems = [
     { label: 'AT Search & Find', value: retailAdverts.autotraderAdvert?.status || null },
     { label: 'AT Dealer Page', value: retailAdverts.profileAdvert?.status || null },
     { label: 'Dealer Website', value: retailAdverts.advertiserAdvert?.status || null },
     { label: 'AT Linked Advertisers', value: retailAdverts.exportAdvert?.status || null },
     { label: 'Manufacturer Website / Used Vehicle Locators', value: retailAdverts.locatorAdvert?.status || null },
+  ];
+
+  // Trade Advert Status
+  const tradeAdvertStatusItems = [
+    { label: 'Dealer Auction Advert', value: adverts.tradeAdverts?.dealerAuctionAdvert?.status || null },
+  ];
+
+  // Display Options
+  const displayOptions = retailAdverts.displayOptions || {};
+  const displayOptionItems = [
+    { label: 'Exclude Previous Owners', value: displayOptions.excludePreviousOwners ? 'Yes' : 'No', type: 'boolean' as const },
+    { label: 'Exclude Strapline', value: displayOptions.excludeStrapline ? 'Yes' : 'No', type: 'boolean' as const },
+    { label: 'Exclude MOT', value: displayOptions.excludeMot ? 'Yes' : 'No', type: 'boolean' as const },
+    { label: 'Exclude Warranty', value: displayOptions.excludeWarranty ? 'Yes' : 'No', type: 'boolean' as const },
+    { label: 'Exclude Interior Details', value: displayOptions.excludeInteriorDetails ? 'Yes' : 'No', type: 'boolean' as const },
+    { label: 'Exclude Tyre Condition', value: displayOptions.excludeTyreCondition ? 'Yes' : 'No', type: 'boolean' as const },
+    { label: 'Exclude Body Condition', value: displayOptions.excludeBodyCondition ? 'Yes' : 'No', type: 'boolean' as const },
   ];
 
   const accordionItems = [
@@ -43,9 +81,29 @@ export default function AdvertsTab({ stockData, stockId }: AdvertsTabProps) {
       defaultOpen: true,
     },
     {
-      title: 'Advert Status',
-      children: <DataGrid items={advertStatusItems} />,
+      title: 'Listing Information',
+      children: <DataGrid items={listingItems} columns={1} />,
       defaultOpen: true,
+    },
+    {
+      title: 'Descriptions',
+      children: <DataGrid items={descriptionItems} columns={1} />,
+      defaultOpen: false,
+    },
+    {
+      title: 'Retail Advert Status',
+      children: <DataGrid items={retailAdvertStatusItems} />,
+      defaultOpen: true,
+    },
+    {
+      title: 'Trade Advert Status',
+      children: <DataGrid items={tradeAdvertStatusItems} />,
+      defaultOpen: false,
+    },
+    {
+      title: 'Display Options',
+      children: <DataGrid items={displayOptionItems} />,
+      defaultOpen: false,
     },
   ];
 
