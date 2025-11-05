@@ -9,6 +9,7 @@ import {
   createSuccessResponse,
   ErrorType
 } from '@/lib/errorHandler';
+import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 
 // Define proper types for checklist data (removed unused interface)
 
@@ -90,7 +91,59 @@ export async function GET() {
       console.log('🏢 Store owner detected - using own dealer ID for inventory:', dealerId);
     }
 
-    console.log('🔍 Fetching inventory data for dealer:', dealerId);
+    // Get advertiserId from store config (supports team member credential delegation)
+    const userEmail = user.emailAddresses[0]?.emailAddress || '';
+    const configResult = await getStoreConfigForUser(user.id, userEmail);
+    
+    if (!configResult.success) {
+      const configError = {
+        type: ErrorType.NOT_FOUND,
+        message: 'Store configuration not found',
+        details: configResult.error || 'Please contact support to set up your store configuration',
+        httpStatus: 404,
+        timestamp: new Date().toISOString(),
+        endpoint: 'inventory'
+      };
+      return NextResponse.json(
+        createErrorResponse(configError),
+        { status: 404 }
+      );
+    }
+
+    // Extract advertiserId from store config
+    const userStoreConfig = configResult.storeConfig;
+    let advertiserId = userStoreConfig.primaryAdvertisementId || userStoreConfig.advertisementId;
+    
+    // Handle JSON array format if needed
+    if (userStoreConfig.advertisementId && !advertiserId) {
+      try {
+        const adIds = JSON.parse(userStoreConfig.advertisementId);
+        if (Array.isArray(adIds) && adIds.length > 0) {
+          advertiserId = adIds[0];
+        } else if (typeof adIds === 'string') {
+          advertiserId = adIds;
+        }
+      } catch (e) {
+        console.log('⚠️ Could not parse advertisementId JSON, using primary:', e);
+      }
+    }
+
+    if (!advertiserId) {
+      const configError = {
+        type: ErrorType.NOT_FOUND,
+        message: 'Advertiser ID not found in store configuration',
+        details: 'No advertisement ID configured for this store',
+        httpStatus: 404,
+        timestamp: new Date().toISOString(),
+        endpoint: 'inventory'
+      };
+      return NextResponse.json(
+        createErrorResponse(configError),
+        { status: 404 }
+      );
+    }
+
+    console.log('🔍 Fetching inventory data for dealer:', dealerId, 'with advertiserId:', advertiserId);
 
     // OPTIMIZED: Single query with LEFT JOINs instead of N+1 queries
     // This reduces database calls from potentially 1000+ to just 2 queries (main + fallback)
@@ -177,7 +230,7 @@ export async function GET() {
           eq(returnCosts.dealerId, dealerId)
         )
       )
-      .where(eq(stockCache.dealerId, dealerId));
+      .where(eq(stockCache.advertiserId, advertiserId));
 
     // If we have missing data, fetch fallback data for those stock items
     let fallbackData: Record<string, unknown>[] = [];
@@ -243,7 +296,7 @@ export async function GET() {
             eq(returnCosts.dealerId, fallbackDealerId)
           )
         )
-        .where(eq(stockCache.dealerId, dealerId));
+        .where(eq(stockCache.advertiserId, advertiserId));
     }
 
     // Create a fallback lookup map for efficient merging

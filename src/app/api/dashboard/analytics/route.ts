@@ -20,6 +20,7 @@ import {
   ErrorType
 } from '@/lib/errorHandler';
 import { getDealerIdForUser } from '@/lib/dealerHelper';
+import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 
 // Define proper types for user metadata
 interface UserPublicMetadata {
@@ -163,6 +164,114 @@ export async function GET() {
 
     console.log('📊 Fetching dashboard analytics for dealer:', dealerId);
 
+    // Get advertiserId from store config (supports team member credential delegation)
+    const userEmail = user.emailAddresses[0]?.emailAddress || '';
+    const configResult = await getStoreConfigForUser(user.id, userEmail);
+    
+    if (!configResult.success) {
+      console.log('⚠️ Store configuration not found, returning empty analytics');
+      const emptyAnalytics = {
+        inventory: {
+          overview: {
+            totalVehicles: 0,
+            totalValue: 0,
+            averagePrice: 0,
+            averageDaysInStock: 0,
+            averageYear: 0,
+            priceRange: { min: 0, max: 0 }
+          },
+          byStatus: [],
+          byMake: [],
+          byFuelType: [],
+          byBodyType: []
+        },
+        dataCompleteness: {
+          overview: {
+            totalStock: 0,
+            missingChecklist: 0,
+            missingSaleDetails: 0,
+            missingCosts: 0,
+            missingMargins: 0,
+            missingInventoryDetails: 0,
+            missingInvoices: 0
+          },
+          byDataType: [],
+          stockDetails: []
+        },
+        summary: {
+          hasInventory: false,
+          dataCompletionRate: 0,
+          mostMissingDataType: 'No data available'
+        }
+      };
+
+      return NextResponse.json(
+        createSuccessResponse(emptyAnalytics, 'dashboard/analytics')
+      );
+    }
+
+    // Extract advertiserId from store config
+    const userStoreConfig = configResult.storeConfig;
+    let advertiserId = userStoreConfig.primaryAdvertisementId || userStoreConfig.advertisementId;
+    
+    // Handle JSON array format if needed
+    if (userStoreConfig.advertisementId && !advertiserId) {
+      try {
+        const adIds = JSON.parse(userStoreConfig.advertisementId);
+        if (Array.isArray(adIds) && adIds.length > 0) {
+          advertiserId = adIds[0];
+        } else if (typeof adIds === 'string') {
+          advertiserId = adIds;
+        }
+      } catch (e) {
+        console.log('⚠️ Could not parse advertisementId JSON, using primary:', e);
+      }
+    }
+
+    if (!advertiserId) {
+      console.log('⚠️ Advertiser ID not found, returning empty analytics');
+      const emptyAnalytics = {
+        inventory: {
+          overview: {
+            totalVehicles: 0,
+            totalValue: 0,
+            averagePrice: 0,
+            averageDaysInStock: 0,
+            averageYear: 0,
+            priceRange: { min: 0, max: 0 }
+          },
+          byStatus: [],
+          byMake: [],
+          byFuelType: [],
+          byBodyType: []
+        },
+        dataCompleteness: {
+          overview: {
+            totalStock: 0,
+            missingChecklist: 0,
+            missingSaleDetails: 0,
+            missingCosts: 0,
+            missingMargins: 0,
+            missingInventoryDetails: 0,
+            missingInvoices: 0
+          },
+          byDataType: [],
+          stockDetails: []
+        },
+        summary: {
+          hasInventory: false,
+          dataCompletionRate: 0,
+          mostMissingDataType: 'No data available'
+        }
+      };
+
+      return NextResponse.json(
+        createSuccessResponse(emptyAnalytics, 'dashboard/analytics')
+      );
+    }
+
+    console.log('📊 Using advertiserId for analytics:', advertiserId);
+
     // Parallel data fetching - focus on data completeness analysis
     const [
       inventoryStats,
@@ -185,7 +294,7 @@ export async function GET() {
           maxPrice: sql`MAX(${stockCache.forecourtPriceGBP})`
         })
         .from(stockCache)
-        .where(eq(stockCache.dealerId, dealerId))
+        .where(eq(stockCache.advertiserId, advertiserId))
         .catch(err => {
           console.error('Error fetching inventory stats:', err);
           return [{ totalVehicles: 0, totalValue: '0', avgPrice: '0', avgDaysInStock: 0, avgYear: 0, minPrice: '0', maxPrice: '0' }];
@@ -199,7 +308,7 @@ export async function GET() {
           totalValue: sum(stockCache.forecourtPriceGBP)
         })
         .from(stockCache)
-        .where(eq(stockCache.dealerId, dealerId))
+        .where(eq(stockCache.advertiserId, advertiserId))
         .groupBy(stockCache.lifecycleState)
         .catch(err => {
           console.error('Error fetching inventory by status:', err);
@@ -215,7 +324,7 @@ export async function GET() {
           totalValue: sum(stockCache.forecourtPriceGBP)
         })
         .from(stockCache)
-        .where(eq(stockCache.dealerId, dealerId))
+        .where(eq(stockCache.advertiserId, advertiserId))
         .groupBy(stockCache.make)
         .orderBy(desc(count()))
         .catch(err => {
@@ -231,7 +340,7 @@ export async function GET() {
           avgPrice: avg(stockCache.forecourtPriceGBP)
         })
         .from(stockCache)
-        .where(eq(stockCache.dealerId, dealerId))
+        .where(eq(stockCache.advertiserId, advertiserId))
         .groupBy(stockCache.fuelType)
         .orderBy(desc(count()))
         .catch(err => {
@@ -247,7 +356,7 @@ export async function GET() {
           avgPrice: avg(stockCache.forecourtPriceGBP)
         })
         .from(stockCache)
-        .where(eq(stockCache.dealerId, dealerId))
+        .where(eq(stockCache.advertiserId, advertiserId))
         .groupBy(stockCache.bodyType)
         .orderBy(desc(count()))
         .catch(err => {
@@ -278,7 +387,7 @@ export async function GET() {
         .leftJoin(detailedMargins, eq(stockCache.stockId, detailedMargins.stockId))
         .leftJoin(inventoryDetails, eq(stockCache.stockId, inventoryDetails.stockId))
         .leftJoin(invoices, eq(stockCache.stockId, invoices.stockId))
-        .where(eq(stockCache.dealerId, dealerId))
+        .where(eq(stockCache.advertiserId, advertiserId))
         .catch(err => {
           console.error('Error fetching data completeness:', err);
           return [];
@@ -303,7 +412,7 @@ export async function GET() {
         .leftJoin(detailedMargins, eq(stockCache.stockId, detailedMargins.stockId))
         .leftJoin(inventoryDetails, eq(stockCache.stockId, inventoryDetails.stockId))
         .leftJoin(invoices, eq(stockCache.stockId, invoices.stockId))
-        .where(eq(stockCache.dealerId, dealerId))
+        .where(eq(stockCache.advertiserId, advertiserId))
         .catch(err => {
           console.error('Error fetching missing data summary:', err);
           return [{ totalStock: 0, totalSoldStock: 0, missingChecklist: 0, missingSaleDetails: 0, missingCosts: 0, missingMargins: 0, missingInventoryDetails: 0, missingInvoices: 0 }];

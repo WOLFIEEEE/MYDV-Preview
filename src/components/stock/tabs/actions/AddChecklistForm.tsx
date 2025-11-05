@@ -277,13 +277,14 @@ export default function AddChecklistForm({ stockData, onSuccess }: AddChecklistF
     }
   ];
 
-  // Exclude read-only fields from progress calculation
-  const checklistFields = Object.entries(formData)        .filter(([key]) => 
-          !['registration'].includes(key)
-  );
-  const completedItems = checklistFields.filter(([, value]) => value.trim() !== '').length;
+  // Use the same 5 fields as the backend calculation for consistency
+  const checklistFields = ['userManual', 'numberOfKeys', 'serviceBook', 'wheelLockingNut', 'cambeltChainConfirmation'];
+  const completedItems = checklistFields.filter(field => {
+    const value = formData[field as keyof typeof formData];
+    return value && typeof value === 'string' && value.trim() !== '';
+  }).length;
   const totalItems = checklistFields.length;
-  const progressPercentage = (completedItems / totalItems) * 100;
+  const progressPercentage = Math.round((completedItems / totalItems) * 100);
 
   return (
     <div className="p-4 space-y-4 bg-gradient-to-br from-rose-100/80 via-pink-100/60 to-purple-100/80">

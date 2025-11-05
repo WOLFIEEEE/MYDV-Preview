@@ -10,8 +10,10 @@ import {
 import { getAutoTraderToken } from '@/lib/autoTraderAuth';
 import { getStoreConfigForUser } from '@/lib/storeConfigHelper';
 import { getStockImagesByDealer, createOrGetDealer } from '@/lib/database';
+import { getDealerIdForUser } from '@/lib/dealerHelper';
 import { db } from '@/lib/db';
-import { stockCache } from '@/db/schema';
+import { stockCache, dealers } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 // Removed: import { getAutoTraderBaseUrlForServer } from '@/lib/autoTraderConfig';
 
 // Flow type definitions
@@ -24,6 +26,7 @@ interface VehicleFinderFlow {
   forecourtPriceVatStatus?: string;
   attentionGrabber?: string;
   description?: string;
+  description2?: string;
   lifecycleState?: string;
   stockReference?: string;
   imageIds?: string[];
@@ -56,6 +59,7 @@ interface TaxonomyFlow {
   forecourtPriceVatStatus?: string;
   attentionGrabber?: string;
   description?: string;
+  description2?: string;
     lifecycleState?: string;
   stockReference?: string;
   imageIds?: string[];
@@ -330,6 +334,7 @@ interface AutoTraderStockPayload {
       vatStatus?: string;
       attentionGrabber?: string;
       description?: string;
+      description2?: string;
       autotraderAdvert?: {
         status: string;
       };
@@ -684,8 +689,34 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Validation passed - Make:', vehicleData.make, 'Model:', vehicleData.model);
 
-    // Get dealer ID and retrieve stock images for Default/Fallback logic
-    const dealer = await createOrGetDealer(user.id, 'Unknown', userEmail);
+    // Get dealer ID (supports team member credential delegation)
+    // If user is a team member, use team owner's dealer ID
+    const dealerIdResult = await getDealerIdForUser(user);
+    
+    let dealer;
+    if (dealerIdResult.success && dealerIdResult.dealerId) {
+      // Get the full dealer record using the resolved dealer ID
+      const dealerRecords = await db
+        .select()
+        .from(dealers)
+        .where(eq(dealers.id, dealerIdResult.dealerId))
+        .limit(1);
+      
+      if (dealerRecords.length > 0) {
+        dealer = dealerRecords[0];
+        console.log('✅ Using dealer ID:', dealer.id, dealerIdResult.dealerId === user.id ? '(store owner)' : '(team member using store owner)');
+      } else {
+        // Fallback: create dealer record if not found
+        console.log('⚠️ Dealer record not found, creating new dealer record');
+        dealer = await createOrGetDealer(user.id, 'Unknown', userEmail);
+      }
+    } else {
+      // Fallback: create dealer record if resolution failed
+      console.log('⚠️ Dealer ID resolution failed, creating new dealer record');
+      dealer = await createOrGetDealer(user.id, 'Unknown', userEmail);
+    }
+    
+    // Retrieve stock images for Default/Fallback logic
     const dealerStockImages = await getStockImagesByDealer(dealer.id);
     
     console.log(`📋 Dealer ID: ${dealer.id} - Found ${dealerStockImages.length} dealer stock images`);
@@ -799,8 +830,9 @@ export async function POST(request: NextRequest) {
             amountGBP: requestData.forecourtPrice
           },
           vatStatus: requestData.forecourtPriceVatStatus || 'No VAT',
-          attentionGrabber: requestData.attentionGrabber || 'Available Now',
-          description: requestData.description || `${vehicleData.make} ${vehicleData.model} - Excellent condition`,
+          attentionGrabber: requestData.attentionGrabber || undefined,
+          description: requestData.description || undefined,
+          description2: requestData.description2 || undefined,
           autotraderAdvert: {
             status: requestData.channelStatus?.autotraderAdvert ? 'PUBLISHED' : 'NOT_PUBLISHED'
           },
