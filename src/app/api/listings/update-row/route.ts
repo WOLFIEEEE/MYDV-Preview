@@ -20,7 +20,13 @@ interface AutoTraderUpdatePayload {
     forecourtPrice?: {
       amountGBP: number;
     };
-    retailAdverts?: {
+    retailAdverts?: Record<string, unknown> & {
+      suppliedPrice?: {
+        amountGBP: number;
+      };
+      totalPrice?: {
+        amountGBP: number | null;
+      };
       autotraderAdvert?: {
         status: 'PUBLISHED' | 'NOT_PUBLISHED';
       };
@@ -170,6 +176,20 @@ export async function POST(request: NextRequest) {
       autotraderPayload.adverts.forecourtPrice = {
         amountGBP: price
       };
+      
+      // Also update suppliedPrice in retailAdverts to match forecourtPrice
+      // This ensures consistency across all price fields
+      if (!autotraderPayload.adverts.retailAdverts) {
+        autotraderPayload.adverts.retailAdverts = {};
+      }
+      autotraderPayload.adverts.retailAdverts.suppliedPrice = {
+        amountGBP: price
+      };
+      
+      console.log('💷 Price update payload:', {
+        forecourtPrice: price,
+        suppliedPrice: price
+      });
     }
 
     // Add channel status updates if provided
@@ -188,7 +208,7 @@ export async function POST(request: NextRequest) {
         const advertType = channelMapping[channelId];
         if (advertType) {
           const newStatus = status ? 'PUBLISHED' : 'NOT_PUBLISHED';
-          autotraderPayload.adverts.retailAdverts[advertType] = {
+          (autotraderPayload.adverts.retailAdverts as Record<string, { status: string }>)[advertType] = {
             status: newStatus
           };
         }
@@ -212,7 +232,9 @@ export async function POST(request: NextRequest) {
         hasRetailAdverts: !!autotraderPayload.adverts.retailAdverts,
         retailAdverts: autotraderPayload.adverts.retailAdverts ? Object.keys(autotraderPayload.adverts.retailAdverts) : [],
         advertStatuses: autotraderPayload.adverts.retailAdverts ? 
-          Object.entries(autotraderPayload.adverts.retailAdverts).map(([key, value]) => ({ [key]: value.status })) : []
+          Object.entries(autotraderPayload.adverts.retailAdverts).map(([key, value]) => ({ 
+            [key]: (value as { status?: string })?.status 
+          })) : []
       });
 
       // Use browser-aware fetch with enhanced error handling
@@ -292,12 +314,84 @@ export async function POST(request: NextRequest) {
       // This ensures the cache stays in sync with AutoTrader and prevents stale data issues
       try {
         console.log('💾 Updating stock_cache with new adverts data...');
+        
+        // Use AutoTrader response as source of truth (contains full updated adverts object)
+        // Not the partial payload we sent, to avoid overwriting existing data
+        const updatedAdverts = autotraderResponse.adverts || autotraderPayload.adverts;
+        
+        // Prepare cache updates with flattened pricing columns
+        const cacheUpdates: Record<string, unknown> = {
+          advertsData: updatedAdverts,
+          updatedAt: new Date()
+        };
+        
+        console.log('📦 Cache update using AutoTrader response adverts data');
+        
+        // Extract and update flattened pricing columns from the updated adverts
+        const forecourtPrice = updatedAdverts?.forecourtPrice?.amountGBP;
+        const retailAdverts = updatedAdverts?.retailAdverts;
+        const suppliedPrice = retailAdverts && 'suppliedPrice' in retailAdverts
+          ? (retailAdverts.suppliedPrice as { amountGBP?: number | null })?.amountGBP
+          : undefined;
+        const totalPrice = retailAdverts && 'totalPrice' in retailAdverts 
+          ? (retailAdverts.totalPrice as { amountGBP?: number | null })?.amountGBP 
+          : undefined;
+        
+        // Log what we extracted from AutoTrader response
+        console.log('💷 Extracted prices from AutoTrader response:', {
+          forecourtPrice,
+          suppliedPrice,
+          totalPrice
+        });
+        
+        // Update forecourtPriceGBP if price was changed
+        if (forecourtPrice !== undefined && forecourtPrice !== null) {
+          cacheUpdates.forecourtPriceGBP = forecourtPrice.toString();
+          console.log(`✅ Updated forecourtPriceGBP: £${forecourtPrice}`);
+          
+          // Calculate totalPriceGBP if not provided by AutoTrader
+          // Need to fetch current VAT status from cache to make calculation
+          if (totalPrice === undefined || totalPrice === null) {
+            // Get current stock data to check VAT status
+            const currentStock = await db
+              .select({ advertsData: stockCache.advertsData })
+              .from(stockCache)
+              .where(eq(stockCache.stockId, stockId))
+              .limit(1);
+            
+            if (currentStock.length > 0 && currentStock[0].advertsData) {
+              const currentAdverts = currentStock[0].advertsData as Record<string, unknown>;
+              const forecourtVatStatus = currentAdverts.forecourtPriceVatStatus as string | null | undefined;
+              const currentRetailAdverts = currentAdverts.retailAdverts as Record<string, unknown> | undefined;
+              const retailVatStatus = currentRetailAdverts ? (currentRetailAdverts.vatStatus as string | null | undefined) : undefined;
+              
+              // Check forecourtPriceVatStatus first, then retailAdverts.vatStatus
+              const vatStatus = forecourtVatStatus || retailVatStatus;
+              
+              let calculatedTotalPrice = forecourtPrice;
+              
+              if (vatStatus && vatStatus.toLowerCase() === 'ex vat') {
+                // Add 20% VAT to get total price
+                calculatedTotalPrice = forecourtPrice * 1.20;
+                console.log(`💷 Calculated totalPrice from forecourtPrice + 20% VAT: £${forecourtPrice} → £${calculatedTotalPrice}`);
+              } else {
+                console.log(`💷 Calculated totalPrice (same as forecourtPrice, no VAT): £${calculatedTotalPrice}`);
+              }
+              
+              cacheUpdates.totalPriceGBP = calculatedTotalPrice.toString();
+            }
+          }
+        }
+        
+        // Update totalPriceGBP if explicitly provided
+        if (totalPrice !== undefined && totalPrice !== null) {
+          cacheUpdates.totalPriceGBP = totalPrice.toString();
+          console.log(`✅ Updated totalPriceGBP: £${totalPrice}`);
+        }
+        
         await db
           .update(stockCache)
-          .set({
-            advertsData: autotraderPayload.adverts,
-            updatedAt: new Date()
-          })
+          .set(cacheUpdates)
           .where(eq(stockCache.stockId, stockId));
         
         console.log('✅ stock_cache updated successfully for stockId:', stockId);
