@@ -227,16 +227,22 @@ export async function PATCH(
         if (newListing !== origListing) {
           advertsChanges.forecourtPrice = { amountGBP: newListing };
         }
-
-        // Handle supplied price for cars - use client-provided value
-        if (isCar && adverts.suppliedPrice?.amountGBP !== undefined) {
-          const newSupplied = parseFloat(String(adverts.suppliedPrice.amountGBP));
-          const origSupplied = parseFloat(String(originalRetailAdverts.suppliedPrice?.amountGBP || 0));
-          
-          // Only update if value changed and meets API minimum
-          if (newSupplied >= 75 && newSupplied !== origSupplied) {
-            retailAdvertsChanges.suppliedPrice = { amountGBP: newSupplied };
-          }
+      }
+      
+      // Handle supplied price for cars
+      // Check both top-level and retailAdverts for supplied price
+      const suppliedPriceValue = adverts.suppliedPrice?.amountGBP ?? adverts.retailAdverts?.suppliedPrice?.amountGBP;
+      
+      if (isCar && suppliedPriceValue !== undefined) {
+        const newSupplied = parseFloat(String(suppliedPriceValue));
+        const origSupplied = parseFloat(String(originalRetailAdverts.suppliedPrice?.amountGBP || 0));
+        
+        // Only update if value changed and meets API minimum
+        if (newSupplied >= 75 && newSupplied !== origSupplied) {
+          retailAdvertsChanges.suppliedPrice = { amountGBP: newSupplied };
+          console.log(`✅ Updated supplied price for car: £${newSupplied}`);
+        } else if (newSupplied < 75) {
+          console.warn(`⚠️ Supplied price £${newSupplied} is below API minimum of £75, skipping update`);
         }
       }
 
@@ -507,19 +513,47 @@ export async function PATCH(
           cacheUpdates.advertsData = updatedAdverts;
           
           // CRITICAL: Update flattened pricing columns used by My Stock table and Overview tab
-          // Extract pricing from the response
+          // Extract ALL pricing from the response
           const forecourtPrice = (updatedAdverts.forecourtPrice as { amountGBP?: number | null })?.amountGBP;
           const retailAdverts = updatedAdverts.retailAdverts as Record<string, unknown> | undefined;
-          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number | null })?.amountGBP : undefined;
+          let totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number | null })?.amountGBP : undefined;
+          const suppliedPrice = retailAdverts ? (retailAdverts.suppliedPrice as { amountGBP?: number | null })?.amountGBP : undefined;
           
+          // Update forecourtPriceGBP (main listing price)
           if (forecourtPrice !== undefined && forecourtPrice !== null) {
             cacheUpdates.forecourtPriceGBP = forecourtPrice.toString();
             console.log(`✅ Updated forecourtPriceGBP: £${forecourtPrice}`);
           }
           
+          // Calculate totalPriceGBP if not provided by AutoTrader
+          if ((totalPrice === undefined || totalPrice === null) && forecourtPrice) {
+            // Check VAT status to determine if we need to add 20%
+            const forecourtVatStatus = updatedAdverts.forecourtPriceVatStatus as string | null | undefined;
+            const retailVatStatus = retailAdverts ? (retailAdverts.vatStatus as string | null | undefined) : undefined;
+            
+            // Check forecourtPriceVatStatus first, then retailAdverts.vatStatus
+            const vatStatus = forecourtVatStatus || retailVatStatus;
+            
+            if (vatStatus && vatStatus.toLowerCase() === 'ex vat') {
+              // Add 20% VAT to get total price
+              totalPrice = forecourtPrice * 1.20;
+              console.log(`💷 Calculated totalPrice from forecourtPrice + 20% VAT: £${forecourtPrice} → £${totalPrice}`);
+            } else {
+              // No VAT adjustment needed, total = forecourt
+              totalPrice = forecourtPrice;
+              console.log(`💷 Calculated totalPrice (same as forecourtPrice, no VAT): £${totalPrice}`);
+            }
+          }
+          
+          // Update totalPriceGBP (retail price including fees)
           if (totalPrice !== undefined && totalPrice !== null) {
             cacheUpdates.totalPriceGBP = totalPrice.toString();
             console.log(`✅ Updated totalPriceGBP: £${totalPrice}`);
+          }
+          
+          // Log supplied price for tracking (stored in advertsData JSON, not as flattened column)
+          if (suppliedPrice !== undefined && suppliedPrice !== null) {
+            console.log(`📝 Supplied price in response: £${suppliedPrice} (stored in advertsData JSON)`);
           }
           
           console.log('✅ Updated advertsData from AutoTrader response (overwritten)');
@@ -563,16 +597,44 @@ export async function PATCH(
           // Extract and update flattened pricing columns from merged data
           const forecourtPrice = (mergedAdverts.forecourtPrice as { amountGBP?: number | null })?.amountGBP;
           const retailAdverts = mergedAdverts.retailAdverts as Record<string, unknown> | undefined;
-          const totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number | null })?.amountGBP : undefined;
+          let totalPrice = retailAdverts ? (retailAdverts.totalPrice as { amountGBP?: number | null })?.amountGBP : undefined;
+          const suppliedPrice = retailAdverts ? (retailAdverts.suppliedPrice as { amountGBP?: number | null })?.amountGBP : undefined;
           
+          // Update forecourtPriceGBP (main listing price)
           if (forecourtPrice !== undefined && forecourtPrice !== null) {
             cacheUpdates.forecourtPriceGBP = forecourtPrice.toString();
             console.log(`✅ Updated forecourtPriceGBP (fallback): £${forecourtPrice}`);
           }
           
+          // Calculate totalPriceGBP if not provided (fallback logic)
+          if ((totalPrice === undefined || totalPrice === null) && forecourtPrice) {
+            // Check VAT status to determine if we need to add 20%
+            const forecourtVatStatus = mergedAdverts.forecourtPriceVatStatus as string | null | undefined;
+            const retailVatStatus = retailAdverts ? (retailAdverts.vatStatus as string | null | undefined) : undefined;
+            
+            // Check forecourtPriceVatStatus first, then retailAdverts.vatStatus
+            const vatStatus = forecourtVatStatus || retailVatStatus;
+            
+            if (vatStatus && vatStatus.toLowerCase() === 'ex vat') {
+              // Add 20% VAT to get total price
+              totalPrice = forecourtPrice * 1.20;
+              console.log(`💷 Calculated totalPrice from forecourtPrice + 20% VAT (fallback): £${forecourtPrice} → £${totalPrice}`);
+            } else {
+              // No VAT adjustment needed, total = forecourt
+              totalPrice = forecourtPrice;
+              console.log(`💷 Calculated totalPrice (same as forecourtPrice, no VAT, fallback): £${totalPrice}`);
+            }
+          }
+          
+          // Update totalPriceGBP (retail price including fees)
           if (totalPrice !== undefined && totalPrice !== null) {
             cacheUpdates.totalPriceGBP = totalPrice.toString();
             console.log(`✅ Updated totalPriceGBP (fallback): £${totalPrice}`);
+          }
+          
+          // Log supplied price for tracking (stored in advertsData JSON, not as flattened column)
+          if (suppliedPrice !== undefined && suppliedPrice !== null) {
+            console.log(`📝 Supplied price in merged data: £${suppliedPrice} (stored in advertsData JSON)`);
           }
           
           console.log('✅ Updated advertsData with deep merge (fallback)');
