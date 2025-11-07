@@ -74,7 +74,8 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
             setFormData(prev => {
               return {
                 ...prev,
-                vatScheme: result.vatScheme || null
+                vatScheme: result.vatScheme || null,
+                forecourtPriceVatStatus: result.forecourtPriceVatStatus || result?.advertsData?.forecourtPriceVatStatus || 'no_vat'
               };
             });
           }
@@ -103,13 +104,17 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
   }, [stockData?.metadata?.stockId]);
 
   const getVatQualificationStatus = (vatScheme: string | null): string => {
-    if (vatScheme && (vatScheme === 'includes' || vatScheme === 'excludes')) return 'Vat Qualifying';
+    if (vatScheme && vatScheme?.toLowerCase() === 'vat qualifying') return 'VAT Qualifying';
     return 'Marginal';
     // if (!vatScheme || vatScheme === null || vatScheme === 'no_vat') return 'Marginal';
     // return 'Qualifying';
   };
 
   const handleInputChange = (field: string, value: string | null) => {
+    if (field === 'forecourtPriceVatStatus' && value != 'Inc VAT' && value != 'Ex VAT') {
+      value = 'No VAT';
+    }
+
     setFormData(prev => {
       const newData = {
         ...prev,
@@ -133,9 +138,9 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
   // Calculate Gross Purchase Cost
   const calculateGrossPurchaseCost = () => {
     const costOfPurchase = parseFloat(formData.costOfPurchase) || 0;
-    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'includes') {
+    if (!formData.forecourtPriceVatStatus || formData.forecourtPriceVatStatus === 'No VAT' || formData.forecourtPriceVatStatus === 'Inc VAT') {
       return costOfPurchase; // No VAT or includes VAT = same as cost of purchase
-    } else if (formData.vatScheme === 'excludes') {
+    } else if (formData.forecourtPriceVatStatus === 'Ex VAT') {
       return costOfPurchase * 1.2; // Excludes VAT = 120% of cost of purchase
     }
     return costOfPurchase;
@@ -144,9 +149,9 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
   // Calculate Net Purchase Cost
   const calculateNetPurchaseCost = () => {
     const costOfPurchase = parseFloat(formData.costOfPurchase) || 0;
-    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'excludes') {
+    if (!formData.forecourtPriceVatStatus || formData.forecourtPriceVatStatus === 'No VAT' || formData.forecourtPriceVatStatus === 'Ex VAT') {
       return costOfPurchase; // No VAT or excludes VAT = same as cost of purchase
-    } else if (formData.vatScheme === 'includes') {
+    } else if (formData.forecourtPriceVatStatus === 'Inc VAT') {
       return (costOfPurchase / 6) * 5; // Includes VAT = cost of purchase / 6 * 5
     }
     return costOfPurchase;
@@ -289,9 +294,9 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                     isDarkMode ? 'text-white' : 'text-slate-600'
                   }`}>
                     {formData.vatScheme ? 
-                      formData.vatScheme === 'includes' ? 'Price includes VAT' : 
-                      formData.vatScheme === 'excludes' ? 'Price excludes VAT' : 
-                      'No VAT applicable'
+                      formData.forecourtPriceVatStatus === 'Inc VAT' ? 'Paid Inclusive' : 
+                      formData.forecourtPriceVatStatus === 'Ex VAT' ? 'Paid Exclusive' : 
+                      'None Paid'
                       : ''
                     }
                   </div>
@@ -419,16 +424,16 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                   <div className="mb-6 w-1/2">
                     <label className={labelClass}>
                       <PoundSterling className="inline h-4 w-4 mr-2" />
-                      VAT Status
+                      VAT Qualifying
                     </label>
                     <div className="relative">
                       <input
                         type="text"
-                        value={formData.vatScheme ? 
-                          formData.forecourtPriceVatStatus === 'includes' || formData.forecourtPriceVatStatus === 'inc_vat' ? 'Inc VAT' : 
-                          formData.forecourtPriceVatStatus === 'excludes' || formData.forecourtPriceVatStatus === 'ex_vat' ? 'Ex VAT' : 
-                          'No VAT'
-                          : 'No VAT'
+                        value={formData.forecourtPriceVatStatus ? 
+                          formData.forecourtPriceVatStatus === 'Inc VAT' ? 'Paid inclusive' : 
+                          formData.forecourtPriceVatStatus === 'Ex VAT' ? 'Paid Exclusive' : 
+                          'None paid'
+                          : 'None paid'
                         }
                         readOnly
                         className={`${inputBaseClass} ${isDarkMode
@@ -447,6 +452,30 @@ export default function EditInventoryForm({ stockData, onSuccess }: EditInventor
                       <span className="font-medium">Note:</span> To change VAT status, go to <span className="font-semibold">Edit Stock → Listing Details</span>
                     </div>
                   </div>
+                  {/* <div className="mb-6 w-1/2">
+                    <label className={labelClass}>
+                      <PoundSterling className="inline h-4 w-4 mr-2" />
+                      VAT Qualifying
+                    </label>
+                    <select
+                      value={formData.forecourtPriceVatStatus || ''}
+                      onChange={(e) => handleInputChange('forecourtPriceVatStatus', e.target.value || null)}
+                      onFocus={() => setFocusedField('forecourtPriceVatStatus')}
+                      onBlur={() => setFocusedField(null)}
+                      className={`${inputBaseClass} ${focusedField === 'forecourtPriceVatStatus' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                        }`}
+                    >
+                        <option value='No VAT'>
+                          None paid
+                        </option>
+                        <option value='Inc VAT'>
+                          Paid inclusive
+                        </option>
+                        <option value='Ex VAT'>
+                          Paid exclusive
+                        </option>
+                    </select>
+                  </div> */}
             </div>
 
             {/* Purchase From */}

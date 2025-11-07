@@ -261,6 +261,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch VAT scheme from stockCache
     let vatScheme = null;
+    let forecourtVatStatus = null;
     try {
       const stockCacheResult = await db
         .select({
@@ -280,6 +281,7 @@ export async function GET(request: NextRequest) {
           ? JSON.parse(advertsData) 
           : advertsData;
         vatScheme = parsedAdvertsData?.vatScheme || null;
+        forecourtVatStatus = parsedAdvertsData?.forecourtPriceVatStatus || null;
         console.log('📖 Retrieved VAT scheme:', vatScheme);
       }
     } catch (vatError) {
@@ -292,7 +294,8 @@ export async function GET(request: NextRequest) {
         success: true,
         message: 'No inventory details found',
         data: null,
-        vatScheme: vatScheme // Include VAT scheme even if no inventory details found
+        vatScheme: vatScheme, // Include VAT scheme even if no inventory details found
+        forecourtPriceVatStatus: forecourtVatStatus
       });
     }
 
@@ -302,7 +305,8 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         ...result[0],
-        vatScheme: result[0].vatScheme || vatScheme || 'no_vat' // Prioritize inventory details VAT scheme, fallback to stockCache
+        vatScheme: result[0].vatScheme || vatScheme || 'no_vat', // Prioritize inventory details VAT scheme, fallback to stockCache
+        forecourtPriceVatStatus: forecourtVatStatus
       }
     });
 

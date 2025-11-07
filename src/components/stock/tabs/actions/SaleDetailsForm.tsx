@@ -121,6 +121,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     stockReference: stockData?.metadata?.stockId || '',
     registration: stockData?.vehicle?.registration || '',
     vatScheme: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
+    forecourtPriceVatStatus: (stockData as any)?.advertsData?.forecourtPriceVatStatus || null,
     vatSchemeSales: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
     saleDate: new Date().toISOString().split('T')[0],
     monthOfSale: getMonthFromDate(new Date().toISOString().split('T')[0]),
@@ -208,7 +209,8 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
             setFormData({
               stockReference: data.stockReference || stockData?.metadata?.stockId || '',
               registration: data.registration || stockData?.vehicle?.registration || '',
-              vatScheme: data.vatScheme || (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // Prioritize sales details VAT scheme
+              vatScheme: data.vatScheme || (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'Marginal', // Prioritize sales details VAT scheme
+              forecourtPriceVatStatus: data.forecourtPriceVatStatus || 'Inc VAT',
               vatSchemeSales: data?.vatSchemeSales,
               saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               monthOfSale: data.monthOfSale || getMonthFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
@@ -292,9 +294,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
   // VAT calculation functions
   const calculateGrossSalePrice = () => {
     const salePrice = parseFloat(formData.salePrice) || 0;
-    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'includes') {
+    if (!formData.vatSchemeSales || formData.vatSchemeSales === 'no_vat' || formData.vatSchemeSales === 'includes') {
       return salePrice;
-    } else if (formData.vatScheme === 'excludes') {
+    } else if (formData.vatSchemeSales === 'excludes') {
       return salePrice * 1.2; // Add 20% VAT
     }
     return salePrice;
@@ -302,16 +304,16 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
 
   const calculateNetSalePrice = () => {
     const salePrice = parseFloat(formData.salePrice) || 0;
-    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'excludes') {
+    if (!formData.vatSchemeSales || formData.vatSchemeSales === 'no_vat' || formData.vatSchemeSales === 'excludes') {
       return salePrice;
-    } else if (formData.vatScheme === 'includes') {
+    } else if (formData.vatSchemeSales === 'includes') {
       return (salePrice / 6) * 5; // Remove 20% VAT (divide by 1.2)
     }
     return salePrice;
   };
 
   const getVatQualificationStatus = (vatScheme: string | null): string => {
-    if (vatScheme && (vatScheme === 'includes' || vatScheme === 'excludes')) return 'Vat Qualifying';
+    if (vatScheme && vatScheme?.toLowerCase() === 'vat qualifying') return 'VAT Qualifying';
     return 'Marginal';
     // if (!vatScheme || vatScheme === 'no_vat') return 'Non-Qualifying';
     // return 'Qualifying';
@@ -641,15 +643,15 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                   </span>
                 </div>
                 <div className={`text-xs mt-0.5 opacity-75 ${
-                  isDarkMode ? 'text-white' : 'text-slate-600'
-                }`}>
-                  {formData.vatScheme ? 
-                    formData.vatScheme === 'includes' ? 'Price includes VAT' : 
-                    formData.vatScheme === 'excludes' ? 'Price excludes VAT' : 
-                    'No VAT applicable'
-                    : 'No VAT applicable'
-                  }
-                </div>
+                    isDarkMode ? 'text-white' : 'text-slate-600'
+                  }`}>
+                    {formData.vatScheme ? 
+                      formData.forecourtPriceVatStatus === 'Inc VAT' ? 'Paid Inclusive' : 
+                      formData.forecourtPriceVatStatus === 'Ex VAT' ? 'Paid Exclusive' : 
+                      'None Paid'
+                      : ''
+                    }
+                  </div>
               </div>
 
               {/* Sale Value Display */}
@@ -758,27 +760,6 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     </div>
                   </div>
                 </div>
-
-                {/* VAT Status (Editable) */}
-                <div className="group">
-                  <label className={labelClass}>
-                    <PoundSterling className="inline h-4 w-4 mr-2" />
-                    VAT Status
-                  </label>
-                  <select
-                    value={formData.vatSchemeSales || 'no_vat'}
-                    onChange={(e) => handleInputChange('vatSchemeSales', e.target.value)}
-                    onFocus={() => setFocusedField('vatSchemeSales')}
-                    onBlur={() => setFocusedField(null)}
-                    className={`${inputBaseClass} ${
-                      focusedField === 'vatSchemeSales' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
-                    }`}
-                  >
-                    <option value="no_vat">No VAT</option>
-                    <option value="includes">Inc VAT</option>
-                    <option value="excludes">Ex VAT</option>
-                  </select>
-                </div>
               </div>
               <div className={`mt-2 text-xs ${
                 isDarkMode ? 'text-white' : 'text-slate-500'
@@ -857,30 +838,52 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                   </div>
                 </div>
               </div>
-
-              <div>
-                <label className={labelClass}>
-                  <PoundSterling className="inline h-4 w-4 mr-2" />
-                  Sale Price (£)
-                </label>
-                <div className="relative">
-                  <div className={`absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold ${
-                    isDarkMode ? 'text-white' : 'text-slate-500'
-                  }`}>
-                    £
+              <div className="flex items-center gap-4">
+                <div className="w-1/2">
+                  <label className={labelClass}>
+                    <PoundSterling className="inline h-4 w-4 mr-2" />
+                    Sale Price (£)
+                  </label>
+                  <div className="relative">
+                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-slate-500'
+                    }`}>
+                      £
+                    </div>
+                    <input
+                      type="number"
+                      value={formData.salePrice}
+                      onChange={(e) => handleInputChange('salePrice', e.target.value)}
+                      onFocus={() => setFocusedField('salePrice')}
+                      onBlur={() => setFocusedField(null)}
+                      className={`${inputBaseClass} pl-8 ${
+                        focusedField === 'salePrice' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                      }`}
+                      placeholder="0.00"
+                      step="0.01"
+                    />
                   </div>
-                  <input
-                    type="number"
-                    value={formData.salePrice}
-                    onChange={(e) => handleInputChange('salePrice', e.target.value)}
-                    onFocus={() => setFocusedField('salePrice')}
+                </div>
+
+                {/* VAT Status (Editable) */}
+                <div className="group w-1/2">
+                  <label className={labelClass}>
+                    <PoundSterling className="inline h-4 w-4 mr-2" />
+                    VAT on Sales Invoice
+                  </label>
+                  <select
+                    value={formData.vatSchemeSales || 'no_vat'}
+                    onChange={(e) => handleInputChange('vatSchemeSales', e.target.value)}
+                    onFocus={() => setFocusedField('vatSchemeSales')}
                     onBlur={() => setFocusedField(null)}
-                    className={`${inputBaseClass} pl-8 ${
-                      focusedField === 'salePrice' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                    className={`${inputBaseClass} ${
+                      focusedField === 'vatSchemeSales' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                     }`}
-                    placeholder="0.00"
-                    step="0.01"
-                  />
+                  >
+                    <option value="no_vat">No VAT</option>
+                    <option value="includes">Inc VAT</option>
+                    <option value="excludes">Ex VAT</option>
+                  </select>
                 </div>
               </div>
             </div>

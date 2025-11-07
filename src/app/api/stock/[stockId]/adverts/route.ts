@@ -251,8 +251,19 @@ export async function PATCH(
         const newVatStatus = adverts.forecourtPriceVatStatus;
         const origForecourtVat = originalAdvertsData.forecourtPriceVatStatus;
 
+        const origVatScheme = originalRetailAdverts?.vatStatus || '';
+        let newVatScheme: string;
+        if (newVatStatus.toLowerCase() === 'inc vat' || newVatStatus.toLowerCase() === 'ex vat') {
+          newVatScheme = 'Vat Qualifying'
+        } else {
+          newVatScheme = 'Marginal'
+        }
+
         if (newVatStatus !== origForecourtVat) {
           advertsChanges.forecourtPriceVatStatus = newVatStatus;
+        }
+        if (newVatScheme !== origVatScheme) {
+          advertsChanges.vatScheme = newVatScheme;
         }
       }
 

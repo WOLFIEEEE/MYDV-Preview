@@ -56,6 +56,7 @@ export default function EditListingModal({ isOpen, onClose, stockData, stockId, 
   // Populate form data from stock data
   useEffect(() => {
     if (stockData) {
+      console.log("🚀 ~ EditListingModal ~ stockData:", stockData)
       const metadata = stockData.metadata || {};
       const adverts = stockData.adverts?.retailAdverts || {};
       const price = adverts.forecourtPrice || stockData.price || {};
