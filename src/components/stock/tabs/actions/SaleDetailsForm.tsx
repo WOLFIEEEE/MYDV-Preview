@@ -189,6 +189,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         additionalText: '',
         completionDate: ''
   });
+  console.log("🚀 ~ SaleDetailsForm ~ formData:", formData)
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -642,7 +643,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     VAT Status: {getVatQualificationStatus(formData.vatScheme)}
                   </span>
                 </div>
-                <div className={`text-xs mt-0.5 opacity-75 ${
+                {/* <div className={`text-xs mt-0.5 opacity-75 ${
                     isDarkMode ? 'text-white' : 'text-slate-600'
                   }`}>
                     {formData.vatScheme ? 
@@ -651,7 +652,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                       'None Paid'
                       : ''
                     }
-                  </div>
+                  </div> */}
               </div>
 
               {/* Sale Value Display */}

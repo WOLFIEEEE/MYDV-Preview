@@ -776,6 +776,8 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
+    console.log(formData)
+
     try {
       // Check saleType, vatScheme, and invoiceTo (for Retail sales)
       const newErrors: Record<string, string> = {};
@@ -785,9 +787,14 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
       }
 
       // VAT Scheme is required
-      if (!formData.vatScheme || formData.vatScheme === '') {
-        newErrors.vatScheme = 'VAT scheme is required';
+      if (!editableVatStatus || editableVatStatus === '') {
+        newErrors.vatScheme = 'VAT status is required';
       }
+      // return
+
+      // if (!formData.vatScheme || formData.vatScheme === '') {
+      //   newErrors.vatScheme = 'VAT scheme is required';
+      // }
 
       // Invoice To is only required for Retail sales
       if (formData.saleType === 'Retail' && (!formData.invoiceTo || formData.invoiceTo === 'select')) {
@@ -987,7 +994,7 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
               >
                 <option value="">Select VAT Scheme</option>
                 <option value="Margin">Margin</option>
-                <option value="VAT">VAT</option>
+                <option value="VAT">VAT Qualifying</option>
               </select>
               {errors.vatScheme && (
                 <p className="text-red-500 text-xs flex items-center gap-1">
@@ -1067,17 +1074,28 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
                 <div className="space-y-2">
                   <label className={`${labelClass} flex items-center gap-2`}>
                     <CheckCircle className="h-4 w-4" />
-                    VAT Status
+                    VAT on Sales Invoice
+                    <span className={`text-xs px-2 py-1 rounded ${
+                  isDarkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'
+                }`}>Required</span>
                   </label>
+                  
                   <select
                     value={editableVatStatus}
                     onChange={(e) => setEditableVatStatus(e.target.value)}
                     className={inputBaseClass}
                   >
+                    <option value="">-</option>
                     <option value="no_vat">No VAT</option>
                     <option value="includes">Inc VAT</option>
                     <option value="excludes">Ex VAT</option>
                   </select>
+                  {errors.vatScheme && (
+                <p className="text-red-500 text-xs flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.vatScheme}
+                </p>
+              )}
                   <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     {saleDetailsData ? 'Editable from sale details' : 'Select VAT status'}
                   </p>
