@@ -36,6 +36,7 @@ interface SaleDetailsFormProps {
     };
   };
   onSuccess?: () => void;
+  refetch?: (options?: any) => Promise<any>;
 }
 
 interface YesNoToggleProps {
@@ -96,7 +97,7 @@ function YesNoToggle({ label, value, onChange }: YesNoToggleProps) {
   );
 }
 
-export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFormProps) {
+export default function SaleDetailsForm({ stockData, onSuccess, refetch }: SaleDetailsFormProps) {
   const { isDarkMode } = useTheme();
   const queryClient = useQueryClient();
 
@@ -454,6 +455,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         
         // Reload sale details to get updated VAT scheme
         try {
+          if (refetch) {
+            await refetch()
+          }
           const reloadResponse = await fetch(`/api/stock-actions/sale-details?stockId=${formData.stockReference}`);
           if (reloadResponse.ok) {
             const reloadResult = await reloadResponse.json();

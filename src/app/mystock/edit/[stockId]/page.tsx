@@ -338,7 +338,7 @@ export default function EditStockPage() {
         case "return-costs":
           return <ReturnCostsForm stockData={stockData} onSuccess={refreshActionStatuses} />;
         case "sale-details":
-          return <SaleDetailsForm stockData={stockData} onSuccess={refreshActionStatuses} />;
+          return <SaleDetailsForm stockData={stockData} onSuccess={refreshActionStatuses} refetch={refetch} />;
         case "service-details":
           return <ServiceDetailsForm stockData={stockData} onSuccess={refreshActionStatuses} />;
         case "detailed-margins":

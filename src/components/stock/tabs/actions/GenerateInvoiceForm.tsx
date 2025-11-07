@@ -391,7 +391,7 @@ const initialFormData: FormData = {
 }
 
 export default function GenerateInvoiceForm({ stockData, saleDetailsData }: GenerateInvoiceFormProps) {
-  console.log("🚀 ~ GenerateInvoiceForm ~ stockData:", stockData)
+  console.log("🚀 ~ GenerateInvoiceForm ~ stockData:", stockData, saleDetailsData)
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useUser();
@@ -681,16 +681,20 @@ For any queries or issues, please contact us at support@mydealershipview.com`);
     return saleDetailsData?.salePrice ? parseFloat(saleDetailsData.salePrice.toString()) : 0;
   });
   const [editableVatStatus, setEditableVatStatus] = useState<string>(() => {
-    return saleDetailsData?.vatScheme || 'no_vat';
+    return stockData?.saleDetails?.vatScheme || saleDetailsData?.vatScheme || 'no_vat';
   });
+
+  useEffect(() => {
+    if (stockData?.saleDetails?.vatScheme) setEditableVatStatus(stockData?.saleDetails?.vatScheme);
+  }, [stockData?.saleDetails?.vatScheme])
 
   // Update editable values when saleDetailsData changes
   useEffect(() => {
     if (saleDetailsData?.salePrice) {
       setEditableSalePrice(parseFloat(saleDetailsData.salePrice.toString()));
     }
-    if (saleDetailsData?.vatScheme) {
-      setEditableVatStatus(saleDetailsData.vatScheme);
+    if (stockData?.saleDetails?.vatScheme || saleDetailsData?.vatScheme) {
+      setEditableVatStatus(stockData?.saleDetails?.vatScheme || saleDetailsData.vatScheme);
     }
   }, [saleDetailsData]);
 
