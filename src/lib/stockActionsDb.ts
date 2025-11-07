@@ -37,7 +37,7 @@ export async function createSaleDetails(data: NewSaleDetails): Promise<SaleDetai
   return result
 }
 
-export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails & { advertsData: unknown, vatSchemeSales: string | null, forecourtPriceVatStatus: string | null } | null> {
+export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails & { advertsData: unknown, vatSchemeAdverts: string | null, forecourtPriceVatStatus: string | null } | null> {
   const [result] = await db
     .select({
       id: saleDetails.id,
@@ -101,7 +101,7 @@ export async function getSaleDetailsByStockId(stockId: string, dealerId: string)
       notes: saleDetails.notes,
       totalFinanceAddOn: saleDetails.totalFinanceAddOn,
       totalCustomerAddOn: saleDetails.totalCustomerAddOn,
-      vatSchemeSales: saleDetails.vatScheme,
+      vatScheme: saleDetails.vatScheme,
       createdAt: saleDetails.createdAt,
       updatedAt: saleDetails.updatedAt,
       advertsData: stockCache.advertsData,
@@ -111,7 +111,7 @@ export async function getSaleDetailsByStockId(stockId: string, dealerId: string)
     .where(and(eq(saleDetails.stockId, stockId), eq(saleDetails.dealerId, dealerId)))
     .limit(1)
 
-    let fetchedVatScheme;
+    let vatSchemeAdverts;
     let forecourtPriceVatStatus = null;
     // Fetch VAT scheme from stockCache
         try {
@@ -131,14 +131,14 @@ export async function getSaleDetailsByStockId(stockId: string, dealerId: string)
             const parsedAdvertsData = typeof stockCacheResult[0].advertsData === 'string' 
               ? JSON.parse(stockCacheResult[0].advertsData) 
               : stockCacheResult[0].advertsData;
-            fetchedVatScheme = parsedAdvertsData?.vatScheme || null;
+            vatSchemeAdverts = parsedAdvertsData?.vatScheme || null;
             forecourtPriceVatStatus = parsedAdvertsData?.forecourtPriceVatStatus || null;
           }
         } catch (vatError) {
           console.warn('⚠️ Failed to fetch VAT scheme from stockCache:', vatError);
           // Don't fail the request if VAT scheme fetch fails
         }
-  return result ? { ...result, vatScheme: fetchedVatScheme, forecourtPriceVatStatus } : null
+  return result ? { ...result, vatSchemeAdverts, forecourtPriceVatStatus } : null
 }
 
 export async function updateSaleDetails(stockId: string, dealerId: string, data: Partial<NewSaleDetails>): Promise<SaleDetails> {

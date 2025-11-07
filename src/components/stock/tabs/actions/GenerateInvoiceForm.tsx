@@ -391,6 +391,7 @@ const initialFormData: FormData = {
 }
 
 export default function GenerateInvoiceForm({ stockData, saleDetailsData }: GenerateInvoiceFormProps) {
+  console.log("🚀 ~ GenerateInvoiceForm ~ stockData:", stockData)
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useUser();

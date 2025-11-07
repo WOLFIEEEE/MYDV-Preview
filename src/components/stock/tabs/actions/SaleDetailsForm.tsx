@@ -122,7 +122,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     registration: stockData?.vehicle?.registration || '',
     vatScheme: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
     forecourtPriceVatStatus: (stockData as any)?.advertsData?.forecourtPriceVatStatus || null,
-    vatSchemeSales: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
+    vatSchemeAdverts: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
     saleDate: new Date().toISOString().split('T')[0],
     monthOfSale: getMonthFromDate(new Date().toISOString().split('T')[0]),
     quarterOfSale: getQuarterFromDate(new Date().toISOString().split('T')[0]),
@@ -189,7 +189,6 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         additionalText: '',
         completionDate: ''
   });
-  console.log("🚀 ~ SaleDetailsForm ~ formData:", formData)
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -210,9 +209,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
             setFormData({
               stockReference: data.stockReference || stockData?.metadata?.stockId || '',
               registration: data.registration || stockData?.vehicle?.registration || '',
-              vatScheme: data.vatScheme || (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'Marginal', // Prioritize sales details VAT scheme
+              vatScheme: data.vatScheme,
               forecourtPriceVatStatus: data.forecourtPriceVatStatus || 'Inc VAT',
-              vatSchemeSales: data?.vatSchemeSales,
+              vatSchemeAdverts: data?.vatSchemeAdverts  || (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'Marginal',
               saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               monthOfSale: data.monthOfSale || getMonthFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
               quarterOfSale: data.quarterOfSale || getQuarterFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
@@ -295,9 +294,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
   // VAT calculation functions
   const calculateGrossSalePrice = () => {
     const salePrice = parseFloat(formData.salePrice) || 0;
-    if (!formData.vatSchemeSales || formData.vatSchemeSales === 'no_vat' || formData.vatSchemeSales === 'includes') {
+    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'includes') {
       return salePrice;
-    } else if (formData.vatSchemeSales === 'excludes') {
+    } else if (formData.vatScheme === 'excludes') {
       return salePrice * 1.2; // Add 20% VAT
     }
     return salePrice;
@@ -305,9 +304,9 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
 
   const calculateNetSalePrice = () => {
     const salePrice = parseFloat(formData.salePrice) || 0;
-    if (!formData.vatSchemeSales || formData.vatSchemeSales === 'no_vat' || formData.vatSchemeSales === 'excludes') {
+    if (!formData.vatScheme || formData.vatScheme === 'no_vat' || formData.vatScheme === 'excludes') {
       return salePrice;
-    } else if (formData.vatSchemeSales === 'includes') {
+    } else if (formData.vatScheme === 'includes') {
       return (salePrice / 6) * 5; // Remove 20% VAT (divide by 1.2)
     }
     return salePrice;
@@ -372,7 +371,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         stockId: formData.stockReference,
         stockReference: formData.stockReference,
         registration: formData.registration,
-        vatScheme: formData.vatSchemeSales || 'no_vat', // Include VAT scheme
+        vatScheme: formData.vatScheme || 'no_vat', // Include VAT scheme
         saleDate: formData.saleDate || new Date().toISOString().split('T')[0], // Send as string
         monthOfSale: formData.monthOfSale,
         quarterOfSale: formData.quarterOfSale,
@@ -463,7 +462,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               // Update form data with reloaded values, especially VAT scheme
               setFormData(prev => ({
                 ...prev,
-                vatSchemeSales: data.vatSchemeSales || data.vatScheme || prev.vatSchemeSales || 'no_vat',
+                vatScheme: data.vatScheme || data.vatScheme || prev.vatScheme || 'no_vat',
                 salePrice: data.salePrice || prev.salePrice,
                 // Update other fields that might have changed
                 saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : prev.saleDate,
@@ -640,19 +639,19 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     'bg-gray-500'
                   }`} />
                   <span className="font-medium text-sm">
-                    VAT Status: {getVatQualificationStatus(formData.vatScheme)}
+                    VAT Status: {getVatQualificationStatus(formData.vatSchemeAdverts)}
                   </span>
                 </div>
-                {/* <div className={`text-xs mt-0.5 opacity-75 ${
+                <div className={`text-xs mt-0.5 opacity-75 ${
                     isDarkMode ? 'text-white' : 'text-slate-600'
                   }`}>
-                    {formData.vatScheme ? 
+                    {formData.vatSchemeAdverts ? 
                       formData.forecourtPriceVatStatus === 'Inc VAT' ? 'Paid Inclusive' : 
                       formData.forecourtPriceVatStatus === 'Ex VAT' ? 'Paid Exclusive' : 
                       'None Paid'
                       : ''
                     }
-                  </div> */}
+                  </div>
               </div>
 
               {/* Sale Value Display */}
@@ -873,12 +872,12 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     VAT on Sales Invoice
                   </label>
                   <select
-                    value={formData.vatSchemeSales || 'no_vat'}
-                    onChange={(e) => handleInputChange('vatSchemeSales', e.target.value)}
-                    onFocus={() => setFocusedField('vatSchemeSales')}
+                    value={formData.vatScheme || 'no_vat'}
+                    onChange={(e) => handleInputChange('vatScheme', e.target.value)}
+                    onFocus={() => setFocusedField('vatScheme')}
                     onBlur={() => setFocusedField(null)}
                     className={`${inputBaseClass} ${
-                      focusedField === 'vatSchemeSales' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                      focusedField === 'vatScheme' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                     }`}
                   >
                     <option value="no_vat">No VAT</option>
