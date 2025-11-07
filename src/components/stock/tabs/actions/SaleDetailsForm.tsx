@@ -121,6 +121,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
     stockReference: stockData?.metadata?.stockId || '',
     registration: stockData?.vehicle?.registration || '',
     vatScheme: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
+    vatSchemeSales: (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // VAT scheme with priority
     saleDate: new Date().toISOString().split('T')[0],
     monthOfSale: getMonthFromDate(new Date().toISOString().split('T')[0]),
     quarterOfSale: getQuarterFromDate(new Date().toISOString().split('T')[0]),
@@ -208,6 +209,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               stockReference: data.stockReference || stockData?.metadata?.stockId || '',
               registration: data.registration || stockData?.vehicle?.registration || '',
               vatScheme: data.vatScheme || (stockData as any)?.advertsData?.vatScheme || (stockData as any)?.advertsData?.forecourtPriceVatStatus || (stockData as any)?.adverts?.retailAdverts?.vatStatus || 'no_vat', // Prioritize sales details VAT scheme
+              vatSchemeSales: data?.vatSchemeSales,
               saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               monthOfSale: data.monthOfSale || getMonthFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
               quarterOfSale: data.quarterOfSale || getQuarterFromDate(data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
@@ -367,7 +369,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
         stockId: formData.stockReference,
         stockReference: formData.stockReference,
         registration: formData.registration,
-        vatScheme: formData.vatScheme || 'no_vat', // Include VAT scheme
+        vatScheme: formData.vatSchemeSales || 'no_vat', // Include VAT scheme
         saleDate: formData.saleDate || new Date().toISOString().split('T')[0], // Send as string
         monthOfSale: formData.monthOfSale,
         quarterOfSale: formData.quarterOfSale,
@@ -458,7 +460,7 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
               // Update form data with reloaded values, especially VAT scheme
               setFormData(prev => ({
                 ...prev,
-                vatScheme: data.vatScheme || prev.vatScheme || 'no_vat',
+                vatSchemeSales: data.vatSchemeSales || data.vatScheme || prev.vatSchemeSales || 'no_vat',
                 salePrice: data.salePrice || prev.salePrice,
                 // Update other fields that might have changed
                 saleDate: data.saleDate ? new Date(data.saleDate).toISOString().split('T')[0] : prev.saleDate,
@@ -764,12 +766,12 @@ export default function SaleDetailsForm({ stockData, onSuccess }: SaleDetailsFor
                     VAT Status
                   </label>
                   <select
-                    value={formData.vatScheme || 'no_vat'}
-                    onChange={(e) => handleInputChange('vatScheme', e.target.value)}
-                    onFocus={() => setFocusedField('vatScheme')}
+                    value={formData.vatSchemeSales || 'no_vat'}
+                    onChange={(e) => handleInputChange('vatSchemeSales', e.target.value)}
+                    onFocus={() => setFocusedField('vatSchemeSales')}
                     onBlur={() => setFocusedField(null)}
                     className={`${inputBaseClass} ${
-                      focusedField === 'vatScheme' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
+                      focusedField === 'vatSchemeSales' ? 'ring-2 ring-indigo-500/20 border-indigo-500 scale-[1.02]' : ''
                     }`}
                   >
                     <option value="no_vat">No VAT</option>
