@@ -313,8 +313,9 @@ export default function SaleDetailsForm({ stockData, onSuccess, refetch }: SaleD
     return salePrice;
   };
 
-  const getVatQualificationStatus = (vatScheme: string | null): string => {
+  const getVatQualificationStatus = (vatScheme: string | null, forecourtPriceVatStatus: string | null): string => {
     if (vatScheme && vatScheme?.toLowerCase() === 'vat qualifying') return 'VAT Qualifying';
+    if (forecourtPriceVatStatus && (forecourtPriceVatStatus?.toLowerCase() === 'inc vat' || forecourtPriceVatStatus?.toLowerCase() === 'ex vat')) return 'VAT Qualifying';
     return 'Marginal';
     // if (!vatScheme || vatScheme === 'no_vat') return 'Non-Qualifying';
     // return 'Qualifying';
@@ -643,15 +644,15 @@ export default function SaleDetailsForm({ stockData, onSuccess, refetch }: SaleD
                     'bg-gray-500'
                   }`} />
                   <span className="font-medium text-sm">
-                    VAT Status: {getVatQualificationStatus(formData.vatSchemeAdverts)}
+                    VAT Status: {getVatQualificationStatus(formData.vatSchemeAdverts, formData.forecourtPriceVatStatus)}
                   </span>
                 </div>
                 <div className={`text-xs mt-0.5 opacity-75 ${
                     isDarkMode ? 'text-white' : 'text-slate-600'
                   }`}>
                     {formData.vatSchemeAdverts ? 
-                      formData.forecourtPriceVatStatus === 'Inc VAT' ? 'Paid Inclusive' : 
-                      formData.forecourtPriceVatStatus === 'Ex VAT' ? 'Paid Exclusive' : 
+                      formData.forecourtPriceVatStatus?.toLowerCase() === 'inc vat' ? 'Paid Inclusive' : 
+                      formData.forecourtPriceVatStatus?.toLowerCase() === 'ex vat' ? 'Paid Exclusive' : 
                       'None Paid'
                       : ''
                     }
