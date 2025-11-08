@@ -1,12 +1,12 @@
 import { db } from './db'
-import { 
-  saleDetails, 
+import {
+  saleDetails,
   serviceDetails,
-  detailedMargins, 
-  returnCosts, 
-  invoices, 
-  vehicleCosts, 
-  inventoryDetails, 
+  detailedMargins,
+  returnCosts,
+  invoices,
+  vehicleCosts,
+  inventoryDetails,
   vehicleChecklist,
   type NewSaleDetails,
   type NewServiceDetails,
@@ -37,7 +37,7 @@ export async function createSaleDetails(data: NewSaleDetails): Promise<SaleDetai
   return result
 }
 
-export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails & { advertsData: unknown, vatSchemeAdverts: string | null, forecourtPriceVatStatus: string | null } | null> {
+export async function getSaleDetailsByStockId(stockId: string, dealerId: string): Promise<SaleDetails & { advertsData: unknown, vatSchemeAdverts: string | null, forecourtPriceVatStatus: string | null } | { vatSchemeAdverts: string | null, forecourtPriceVatStatus: string | null }> {
   const [result] = await db
     .select({
       id: saleDetails.id,
@@ -111,34 +111,44 @@ export async function getSaleDetailsByStockId(stockId: string, dealerId: string)
     .where(and(eq(saleDetails.stockId, stockId), eq(saleDetails.dealerId, dealerId)))
     .limit(1)
 
-    let vatSchemeAdverts;
-    let forecourtPriceVatStatus = null;
-    // Fetch VAT scheme from stockCache
-        try {
-          const stockCacheResult = await db
-            .select({
-              advertsData: stockCache.advertsData
-            })
-            .from(stockCache)
-            .where(and(
-              eq(stockCache.stockId, stockId),
-              eq(stockCache.dealerId, dealerId)
-            ))
-            .limit(1);
-    
-          if (stockCacheResult.length > 0 && stockCacheResult[0].advertsData) {
-            result.advertsData = stockCacheResult[0].advertsData;
-            const parsedAdvertsData = typeof stockCacheResult[0].advertsData === 'string' 
-              ? JSON.parse(stockCacheResult[0].advertsData) 
-              : stockCacheResult[0].advertsData;
-            vatSchemeAdverts = parsedAdvertsData?.vatScheme || null;
-            forecourtPriceVatStatus = parsedAdvertsData?.forecourtPriceVatStatus || null;
-          }
-        } catch (vatError) {
-          console.warn('⚠️ Failed to fetch VAT scheme from stockCache:', vatError);
-          // Don't fail the request if VAT scheme fetch fails
-        }
-  return result ? { ...result, vatSchemeAdverts, forecourtPriceVatStatus } : null
+  let vatSchemeAdverts = null;
+  let forecourtPriceVatStatus = null;
+  let advertsData = null;
+  // Fetch VAT scheme from stockCache
+  try {
+    const stockCacheResult = await db
+      .select({
+        advertsData: stockCache.advertsData
+      })
+      .from(stockCache)
+      .where(and(
+        eq(stockCache.stockId, stockId),
+        eq(stockCache.dealerId, dealerId)
+      ))
+      .limit(1);
+
+    if (stockCacheResult.length > 0 && stockCacheResult[0].advertsData) {
+      advertsData = stockCacheResult[0].advertsData;
+      const parsedAdvertsData = typeof stockCacheResult[0].advertsData === 'string'
+        ? JSON.parse(stockCacheResult[0].advertsData)
+        : stockCacheResult[0].advertsData;
+        
+      vatSchemeAdverts = parsedAdvertsData?.vatScheme || null;
+      forecourtPriceVatStatus = parsedAdvertsData?.forecourtPriceVatStatus || null;
+    }
+  } catch (vatError) {
+    console.warn('⚠️ Failed to fetch VAT scheme from stockCache:', vatError);
+    // Don't fail the request if VAT scheme fetch fails
+  }
+
+  console.log('📖 Retrieved VAT scheme for sale details:', vatSchemeAdverts);
+  console.log('📖 Retrieved forecourt price VAT status for sale details:', forecourtPriceVatStatus);
+  return {
+    ...(result || {}),
+    vatSchemeAdverts,
+    forecourtPriceVatStatus,
+    advertsData,
+  };
 }
 
 export async function updateSaleDetails(stockId: string, dealerId: string, data: Partial<NewSaleDetails>): Promise<SaleDetails> {
@@ -241,7 +251,7 @@ export async function createInvoice(data: NewInvoice): Promise<Invoice> {
     const timestamp = Date.now()
     data.invoiceNumber = `INV-${timestamp}`
   }
-  
+
   const [result] = await db.insert(invoices).values(data).returning()
   return result
 }
@@ -369,8 +379,8 @@ export async function updateStockCacheVatScheme(stockId: string, dealerId: strin
     // Parse the current advertsData or create empty object
     let currentAdvertsData: Record<string, unknown> = {}
     try {
-      currentAdvertsData = currentRecord.advertsData ? 
-        (typeof currentRecord.advertsData === 'string' ? JSON.parse(currentRecord.advertsData) as Record<string, unknown> : currentRecord.advertsData as Record<string, unknown>) 
+      currentAdvertsData = currentRecord.advertsData ?
+        (typeof currentRecord.advertsData === 'string' ? JSON.parse(currentRecord.advertsData) as Record<string, unknown> : currentRecord.advertsData as Record<string, unknown>)
         : {}
     } catch (parseError) {
       console.warn('Failed to parse advertsData, creating new object:', parseError)
@@ -386,7 +396,7 @@ export async function updateStockCacheVatScheme(stockId: string, dealerId: strin
     // Update the stockCache record with the modified advertsData
     await db
       .update(stockCache)
-      .set({ 
+      .set({
         advertsData: updatedAdvertsData,
         updatedAt: new Date()
       })
@@ -404,10 +414,10 @@ export async function syncVatSchemeToSalesDetails(stockId: string, dealerId: str
   try {
     // Normalize VAT scheme value
     const normalizedVatScheme = vatScheme || 'no_vat'
-    
+
     // Check if sales details exist for this stock
     const existingSaleDetails = await getSaleDetailsByStockId(stockId, dealerId)
-    
+
     if (existingSaleDetails) {
       // Update existing sales details with new VAT scheme
       await updateSaleDetails(stockId, dealerId, {
@@ -443,7 +453,7 @@ export function calculateMarginsTotal(marginsData: Partial<NewDetailedMargins>):
   const vatOnSpend = parseFloat(marginsData.vatOnSpend || '0')
   const vatOnPurchase = parseFloat(marginsData.vatOnPurchase || '0')
   const vatOnSalePrice = parseFloat(marginsData.vatOnSalePrice || '0')
-  
+
   const profitMarginPreCosts = parseFloat(marginsData.profitMarginPreCosts || '0')
   const profitMarginPostCosts = parseFloat(marginsData.profitMarginPostCosts || '0')
   const profitMarginPreVat = parseFloat(marginsData.profitMarginPreVat || '0')
@@ -467,26 +477,26 @@ export function calculateReturnCostsTotal(returnData: Partial<NewReturnCosts>): 
   totalReturnAmount: string
 } {
   // Parse vatable costs from JSON
-  const vatableCosts = Array.isArray(returnData.vatableCosts) 
-    ? returnData.vatableCosts 
+  const vatableCosts = Array.isArray(returnData.vatableCosts)
+    ? returnData.vatableCosts
     : []
-  
+
   // Parse non-vatable costs from JSON
-  const nonVatableCosts = Array.isArray(returnData.nonVatableCosts) 
-    ? returnData.nonVatableCosts 
+  const nonVatableCosts = Array.isArray(returnData.nonVatableCosts)
+    ? returnData.nonVatableCosts
     : []
-  
+
   // Calculate totals
   const totalVatableCosts = vatableCosts.reduce((sum: number, cost: { price?: string | number }) => {
     return sum + (parseFloat(String(cost.price || 0)) || 0)
   }, 0)
-  
+
   const totalNonVatableCosts = nonVatableCosts.reduce((sum: number, cost: { price?: string | number }) => {
     return sum + (parseFloat(String(cost.price || 0)) || 0)
   }, 0)
-  
+
   const totalReturnAmount = totalVatableCosts + totalNonVatableCosts
-  
+
   return {
     totalVatableCosts: totalVatableCosts.toFixed(2),
     totalNonVatableCosts: totalNonVatableCosts.toFixed(2),
